@@ -246,25 +246,29 @@ class AzureDLFileSystem(object):
 
     def mkdir(self, path):
         """ Make new directory """
-        self.touch(path)
+        self.azure.call('MKDIRS', path)
 
     def rmdir(self, path):
         """ Remove empty directory """
-        pass
+        if self.info(path)['type'] != "DIRECTORY":
+            raise ValueError('Can only rmdir on directories')
+        if self.ls(path):
+            raise ValueError('Directory not empty: %s' % path)
+        self.rm(path, False)
 
     def mv(self, path1, path2):
         """ Move file between locations on ADL """
-        self.copy(path1, path2)
-        self.rm(path1)
+        self.azure.call('RENAME', path1, destination=path2)
 
-    def concat(self, filelist):
-        pass
+    def concat(self, outfile, filelist):
+        """ Concatenate a list of files into one new file"""
+        self.azure.call('CONCAT', outfile, sources=','.join(filelist))
 
     merge = concat
 
     def copy(self, path1, path2):
         """ Copy file between locations on ADL """
-        pass
+        self.concat(path2, [path1])
 
     def rm(self, path, recursive=False):
         """
@@ -280,9 +284,7 @@ class AzureDLFileSystem(object):
         """
         if not self.exists(path):
             raise FileNotFoundError(path)
-        if recursive:
-            files = reversed(sorted(self.walk(path)))
-            [self.rm(afile) for afile in files]
+        self.azure.call('DELETE', path, recursive=recursive)
 
     def invalidate_cache(self, path=None):
         if path is None:
