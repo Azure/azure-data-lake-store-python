@@ -12,6 +12,7 @@ import io
 import logging
 import os
 import re
+import sys
 import time
 
 # local imports
@@ -19,6 +20,7 @@ from .lib import DatalakeRESTInterface, auth, refresh_token
 # from .utils import read_block, raises, ensure_writable
 
 logger = logging.getLogger(__name__)
+PY2 = sys.version_info.major == 2
 
 try:
     FileNotFoundError
@@ -105,7 +107,7 @@ class AzureDLFileSystem(object):
         self.__dict__.update(state)
         self.connect()
 
-    def open(self, path, mode='rb', block_size=2**25):
+    def open(self, path, mode='rb', blocksize=2**25):
         """ Open a file for reading or writing
 
         Parameters
@@ -120,7 +122,7 @@ class AzureDLFileSystem(object):
         if 'b' not in mode:
             raise NotImplementedError("Text mode not supported, use mode='%s'"
                                       " and manage bytes" % (mode[0] + 'b'))
-        return AzureDLFile(self, path, mode, block_size=block_size)
+        return AzureDLFile(self, path, mode, blocksize=blocksize)
 
     def _ls(self, path):
         """ List files at given path """
@@ -201,7 +203,7 @@ class AzureDLFileSystem(object):
 
     def exists(self, path):
         """ Does such a file/directory exist? """
-        out = self.azure.call("CHECKACCESS", path)
+        return bool(self.info(path))
 
     def cat(self, path):
         """ Returns contents of file """
@@ -380,13 +382,14 @@ class AzureDLFile(object):
         self.end = None
         self.closed = False
         self.trim = True
+        self.buffer = io.BytesIO()
         if mode == 'wb':
-            out = self.azure.call('CREATE', 'temp/test', overwrite=True)
-            self.url = out.headers['Location']
+            self.azure.azure.call('CREATE', path, overwrite=False)
         if mode == 'ab':
-            # TODO: op=APPEND does not return writing URL
-            self.loc = self.info()['length']
-            raise NotImplementedError
+            if not self.azure.exists(path):
+                self.azure.azure.call('CREATE', path)
+            else:
+                self.loc = self.info()['length']
         if mode == 'rb':
             self.size = self.info()['length']
 
@@ -519,7 +522,7 @@ class AzureDLFile(object):
             self.flush()
         return out
 
-    def flush(self, reopen=True):
+    def flush(self):
         """
         Write buffered data to ADL.
 
@@ -532,24 +535,14 @@ class AzureDLFile(object):
             upload URL
         """
         if self.mode in {'wb', 'ab'} and not self.closed:
-            if self.buffer.tell() < self.blocksize and not force:
-                raise ValueError('Parts must be greater than %s',
-                                 self.blocksize)
             if self.buffer.tell() == 0:
                 # no data in the buffer to write
                 return
-            if force and self.forced:
-                raise ValueError("Force flush cannot be called more than once")
-            if force:
-                self.forced = True
-
             self.buffer.seek(0)
-
-            # TODO
+            out = self.azure.azure.call('APPEND', path=self.path,
+                                        data=self.buffer.read())
             self.buffer = io.BytesIO()
-        if reopen:
-            # TODO
-            pass
+            return out
 
     def close(self):
         """ Close file
@@ -561,7 +554,8 @@ class AzureDLFile(object):
             return
         self.cache = None
         if self.mode in {'wb', 'ab'}:
-            self.flush(reopen=False)
+            self.flush()
+            self.azure.invalidate_cache(self.path)
         self.closed = True
 
     def readable(self):
@@ -601,3 +595,9 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
             logger.debug('Exception %e on ADL download, retrying', e,
                          exc_info=True)
     raise RuntimeError("Max number of ADL retries exceeded")
+
+
+def ensure_writable(b):
+    if PY2 and isinstance(b, array.array):
+        return b.tostring()
+    return b

@@ -68,7 +68,7 @@ def refresh_token(token):
                                   refresh_token=refresh))
     out = out.json()
     token = {'access': out['access_token'], 'refresh': out['refresh_token'],
-             'time': time.time()}
+             'time': time.time(), 'tenant_id': tenant_id}
     return token
 
 
@@ -179,6 +179,7 @@ class DatalakeRESTInterface:
         if op not in self.ends:
             raise ValueError("No such op: %s", op)
         method, required, allowed = self.ends[op]
+        data = kwargs.pop('data', b'')
         keys = set(kwargs)
         if required > keys:
             raise ValueError("Required parameters missing: %s",
@@ -192,7 +193,7 @@ class DatalakeRESTInterface:
         url = self.url + path
         # logger.debug('Call: (%s, %s, %s)' % (method, url, params))
         try:
-            r = func(url, params=params, headers=self.head)
+            r = func(url, params=params, headers=self.head, data=data)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: %s', str(e))
         if r.status_code >= 400:
