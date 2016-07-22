@@ -1,7 +1,9 @@
+import sys
+
 PY2 = sys.version_info.major == 2
 
 try:
-    FileNotFoundError
+    FileNotFoundError = FileNotFoundError
 except NameError:
     class FileNotFoundError(IOError):
         pass
