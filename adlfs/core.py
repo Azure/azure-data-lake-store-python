@@ -17,38 +17,9 @@ import time
 
 # local imports
 from .lib import DatalakeRESTInterface, auth, refresh_token
-# from .utils import read_block, raises, ensure_writable
+from .utils import FileNotFoundError, PY2, ensure_writable, read_block
 
 logger = logging.getLogger(__name__)
-PY2 = sys.version_info.major == 2
-
-try:
-    FileNotFoundError
-except NameError:
-    class FileNotFoundError(IOError):
-        pass
-
-
-def split_path(path):
-    """
-    Normalise AzureDL path string into bucket and key.
-
-    Parameters
-    ----------
-    path : string
-        Input path, like `azure://mybucket/path/to/file`
-
-    Examples
-    --------
-    >>> split_path("azure://mybucket/path/to/file")
-    ['mybucket', 'path/to/file']
-    """
-    if path.startswith('azure://'):
-        path = path[8:]
-    if '/' not in path:
-        return path, ""
-    else:
-        return path.split('/', 1)
 
 
 class AzureDLFileSystem(object):
@@ -597,9 +568,3 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
             logger.debug('Exception %e on ADL download, retrying', e,
                          exc_info=True)
     raise RuntimeError("Max number of ADL retries exceeded")
-
-
-def ensure_writable(b):
-    if PY2 and isinstance(b, array.array):
-        return b.tostring()
-    return b
