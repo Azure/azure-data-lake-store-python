@@ -185,7 +185,7 @@ class DatalakeRESTInterface:
                              required - keys)
         if keys - allowed > set():
             raise ValueError("Extra parameters given: %s",
-                             allowed - keys)
+                             keys - allowed)
         params = {'OP': op}
         params.update(kwargs)
         func = getattr(requests, method)

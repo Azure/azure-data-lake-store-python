@@ -105,7 +105,7 @@ class AzureDLFileSystem(object):
         self.__dict__.update(state)
         self.connect()
 
-    def open(self, path, mode='rb', block_size=5 * 1024 ** 2):
+    def open(self, path, mode='rb', block_size=2**25):
         """ Open a file for reading or writing
 
         Parameters
@@ -296,7 +296,7 @@ class AzureDLFileSystem(object):
 
         If path is a bucket only, attempt to create bucket.
         """
-        pass
+        self.open(path, 'wb')
 
     def read_block(self, fn, offset, length, delimiter=None):
         """ Read a block of bytes from an ADL file
@@ -366,12 +366,12 @@ class AzureDLFile(object):
     --------
     `AzureDLFileSystem.open`: used to create ``AzureDLFile`` objects
     """
-    block_size = 2**28  # fixed
 
-    def __init__(self, azure, path, mode='rb'):
+    def __init__(self, azure, path, mode='rb', blocksize=2**25):
         self.mode = mode
         if mode not in {'rb', 'wb', 'ab'}:
             raise NotImplementedError("File mode must be {'rb', 'wb', 'ab'}, not %s" % mode)
+        self.blocksize = blocksize
         self.path = path
         self.azure = azure
         self.cache = b""
@@ -379,7 +379,16 @@ class AzureDLFile(object):
         self.start = None
         self.end = None
         self.closed = False
-        self.trip = True
+        self.trim = True
+        if mode == 'wb':
+            out = self.azure.call('CREATE', 'temp/test', overwrite=True)
+            self.url = out.headers['Location']
+        if mode == 'ab':
+            # TODO: op=APPEND does not return writing URL
+            self.loc = self.info()['length']
+            raise NotImplementedError
+        if mode == 'rb':
+            self.size = self.info()['length']
 
     def info(self):
         """ File information about this path """
@@ -449,15 +458,16 @@ class AzureDLFile(object):
             # First read
             self.start = start
             self.end = end + self.blocksize
-            self.cache = _fetch_range(self.azure, self.path, start, self.end)
+            self.cache = _fetch_range(self.azure.azure, self.path, start,
+                                      self.end)
         if start < self.start:
-            new = _fetch_range(self.azure, self.path, start, self.start)
+            new = _fetch_range(self.azure.azure, self.path, start, self.start)
             self.start = start
             self.cache = new + self.cache
         if end > self.end:
             if self.end > self.size:
                 return
-            new = _fetch_range(self.azure, self.path, self.end,
+            new = _fetch_range(self.azure.azure, self.path, self.end,
                                end + self.blocksize)
             self.end = end + self.blocksize
             self.cache = self.cache + new
