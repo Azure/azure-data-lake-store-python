@@ -12,6 +12,7 @@ import io
 import logging
 import os
 import re
+import time
 
 # local imports
 from .lib import DatalakeRESTInterface, auth, refresh_token
@@ -102,7 +103,7 @@ class AzureDLFileSystem(object):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.azure = self.connect()
+        self.connect()
 
     def open(self, path, mode='rb', block_size=5 * 1024 ** 2):
         """ Open a file for reading or writing
@@ -110,7 +111,7 @@ class AzureDLFileSystem(object):
         Parameters
         ----------
         path: string
-            Path of file on S3
+            Path of file on ADL
         mode: string
             One of 'rb' or 'wb'
         block_size: int
@@ -123,15 +124,17 @@ class AzureDLFileSystem(object):
 
     def _ls(self, path):
         """ List files at given path """
+        path = path.rstrip('/').lstrip('/')
         if path not in self.dirs:
             out = self.azure.call('LISTSTATUS', path)
             self.dirs[path] = out['FileStatuses']['FileStatus']
             for f in self.dirs[path]:
-                f['name'] = '/'.join([path, f['pathSuffix']])
+                bits = [b for b in [path, f['pathSuffix'].lstrip('/')] if b]
+                f['name'] = ('/'.join(bits))
         return self.dirs[path]
 
     def ls(self, path, detail=False):
-        """ List single "directory" with or without details """
+        """ List single directory with or without details """
         files = self._ls(path)
         if not files:
             raise FileNotFoundError(path)
@@ -140,11 +143,25 @@ class AzureDLFileSystem(object):
         else:
             return [f['name'] for f in files]
 
-    def info(self, path, refresh=False):
-        pass
+    def info(self, path):
+        """ File information
+        """
+        path = path.rstrip('/').lstrip('/')
+        root, fname = os.path.split(path)
+        myfile = [f for f in self._ls(root) if f['name'] == path]
+        if len(myfile) == 1:
+            return myfile[0]
+        raise FileNotFoundError(path)
 
-    def walk(self, path, refresh=False):
-        pass
+    def _walk(self, path):
+        fi = self._ls(path).copy()
+        for apath in fi:
+            if apath['type'] == 'DIRECTORY':
+                fi.extend(self._ls(apath['name']))
+        return [f for f in fi if f['type'] == 'FILE']
+
+    def walk(self, path):
+        return [f['name'] for f in self._walk(path)]
 
     def glob(self, path):
         """
@@ -159,7 +176,7 @@ class AzureDLFileSystem(object):
             ind = path[:path.index('*')].rindex('/')
             root = path[:ind + 1]
         else:
-            root = '/'
+            root = ''
         allfiles = self.walk(root)
         pattern = re.compile("^" + path.replace('//', '/')
                              .rstrip('/')
@@ -174,14 +191,13 @@ class AzureDLFileSystem(object):
     def du(self, path, total=False, deep=False):
         """ Bytes in keys at path """
         if deep:
-            files = self.walk(path)
-            files = [self.info(f) for f in files]
+            files = self._walk(path)
         else:
             files = self.ls(path, detail=True)
         if total:
-            return sum(f.get('Size', 0) for f in files)
+            return sum(f.get('length', 0) for f in files)
         else:
-            return {p['Key']: p['Size'] for p in files}
+            return {p['name']: p['length'] for p in files}
 
     def exists(self, path):
         """ Does such a file/directory exist? """
@@ -194,7 +210,7 @@ class AzureDLFileSystem(object):
 
     def tail(self, path, size=1024):
         """ Return last bytes of file """
-        length = self.info(path)['Size']
+        length = self.info(path)['length']
         if size > length:
             return self.cat(path)
         with self.open(path, 'rb') as f:
@@ -226,89 +242,31 @@ class AzureDLFileSystem(object):
                         break
                     f2.write(data)
 
-###########
     def mkdir(self, path):
-        """ Make new bucket or empty key """
+        """ Make new directory """
         self.touch(path)
 
     def rmdir(self, path):
-        """ Remove empty key or bucket """
-        bucket, key = split_path(path)
-        if (key and self.info(path)['Size'] == 0) or not key:
-            self.rm(path)
-        else:
-            raise IOError('Path is not directory-like', path)
+        """ Remove empty directory """
+        pass
 
     def mv(self, path1, path2):
-        """ Move file between locations on S3 """
+        """ Move file between locations on ADL """
         self.copy(path1, path2)
         self.rm(path1)
 
-    def merge(self, path, filelist):
-        """ Create single S3 file from list of S3 files
+    def concat(self, filelist):
+        pass
 
-        Uses multi-part, no data is downloaded. The original files are
-        not deleted.
-
-        Parameters
-        ----------
-        path : str
-            The final file to produce
-        filelist : list of str
-            The paths, in order, to assemble into the final file.
-        """
-        bucket, key = split_path(path)
-        mpu = self.s3.create_multipart_upload(Bucket=bucket, Key=key)
-        out = [self.s3.upload_part_copy(Bucket=bucket, Key=key, UploadId=mpu['UploadId'],
-                            CopySource=f, PartNumber=i+1) for (i, f) in enumerate(filelist)]
-        parts = [{'PartNumber': i+1, 'ETag': o['CopyPartResult']['ETag']} for (i, o) in enumerate(out)]
-        part_info = {'Parts': parts}
-        self.s3.complete_multipart_upload(Bucket=bucket, Key=key,
-                    UploadId=mpu['UploadId'], MultipartUpload=part_info)
-        self.invalidate_cache(path)
+    merge = concat
 
     def copy(self, path1, path2):
-        """ Copy file between locations on S3 """
-        buc1, key1 = split_path(path1)
-        buc2, key2 = split_path(path2)
-        try:
-            self.s3.copy_object(Bucket=buc2, Key=key2,
-                                CopySource='/'.join([buc1, key1]))
-        except (ClientError, ParamValidationError):
-            raise IOError('Copy failed', (path1, path2))
-        self.invalidate_cache(path2)
-
-    def bulk_delete(self, pathlist):
-        """
-        Remove multiple keys with one call
-
-        Parameters
-        ----------
-        pathlist : listof strings
-            The keys to remove, must all be in the same bucket.
-        """
-        if not pathlist:
-            return
-        buckets = {split_path(path)[0] for path in pathlist}
-        if len(buckets) > 1:
-            raise ValueError("Bulk delete files should refer to only one bucket")
-        bucket = buckets.pop()
-        if len(pathlist) > 1000:
-            for i in range((len(pathlist) // 1000) + 1):
-                self.bulk_delete(pathlist[i*1000:(i+1)*1000])
-            return
-        delete_keys = {'Objects': [{'Key' : split_path(path)[1]} for path
-                                   in pathlist]}
-        try:
-            self.s3.delete_objects(Bucket=bucket, Delete=delete_keys)
-            for path in pathlist:
-                self.invalidate_cache(path)
-        except ClientError:
-            raise IOError('Bulk delete failed')
+        """ Copy file between locations on ADL """
+        pass
 
     def rm(self, path, recursive=False):
         """
-        Remove keys and/or bucket.
+        Remove a file.
 
         Parameters
         ----------
@@ -321,26 +279,8 @@ class AzureDLFileSystem(object):
         if not self.exists(path):
             raise FileNotFoundError(path)
         if recursive:
-            self.bulk_delete(self.walk(path))
-            if not self.exists(path):
-                return
-        bucket, key = split_path(path)
-        if key:
-            try:
-                self.s3.delete_object(Bucket=bucket, Key=key)
-            except ClientError:
-                raise IOError('Delete key failed', (bucket, key))
-            self.invalidate_cache(path)
-        else:
-            if not self.s3.list_objects(Bucket=bucket).get('Contents'):
-                try:
-                    self.s3.delete_bucket(Bucket=bucket)
-                except ClientError:
-                    raise IOError('Delete bucket failed', bucket)
-                self.invalidate_cache(bucket)
-                self.invalidate_cache('')
-            else:
-                raise IOError('Not empty', path)
+            files = reversed(sorted(self.walk(path)))
+            [self.rm(afile) for afile in files]
 
     def invalidate_cache(self, path=None):
         if path is None:
@@ -356,20 +296,10 @@ class AzureDLFileSystem(object):
 
         If path is a bucket only, attempt to create bucket.
         """
-        bucket, key = split_path(path)
-        if key:
-            self.s3.put_object(Bucket=bucket, Key=key)
-            self.invalidate_cache(path)
-        else:
-            try:
-                self.s3.create_bucket(Bucket=bucket)
-                self.invalidate_cache('')
-                self.invalidate_cache(bucket)
-            except (ClientError, ParamValidationError):
-                raise IOError('Bucket create failed', path)
+        pass
 
     def read_block(self, fn, offset, length, delimiter=None):
-        """ Read a block of bytes from an S3 file
+        """ Read a block of bytes from an ADL file
 
         Starting at ``offset`` of the file, read ``length`` bytes.  If
         ``delimiter`` is set then we ensure that the read starts and stops at
@@ -382,7 +312,7 @@ class AzureDLFileSystem(object):
         Parameters
         ----------
         fn: string
-            Path to filename on S3
+            Path to filename on ADL
         offset: int
             Byte offset to start read
         length: int
@@ -392,13 +322,13 @@ class AzureDLFileSystem(object):
 
         Examples
         --------
-        >>> s3.read_block('data/file.csv', 0, 13)  # doctest: +SKIP
+        >>> adl.read_block('data/file.csv', 0, 13)  # doctest: +SKIP
         b'Alice, 100\\nBo'
-        >>> s3.read_block('data/file.csv', 0, 13, delimiter=b'\\n')  # doctest: +SKIP
+        >>> adl.read_block('data/file.csv', 0, 13, delimiter=b'\\n')  # doctest: +SKIP
         b'Alice, 100\\nBob, 200\\n'
 
         Use ``length=None`` to read to the end of the file.
-        >>> s3.read_block('data/file.csv', 0, None, delimiter=b'\\n')  # doctest: +SKIP
+        >>> adl.read_block('data/file.csv', 0, None, delimiter=b'\\n')  # doctest: +SKIP
         b'Alice, 100\\nBob, 200\\nCharlie, 300'
 
         See Also
@@ -406,7 +336,7 @@ class AzureDLFileSystem(object):
         distributed.utils.read_block
         """
         with self.open(fn, 'rb') as f:
-            size = f.info()['Size']
+            size = f.info()['length']
             if length is None:
                 length = size
             if offset + length > size:
@@ -417,78 +347,43 @@ class AzureDLFileSystem(object):
 
 class AzureDLFile(object):
     """
-    Open S3 key as a file. Data is only loaded and cached on demand.
+    Open ADL key as a file. Data is only loaded and cached on demand.
 
     Parameters
     ----------
-    s3 : boto3 connection
-    bucket : string
-        S3 bucket to access
-    key : string
-        S3 key to access
-    blocksize : int
-        read-ahead size for finding delimiters
+    azure : azure connection
+    path : str
+        location of file
+    mode : str {'wb', 'rb', 'ab'}
 
     Examples
     --------
-    >>> s3 = S3FileSystem()  # doctest: +SKIP
-    >>> with s3.open('my-bucket/my-file.txt', mode='rb') as f:  # doctest: +SKIP
-    ...     ...  # doctest: +SKIP
+    >>> adl = AzureDLFileSystem()  # doctest: +SKIP
+    >>> with adl.open('my-dir/my-file.txt', mode='rb') as f:  # doctest: +SKIP
+    ...     f.read(10)  # doctest: +SKIP
 
     See Also
     --------
-    S3FileSystem.open: used to create ``S3File`` objects
+    `AzureDLFileSystem.open`: used to create ``AzureDLFile`` objects
     """
+    block_size = 2**28  # fixed
 
-    def __init__(self, s3, path, mode='rb', block_size=5 * 2 ** 20):
+    def __init__(self, azure, path, mode='rb'):
         self.mode = mode
         if mode not in {'rb', 'wb', 'ab'}:
             raise NotImplementedError("File mode must be {'rb', 'wb', 'ab'}, not %s" % mode)
         self.path = path
-        bucket, key = split_path(path)
-        self.s3 = s3
-        self.bucket = bucket
-        self.key = key
-        self.blocksize = block_size
+        self.azure = azure
         self.cache = b""
         self.loc = 0
         self.start = None
         self.end = None
         self.closed = False
-        self.trim = True
-        self.mpu = None
-        if mode in {'wb', 'ab'}:
-            self.buffer = io.BytesIO()
-            self.parts = []
-            self.size = 0
-            if block_size < 5 * 2 ** 20:
-                raise ValueError('Block size must be >=5MB')
-            self.forced = False
-            if mode == 'ab' and s3.exists(path):
-                self.size = s3.info(path)['Size']
-                if self.size < 5*2**20:
-                    # existing file too small for multi-upload: download
-                    self.write(s3.cat(path))
-                else:
-                    try:
-                        self.mpu = s3.s3.create_multipart_upload(Bucket=bucket, Key=key)
-                    except (ClientError, ParamValidationError) as e:
-                        raise IOError('Open for write failed', path, e)
-                    self.loc = self.size
-                    out = self.s3.s3.upload_part_copy(Bucket=self.bucket, Key=self.key,
-                                PartNumber=1, UploadId=self.mpu['UploadId'],
-                                CopySource=path)
-                    self.parts.append({'PartNumber': 1,
-                                       'ETag': out['CopyPartResult']['ETag']})
-        else:
-            try:
-                self.size = self.info()['Size']
-            except (ClientError, ParamValidationError):
-                raise IOError("File not accessible", path)
+        self.trip = True
 
     def info(self):
         """ File information about this path """
-        return self.s3.info(self.path)
+        return self.azure.info(self.path)
 
     def tell(self):
         """ Current file location """
@@ -554,18 +449,16 @@ class AzureDLFile(object):
             # First read
             self.start = start
             self.end = end + self.blocksize
-            self.cache = _fetch_range(self.s3.s3, self.bucket, self.key,
-                                      start, self.end)
+            self.cache = _fetch_range(self.azure, self.path, start, self.end)
         if start < self.start:
-            new = _fetch_range(self.s3.s3, self.bucket, self.key,
-                               start, self.start)
+            new = _fetch_range(self.azure, self.path, start, self.start)
             self.start = start
             self.cache = new + self.cache
         if end > self.end:
             if self.end > self.size:
                 return
-            new = _fetch_range(self.s3.s3, self.bucket, self.key,
-                               self.end, end + self.blocksize)
+            new = _fetch_range(self.azure, self.path, self.end,
+                               end + self.blocksize)
             self.end = end + self.blocksize
             self.cache = self.cache + new
 
@@ -599,7 +492,7 @@ class AzureDLFile(object):
         """
         Write data to buffer.
 
-        Buffer only sent to S3 on flush() or if buffer is bigger than blocksize.
+        Buffer only sent to ADL on flush() or if buffer is bigger than blocksize.
 
         Parameters
         ----------
@@ -616,21 +509,17 @@ class AzureDLFile(object):
             self.flush()
         return out
 
-    def flush(self, force=False, retries=10):
+    def flush(self, reopen=True):
         """
-        Write buffered data to S3.
+        Write buffered data to ADL.
 
         Uploads the current buffer, if it is larger than the block-size.
 
-        Due to S3 multi-upload policy, you can only safely force flush to S3
-        when you are finished writing.  It is unsafe to call this function
-        repeatedly.
-
         Parameters
         ----------
-        force : bool
-            When closing, write the last block even if it is smaller than
-            blocks are allowed to be.
+        reopen : bool (True)
+            If writing is incomplete, write data and immediately get new
+            upload URL
         """
         if self.mode in {'wb', 'ab'} and not self.closed:
             if self.buffer.tell() < self.blocksize and not force:
@@ -645,34 +534,12 @@ class AzureDLFile(object):
                 self.forced = True
 
             self.buffer.seek(0)
-            part = len(self.parts) + 1
-            i = 0
 
-            try:
-                self.mpu = self.mpu or self.s3.s3.create_multipart_upload(
-                                Bucket=self.bucket, Key=self.key)
-            except (ClientError, ParamValidationError) as e:
-                raise IOError('Initating write failed: %s' % self.path, e)
-
-            while True:
-                try:
-                    out = self.s3.s3.upload_part(Bucket=self.bucket,
-                            PartNumber=part, UploadId=self.mpu['UploadId'],
-                            Body=self.buffer.read(), Key=self.key)
-                    break
-                except S3_RETRYABLE_ERRORS:
-                    if i < retries:
-                        logger.debug('Exception %e on S3 write, retrying',
-                                     exc_info=True)
-                        i += 1
-                        continue
-                    else:
-                        raise IOError('Write failed after %i retries' % retries,
-                                      self)
-                except Exception as e:
-                    raise IOError('Write failed', self, e)
-            self.parts.append({'PartNumber': part, 'ETag': out['ETag']})
+            # TODO
             self.buffer = io.BytesIO()
+        if reopen:
+            # TODO
+            pass
 
     def close(self):
         """ Close file
@@ -684,41 +551,26 @@ class AzureDLFile(object):
             return
         self.cache = None
         if self.mode in {'wb', 'ab'}:
-            if self.parts:
-                self.flush(force=True)
-                part_info = {'Parts': self.parts}
-                self.s3.s3.complete_multipart_upload(Bucket=self.bucket,
-                                                     Key=self.key,
-                                                     UploadId=self.mpu[
-                                                         'UploadId'],
-                                                     MultipartUpload=part_info)
-            else:
-                self.buffer.seek(0)
-                try:
-                    self.s3.s3.put_object(Bucket=self.bucket, Key=self.key,
-                                           Body=self.buffer.read())
-                except (ClientError, ParamValidationError) as e:
-                    raise IOError('Write failed: %s' % self.path, e)
-            self.s3.invalidate_cache(self.path)
+            self.flush(reopen=False)
         self.closed = True
 
     def readable(self):
-        """Return whether the S3File was opened for reading"""
+        """Return whether the AzureDLFile was opened for reading"""
         return self.mode == 'rb'
 
     def seekable(self):
-        """Return whether the S3File is seekable (only in read mode)"""
+        """Return whether the AzureDLFile is seekable (only in read mode)"""
         return self.readable()
 
     def writable(self):
-        """Return whether the S3File was opened for writing"""
+        """Return whether the AzureDLFile was opened for writing"""
         return self.mode in {'wb', 'ab'}
 
     def __del__(self):
         self.close()
 
     def __str__(self):
-        return "<S3File %s/%s>" % (self.bucket, self.key)
+        return "<ADL file: %s>" % (self.path)
 
     __repr__ = __str__
 
@@ -729,21 +581,13 @@ class AzureDLFile(object):
         self.close()
 
 
-def _fetch_range(client, bucket, key, start, end, max_attempts=10):
-    logger.debug("Fetch: %s/%s, %s-%s", bucket, key, start, end)
+def _fetch_range(rest, path, start, end, max_attempts=10):
+    logger.debug("Fetch: path, %s-%s", path, start, end)
     for i in range(max_attempts):
         try:
-            resp = client.get_object(Bucket=bucket, Key=key,
-                                     Range='bytes=%i-%i' % (start, end - 1))
-            return resp['Body'].read()
-        except S3_RETRYABLE_ERRORS as e:
-            logger.debug('Exception %e on S3 download, retrying', e,
+            resp = rest.call('OPEN', path, offset=start, length=end-start)
+            return resp
+        except Exception as e:
+            logger.debug('Exception %e on ADL download, retrying', e,
                          exc_info=True)
-            continue
-        except ClientError as e:
-            if e.response['Error'].get('Code', 'Unknown') in ['416',
-                                                              'InvalidRange']:
-                return b''
-            else:
-                raise
-    raise RuntimeError("Max number of S3 retries exceeded")
+    raise RuntimeError("Max number of ADL retries exceeded")
