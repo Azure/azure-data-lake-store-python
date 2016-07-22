@@ -18,7 +18,7 @@ import azure
 client_id = "1950a258-227b-4e31-a9cf-717495945fc2"
 
 
-class DatalakeRESTException(Exception):
+class DatalakeRESTException(IOError):
     pass
 
 
@@ -68,7 +68,7 @@ def refresh_token(token):
                                   refresh_token=refresh))
     out = out.json()
     token = {'access': out['access_token'], 'refresh': out['refresh_token'],
-             'time': time.time(), 'tenant_id': tenant_id}
+             'time': time.time(), 'tenant': tenant_id}
     return token
 
 
@@ -200,9 +200,16 @@ class DatalakeRESTInterface:
             raise DatalakeRESTException("Data-lake REST exception: %s, %s, %s" %
                                         (op, r.status_code, r.content.decode()))
         if r.content:
-            try:
-                out = r.json()
-            except ValueError:
+            if r.content.startswith(b'{'):
+                try:
+                    out = r.json()
+                    if out.get('boolean', True) is False:
+                        raise DatalakeRESTException('Operation failed: %s, %s',
+                                                    op, path)
+                except ValueError:
+                    out = r.content
+            else:
+                # because byte-strings can happen to look like json
                 out = r.content
         else:
             out = r

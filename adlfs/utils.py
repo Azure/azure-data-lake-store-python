@@ -1,4 +1,7 @@
+from contextlib import contextmanager
+import os
 import sys
+import tempfile
 
 PY2 = sys.version_info.major == 2
 
@@ -13,6 +16,32 @@ def ensure_writable(b):
     if PY2 and isinstance(b, array.array):
         return b.tostring()
     return b
+
+
+@contextmanager
+def ignoring(*exceptions):
+    try:
+        yield
+    except exceptions:
+        pass
+
+
+@contextmanager
+def tmpfile(extension='', dir=None):
+    extension = '.' + extension.lstrip('.')
+    handle, filename = tempfile.mkstemp(extension, dir=dir)
+    os.close(handle)
+    os.remove(filename)
+
+    try:
+        yield filename
+    finally:
+        if os.path.exists(filename):
+            if os.path.isdir(filename):
+                shutil.rmtree(filename)
+            else:
+                with ignoring(OSError):
+                    os.remove(filename)
 
 
 def read_block(f, offset, length, delimiter=None):

@@ -87,7 +87,7 @@ class AzureDLFileSystem(object):
             Path of file on ADL
         mode: string
             One of 'rb' or 'wb'
-        block_size: int
+        blocksize: int
             Size of data-node blocks if reading
         """
         if 'b' not in mode:
@@ -110,6 +110,9 @@ class AzureDLFileSystem(object):
         """ List single directory with or without details """
         files = self._ls(path)
         if not files:
+            inf = self.info(path)
+            if inf['type'] == 'DIRECTORY':
+                return []
             raise FileNotFoundError(path)
         if detail:
             return files
@@ -138,7 +141,7 @@ class AzureDLFileSystem(object):
 
     def glob(self, path):
         """
-        Find files by glob-matching.
+        Find files (not directories) by glob-matching.
 
         Note that the bucket part of the path must not contain a "*"
         """
@@ -172,9 +175,16 @@ class AzureDLFileSystem(object):
         else:
             return {p['name']: p['length'] for p in files}
 
+    def df(self):
+        return self.azure.call('GETCONTENTSUMMARY')['ContentSummary']
+
     def exists(self, path):
         """ Does such a file/directory exist? """
-        return bool(self.info(path))
+        try:
+            self.info(path)
+            return True
+        except FileNotFoundError:
+            return False
 
     def cat(self, path):
         """ Returns contents of file """
@@ -192,7 +202,7 @@ class AzureDLFileSystem(object):
 
     def head(self, path, size=1024):
         """ Return first bytes of file """
-        with self.open(path, 'rb', block_size=size) as f:
+        with self.open(path, 'rb', blocksize=size) as f:
             return f.read(size)
 
     def get(self, path, filename):
@@ -218,6 +228,7 @@ class AzureDLFileSystem(object):
     def mkdir(self, path):
         """ Make new directory """
         self.azure.call('MKDIRS', path)
+        self.invalidate_cache(path)
 
     def rmdir(self, path):
         """ Remove empty directory """
@@ -230,16 +241,20 @@ class AzureDLFileSystem(object):
     def mv(self, path1, path2):
         """ Move file between locations on ADL """
         self.azure.call('RENAME', path1, destination=path2)
+        self.invalidate_cache(path1)
+        self.invalidate_cache(path2)
 
     def concat(self, outfile, filelist):
         """ Concatenate a list of files into one new file"""
         self.azure.call('CONCAT', outfile, sources=','.join(filelist))
+        self.invalidate_cache(outfile)
 
     merge = concat
 
-    def copy(self, path1, path2):
+    def cp(self, path1, path2):
         """ Copy file between locations on ADL """
-        self.concat(path2, [path1])
+        # TODO: any implementation for this without download?
+        raise NotImplementedError
 
     def rm(self, path, recursive=False):
         """
@@ -253,9 +268,15 @@ class AzureDLFileSystem(object):
             Whether to remove also all entries below, i.e., which are returned
             by `walk()`.
         """
+        path = path.lstrip('/').rstrip('/')
         if not self.exists(path):
             raise FileNotFoundError(path)
         self.azure.call('DELETE', path, recursive=recursive)
+        self.invalidate_cache(path)
+        if recursive:
+            matches = [p for p in self.dirs if p.startswith(
+                       path.rstrip('/') + '/')]
+            [self.invalidate_cache(m) for m in matches]
 
     def invalidate_cache(self, path=None):
         if path is None:
@@ -312,6 +333,8 @@ class AzureDLFileSystem(object):
         """
         with self.open(fn, 'rb') as f:
             size = f.info()['length']
+            if offset >= size:
+                return b''
             if length is None:
                 length = size
             if offset + length > size:
@@ -357,7 +380,7 @@ class AzureDLFile(object):
         self.trim = True
         self.buffer = io.BytesIO()
         if mode == 'wb':
-            self.azure.azure.call('CREATE', path, overwrite=False)
+            self.azure.azure.call('CREATE', path, overwrite=True)
         if mode == 'ab':
             if not self.azure.exists(path):
                 self.azure.azure.call('CREATE', path)
@@ -397,6 +420,8 @@ class AzureDLFile(object):
                 "invalid whence (%s, should be 0, 1 or 2)" % whence)
         if nloc < 0:
             raise ValueError('Seek before start of file')
+        if nloc > self.size:
+            raise ValueError('ADLFS does not support seeking beyond file')
         self.loc = nloc
         return self.loc
 
@@ -413,12 +438,15 @@ class AzureDLFile(object):
                 return self.read(length)
             if found:
                 return self.read(found)
-            if self.end > self.size:
+            if self.end >= self.size:
                 return self.read(length)
             self._fetch(self.start, self.end + self.blocksize)
 
     def __next__(self):
-        return self.readline()
+        out =  self.readline()
+        if not out:
+            raise StopIteration
+        return out
 
     next = __next__
 
@@ -433,7 +461,7 @@ class AzureDLFile(object):
         if self.start is None and self.end is None:
             # First read
             self.start = start
-            self.end = end + self.blocksize
+            self.end = min(end + self.blocksize, self.size)
             self.cache = _fetch_range(self.azure.azure, self.path, start,
                                       self.end)
         if start < self.start:
@@ -441,11 +469,11 @@ class AzureDLFile(object):
             self.start = start
             self.cache = new + self.cache
         if end > self.end:
-            if self.end > self.size:
+            if self.end >= self.size:
                 return
-            new = _fetch_range(self.azure.azure, self.path, self.end,
-                               end + self.blocksize)
-            self.end = end + self.blocksize
+            newend = min(self.size, end + self.blocksize)
+            new = _fetch_range(self.azure.azure, self.path, self.end, newend)
+            self.end = newend
             self.cache = self.cache + new
 
     def read(self, length=-1):
@@ -525,7 +553,6 @@ class AzureDLFile(object):
         """
         if self.closed:
             return
-        self.cache = None
         if self.mode in {'wb', 'ab'}:
             self.flush()
             self.azure.invalidate_cache(self.path)
@@ -560,6 +587,8 @@ class AzureDLFile(object):
 
 def _fetch_range(rest, path, start, end, max_attempts=10):
     logger.debug("Fetch: path, %s-%s", path, start, end)
+    if end <= start:
+        return b''
     for i in range(max_attempts):
         try:
             resp = rest.call('OPEN', path, offset=start, length=end-start)
