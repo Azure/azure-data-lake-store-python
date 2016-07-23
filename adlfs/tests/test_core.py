@@ -410,6 +410,17 @@ def test_write_empty(azure):
         assert f.read() == b''
 
 
+def test_write_blocks(azure):
+    with azure.open(a, mode='wb', blocksize=5) as f:
+        f.write(b'000')
+        assert f.buffer.tell() == 3
+        f.write(b'000')  # forces flush
+        assert f.buffer.tell() == 0
+        f.write(b'000')
+        assert f.tell() == 9
+    assert azure.du(a)[a] == 9
+
+
 def test_gzip(azure):
     import gzip
     data = b'name,amount\nAlice,100\nBob,200'
