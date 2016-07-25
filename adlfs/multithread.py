@@ -16,6 +16,7 @@ def get_chunk(adlfs, rfile, lfile, offset, size):
             fout.seek(offset)
             fin.seek(offset)
             fout.write(fin.read(size))
+            # TODO : log writing bytes
 
 
 def threaded_file_downloader(adlfs, threadpool, rfile, lfile, chunksize):
@@ -26,8 +27,9 @@ def threaded_file_downloader(adlfs, threadpool, rfile, lfile, chunksize):
     offsets = range(0, fsize, chunksize)
     with open(lfile, 'wb'):
         pass
-    futures = threadpool.map(get_chunk, [(adlfs, rfile, lfile, o, chunksize)
-                             for o in offsets])
+        # TODO : log creating file
+    futures = [threadpool.submit(get_chunk, adlfs, rfile, lfile, o, chunksize)
+               for o in offsets]
     return futures
 
 
