@@ -5,7 +5,6 @@ import time
 
 from adlfs.lib import (auth, refresh_token, DatalakeRESTInterface,
                        DatalakeRESTException)
-from adl
 
 @pytest.fixture()
 def token():
