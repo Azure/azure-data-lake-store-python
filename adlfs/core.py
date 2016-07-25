@@ -495,7 +495,7 @@ class AzureDLFile(object):
         out = self.cache[self.loc - self.start:
                          self.loc - self.start + length]
         self.loc += len(out)
-        if self.trim:
+        if self.trim and self.blocksize:
             num = (self.loc - self.start) // self.blocksize - 1
             if num > 0:
                 self.start += self.blocksize * num
