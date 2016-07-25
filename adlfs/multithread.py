@@ -11,6 +11,10 @@ import os
 
 
 def get_chunk(adlfs, rfile, lfile, offset, size):
+    """ Download a piece of a remote file and write locally
+
+    Internal function used by `download`.
+    """
     with adlfs.open(rfile, 'rb', blocksize=0) as fin:
         with open(lfile, 'rb+') as fout:
             fout.seek(offset)
@@ -20,6 +24,10 @@ def get_chunk(adlfs, rfile, lfile, offset, size):
 
 
 def threaded_file_downloader(adlfs, threadpool, rfile, lfile, chunksize):
+    """ Split remote file into chunks and assign pieces to threads
+
+    Internal function used by `download`.
+    """
     fsize = adlfs.info(rfile)['length']
     root = os.path.split(lfile)[0]
     if not os.path.exists(root) and root:
@@ -36,7 +44,36 @@ def threaded_file_downloader(adlfs, threadpool, rfile, lfile, chunksize):
 
 
 def download(adlfs, rpath, lpath, nthreads=None, chunksize=2**26):
-    rfiles = adlfs.walk(rpath)
+    """ Download remote file(s) using chunks and threads
+
+    Launches multiple threads for efficient downloading, with `chunksize`
+    assigned to each. The remote path can be a single file, a directory
+    of files or a glob pattern.
+
+    Parameters
+    ----------
+    adlfs: ADL filesystem instance
+    rpath: str
+        remote path/globstring to use to find remote files
+    lpath: str
+        local path. If downloading multiple files must be existing director,
+        or a place a directory can be created. If downloading a single file,
+        maybe either directory or file path.
+    nthreads: int [None]
+        Number of threads to use. If None, uses the number of cores * 5.
+    chunksize: int [2**26]
+        Number of bytes in each chunk for splitting big files. Files smaller
+        than this number will always be downloaded in a single thread.
+
+    Returns
+    -------
+    List of complete and incomplete futures, which may include exception
+    information.
+    """
+    if "*" not in rpath:
+        rfiles = adlfs.walk(rpath)
+    else:
+        rfiles = adlfs.glob(rpath)
     # TODO : wrap in a class, so can save and re-start failed/cancelled futures
     pool = ThreadPoolExecutor(max_workers=nthreads)
     if (len(rfiles) > 1) or (os.path.exists(lpath) and os.path.isdir(lpath)):
