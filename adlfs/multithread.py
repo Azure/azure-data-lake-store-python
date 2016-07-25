@@ -75,12 +75,12 @@ def download(adlfs, rpath, lpath, nthreads=None, chunksize=2**26):
     else:
         rfiles = adlfs.glob(rpath)
     # TODO : wrap in a class, so can save and re-start failed/cancelled futures
-    pool = ThreadPoolExecutor(max_workers=nthreads)
-    if (len(rfiles) > 1) or (os.path.exists(lpath) and os.path.isdir(lpath)):
-        lfiles = [os.path.join(lpath, os.path.split(f)[1]) for f in rfiles]
-    else:
-        lfiles = [lpath]
-    # TODO : save in dict by parameters (or hash of)
-    futures = sum([threaded_file_downloader(adlfs, pool, rfile, lfile,
-                   chunksize) for (rfile, lfile) in zip(rfiles, lfiles)], [])
-    return wait(futures)
+    with ThreadPoolExecutor(max_workers=nthreads) as pool:
+        if (len(rfiles) > 1) or (os.path.exists(lpath) and os.path.isdir(lpath)):
+            lfiles = [os.path.join(lpath, os.path.split(f)[1]) for f in rfiles]
+        else:
+            lfiles = [lpath]
+        # TODO : save in dict by parameters (or hash of)
+        futures = sum([threaded_file_downloader(adlfs, pool, rfile, lfile,
+                       chunksize) for (rfile, lfile) in zip(rfiles, lfiles)], [])
+        return wait(futures)
