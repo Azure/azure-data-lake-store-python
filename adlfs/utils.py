@@ -1,3 +1,4 @@
+import array
 from contextlib import contextmanager
 import os
 import sys
