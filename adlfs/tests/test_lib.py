@@ -6,7 +6,7 @@ import time
 from adlfs.lib import (auth, refresh_token, DatalakeRESTInterface,
                        DatalakeRESTException)
 
-(??)
+
 @pytest.fixture()
 def token():
     tenant_id = os.environ['azure_tenant_id']
