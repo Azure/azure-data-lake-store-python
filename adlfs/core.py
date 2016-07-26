@@ -130,7 +130,7 @@ class AzureDLFileSystem(object):
         raise FileNotFoundError(path)
 
     def _walk(self, path):
-        fi = self._ls(path).copy()
+        fi = list(self._ls(path))
         for apath in fi:
             if apath['type'] == 'DIRECTORY':
                 fi.extend(self._ls(apath['name']))
@@ -501,6 +501,8 @@ class AzureDLFile(object):
                 self.start += self.blocksize * num
                 self.cache = self.cache[self.blocksize * num:]
         return out
+
+    read1 = read
 
     def write(self, data):
         """

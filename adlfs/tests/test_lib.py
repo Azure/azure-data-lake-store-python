@@ -5,7 +5,7 @@ import time
 
 from adlfs.lib import (auth, refresh_token, DatalakeRESTInterface,
                        DatalakeRESTException)
-from adl
+
 
 @pytest.fixture()
 def token():
@@ -49,7 +49,7 @@ def test_auth_refresh(token):
     assert token2['access']
     assert token['access'] != token2['access']
     assert token2['time'] > token['time']
-    assert set(token) == set(token2)
+(??)
 
 
 def test_response(rest):
