@@ -49,7 +49,6 @@ def test_auth_refresh(token):
     assert token2['access']
     assert token['access'] != token2['access']
     assert token2['time'] > token['time']
-(??)
 
 
 def test_response(rest):
