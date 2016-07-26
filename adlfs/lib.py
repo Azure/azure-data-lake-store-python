@@ -121,8 +121,8 @@ class ManagementRESTInterface:
         r = requests.get(url, header=self.head, params=self.params)
         return r.status_code, r.json
 
-    def list_in_res(self):
-        url = self.url + 'accounts' + account
+    def list_in_res(self, account):
+        url = self.url + 'accounts/' + account
         r = requests.get(url, header=self.head, params=self.params)
         return r.status_code, r.json
 
