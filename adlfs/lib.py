@@ -108,28 +108,28 @@ class ManagementRESTInterface:
         })
         url = self.url + 'accounts/' + account
         r = requests.put(url, headers=self.head, params=self.params, data=body)
-        return r.status_code, r.json
+        return r.status_code, r.json()
 
     def delete(self, account):
         url = self.url + 'accounts/' + account
         r = requests.delete(url, headers=self.head, params=self.params)
-        return r.status_code, r.json
+        return r.status_code, r.json()
 
     def list_in_sub(self):
         url = ('https://management.azure.com/subscriptions/%s/providers/'
                'Microsoft.DataLakeStore/accounts' % self.subscription_id)
         r = requests.get(url, headers=self.head, params=self.params)
-        return r.status_code, r.json
+        return r.status_code, r.json()
 
     def list_in_res(self, account):
         url = self.url + 'accounts/' + account
         r = requests.get(url, headers=self.head, params=self.params)
-        return r.status_code, r.json
+        return r.status_code, r.json()
 
     def info(self, account):
         url = self.url + 'accounts/' + account
         r = requests.get(url, headers=self.head, params=self.params)
-        return r.status_code, r.json
+        return r.status_code, r.json()
 
 
 class DatalakeRESTInterface:
