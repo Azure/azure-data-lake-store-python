@@ -95,7 +95,10 @@ class ManagementRESTInterface:
         self.resource_group_name = resource_group_name
         self.token = token
         self.params = {'api-version': '2015-10-01-preview'}
-        self.head = {'Authorization': 'Bearer ' + token}
+        self.head = {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        }
         self.url = ('https://management.azure.com/subscriptions/%s/'
                     'resourceGroups/%s/providers/Microsoft.DataLakeStore/' % (
                      subscription_id, resource_group_name))
