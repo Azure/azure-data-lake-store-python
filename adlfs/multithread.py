@@ -65,12 +65,12 @@ class ADLDownloader:
         else:
             rfiles = self.adl.glob(self.rpath)
         if len(rfiles) > 1:
-            lfiles = [os.path.join(self.lpath, f.replace(self.rpath, ''))
+            lfiles = [os.path.join(self.lpath, os.path.relpath(f, self.rpath))
                       for f in rfiles]
         else:
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
                 lfiles = [os.path.join(self.lpath,
-                                       os.path.split(self.rpath)[1])]
+                                       os.path.basename(self.rpath))]
             else:
                 lfiles = [self.lpath]
         self.rfiles = rfiles
@@ -98,7 +98,7 @@ class ADLDownloader:
         self.pool = ThreadPoolExecutor(threads)
         self.futures = []
         for rfile, lfile in self.progress:
-            root = os.path.split(lfile)[0]
+            root = os.path.dirname(lfile)
             if not os.path.exists(root) and root:
                 # don't attempt to create current directory
                 logger.debug('Creating directory %s', root)
