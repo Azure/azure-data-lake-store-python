@@ -17,9 +17,7 @@ import time
 
 # local imports
 from .lib import DatalakeRESTInterface, auth, refresh_token
-from .utils import FileNotFoundError, PY2, ensure_writable, read_block
-
-logger = logging.getLogger(__name__)
+from .utils import FileNotFoundError, PY2, ensure_writable, read_block, logger
 
 
 class AzureDLFileSystem(object):
@@ -588,7 +586,7 @@ class AzureDLFile(object):
 
 
 def _fetch_range(rest, path, start, end, max_attempts=10):
-    logger.debug("Fetch: path, %s-%s", path, start, end)
+    logger.debug("Fetch: %s, %s-%s", path, start, end)
     if end <= start:
         return b''
     for i in range(max_attempts):

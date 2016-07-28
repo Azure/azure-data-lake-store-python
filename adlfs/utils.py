@@ -1,6 +1,10 @@
 import array
 from contextlib import contextmanager
+from hashlib import md5
+import logging
 import os
+import platform
+import pytest
 import shutil
 import sys
 import tempfile
@@ -12,6 +16,26 @@ try:
 except NameError:
     class FileNotFoundError(IOError):
         pass
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - ADLFS - %(levelname)s'
+                              ' - %(message)s')
+ch.setFormatter(formatter)
+logger.handlers = [ch]
+
+WIN = platform.platform() == 'Windows'
+
+if WIN:
+    datadir = os.path.join(os.environ['APPDATA'], 'adlfs')
+else:
+    datadir = os.sep.join([os.path.expanduser("~"), '.config', 'adlfs'])
+
+try:
+    os.makedirs(datadir)
+except:
+    pass
 
 
 def ensure_writable(b):
@@ -44,6 +68,25 @@ def tmpfile(extension='', dir=None):
             else:
                 with ignoring(OSError):
                     os.remove(filename)
+
+
+@pytest.yield_fixture
+def azure():
+    from adlfs import AzureDLFileSystem
+    from adlfs.lib import auth
+    test_dir = 'azure_test_dir/'
+
+    tenant_id = os.environ['azure_tenant_id']
+    username = os.environ['azure_username']
+    password = os.environ['azure_password']
+    token = auth(tenant_id, username, password)
+    store_name = os.environ['azure_store_name']
+    out = AzureDLFileSystem(store_name, token)
+    out.mkdir(test_dir)
+    try:
+        yield out
+    finally:
+        out.rm(test_dir, recursive=True)
 
 
 def read_block(f, offset, length, delimiter=None):
@@ -130,3 +173,14 @@ def seek_delimiter(file, delimiter, blocksize):
         except ValueError:
             pass
         last = full[-len(delimiter):]
+
+
+def tokenize(*args, **kwargs):
+    """ Deterministic token
+
+    >>> tokenize('Hello') == tokenize('Hello')
+    True
+    """
+    if kwargs:
+        args = args + (kwargs,)
+    return md5(str(tuple(args)).encode()).hexdigest()

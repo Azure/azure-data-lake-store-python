@@ -12,24 +12,9 @@ import pytest
 
 from adlfs.core import AzureDLFile, AzureDLFileSystem, ensure_writable
 from adlfs.lib import auth
-from adlfs.utils import tmpfile
+from adlfs.utils import tmpfile, azure
 
 test_dir = 'azure_test_dir/'
-
-
-@pytest.yield_fixture
-def azure():
-    tenant_id = os.environ['azure_tenant_id']
-    username = os.environ['azure_username']
-    password = os.environ['azure_password']
-    token = auth(tenant_id, username, password)
-    store_name = os.environ['azure_store_name']
-    out = AzureDLFileSystem(store_name, token)
-    out.mkdir(test_dir)
-    try:
-        yield out
-    finally:
-        out.rm(test_dir, recursive=True)
 
 a = test_dir + 'a'
 b = test_dir + 'b'
