@@ -85,8 +85,10 @@ def test_account_list_in_sub(management):
 
 def test_account_list_in_res(management):
     account = os.environ['azure_store_name']
-    code, obj = management.list_in_res(account)
+    code, obj = management.list_in_res()
     assert code == 200
-    assert obj['id']
-    assert obj['name'] == account
-    assert obj['type'] == "Microsoft.DataLakeStore/accounts"
+    assert obj['value']
+    assert len(obj['value']) == 1
+    accounts = obj['value']
+    assert accounts[0]['name'] == account
+    assert accounts[0]['type'] == "Microsoft.DataLakeStore/accounts"
