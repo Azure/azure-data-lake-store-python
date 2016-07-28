@@ -65,19 +65,28 @@ def test_response(rest):
 
 def test_account_info(management):
     account = os.environ['azure_store_name']
-    code, json = management.info(account)
+    code, obj = management.info(account)
     assert code == 200
-    assert json
+    assert obj['id']
+    assert obj['name'] == account
+    assert obj['type'] == "Microsoft.DataLakeStore/accounts"
 
 
 def test_account_list_in_sub(management):
-    code, json = management.list_in_sub()
+    account = os.environ['azure_store_name']
+    code, obj = management.list_in_sub()
     assert code == 200
-    assert json
+    assert obj['value']
+    assert len(obj['value']) == 1
+    accounts = obj['value']
+    assert accounts[0]['name'] == account
+    assert accounts[0]['type'] == "Microsoft.DataLakeStore/accounts"
 
 
 def test_account_list_in_res(management):
     account = os.environ['azure_store_name']
-    code, json = management.list_in_res(account)
+    code, obj = management.list_in_res(account)
     assert code == 200
-    assert json
+    assert obj['id']
+    assert obj['name'] == account
+    assert obj['type'] == "Microsoft.DataLakeStore/accounts"
