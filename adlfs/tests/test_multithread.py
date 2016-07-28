@@ -1,7 +1,9 @@
 import os
 import pytest
 import shutil
+import signal
 import tempfile
+import threading
 
 from adlfs.multithread import ADLDownloader
 from adlfs.utils import azure
@@ -92,3 +94,18 @@ def test_save(azure, tempdir):
     down.save(keep=False)
     alldownloads = ADLDownloader.load()
     assert down.hash not in alldownloads
+
+
+def test_interrupt(azure, tempdir):
+    down = ADLDownloader(azure, '', tempdir, 5, 2**24, run=False)
+
+    def interrupt():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    threading.Timer(1, interrupt).start()
+
+    down.run()
+    assert down.nchunks > 0
+
+    down.run()
+    assert down.nchunks == 0
