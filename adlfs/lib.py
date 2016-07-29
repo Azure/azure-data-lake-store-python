@@ -95,7 +95,10 @@ class ManagementRESTInterface:
         self.resource_group_name = resource_group_name
         self.token = token
         self.params = {'api-version': '2015-10-01-preview'}
-        self.head = {'Authorization': 'Bearer ' + token}
+        self.head = {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        }
         self.url = ('https://management.azure.com/subscriptions/%s/'
                     'resourceGroups/%s/providers/Microsoft.DataLakeStore/' % (
                      subscription_id, resource_group_name))
@@ -107,29 +110,29 @@ class ManagementRESTInterface:
             "properties": {"configuration": {}}
         })
         url = self.url + 'accounts/' + account
-        r = requests.put(url, header=self.head, params=self.params, data=body)
-        return r.status_code, r.json
+        r = requests.put(url, headers=self.head, params=self.params, data=body)
+        return r.status_code, r.json()
 
     def delete(self, account):
         url = self.url + 'accounts/' + account
-        r = requests.delete(url, header=self.head, params=self.params)
-        return r.status_code, r.json
+        r = requests.delete(url, headers=self.head, params=self.params)
+        return r.status_code, r.json()
 
     def list_in_sub(self):
         url = ('https://management.azure.com/subscriptions/%s/providers/'
                'Microsoft.DataLakeStore/accounts' % self.subscription_id)
-        r = requests.get(url, header=self.head, params=self.params)
-        return r.status_code, r.json
+        r = requests.get(url, headers=self.head, params=self.params)
+        return r.status_code, r.json()
 
     def list_in_res(self):
-        url = self.url + 'accounts' + account
-        r = requests.get(url, header=self.head, params=self.params)
-        return r.status_code, r.json
+        url = self.url + 'accounts'
+        r = requests.get(url, headers=self.head, params=self.params)
+        return r.status_code, r.json()
 
     def info(self, account):
         url = self.url + 'accounts/' + account
-        r = requests.get(url, header=self.head, params=self.params)
-        return r.status_code, r.json
+        r = requests.get(url, headers=self.head, params=self.params)
+        return r.status_code, r.json()
 
 
 class DatalakeRESTInterface:
