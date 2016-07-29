@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, wait
 import os
 import pickle
 import time
+import uuid
 
 from .utils import tokenize, logger, datadir
 
@@ -198,3 +199,35 @@ def get_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES):
                 if tries >= retries:
                     logger.debug('Aborting %s, byte offset %s', lfile, offset)
                     raise
+
+
+
+
+def put_chunk(adlfs, rfile, lfile, offset, size):
+    """ Upload a piece of a local file
+
+    Internal function used by `upload`.
+    """
+    with adlfs.open(rfile, 'wb') as fout:
+        with open(lfile, 'rb') as fin:
+            fin.seek(offset)
+            fout.write(fin.read(size))
+
+
+def threaded_file_uploader(adlfs, threadpool, rfile, lfile, chunksize,
+                           temp_upload_path='/upload/tmp/'):
+    """ Split remote file into chunks and assign pieces to threads
+
+    Internal function used by `upload`.
+    """
+    fsize = os.stat(lfile).st_size
+    offsets = range(0, fsize, chunksize)
+    unique = uuid.uuid1().hex
+    parts = [temp_upload_path+unique+"_%i" % i for i in range(len(offsets))]
+    futures = [threadpool.submit(put_chunk, adlfs, part, lfile, o, chunksize)
+               for part, o in zip(parts, offsets)]
+    # TODO : add 'done' callbacks and log
+    wait(futures)
+    [f.result() for f in futures]
+    adlfs.concat(rfile, parts)
+
