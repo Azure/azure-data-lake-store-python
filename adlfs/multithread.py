@@ -227,7 +227,8 @@ class ADLUploader:
             out = os.walk(self.lpath)
             lfiles = sum(([os.path.join(dir, f) for f in fnames] for
                          (dir, dirs, fnames) in out), [])
-            if not lfiles and os.path.exists(lpath) and not os.path.isdir(lpath):
+            if (not lfiles and os.path.exists(self.lpath) and
+                    not os.path.isdir(self.lpath)):
                 lfiles = [self.lpath]
         else:
             lfiles = glob.glob(self.lpath)
@@ -264,19 +265,22 @@ class ADLUploader:
 
         for (rfile, lfile), dic in self.progress.items():
             unique = dic['uuid']
-            parts = [self.temp_upload_path+unique+"_%i" % i for i
-                     in dic['waiting']]
-            futures = [self.pool.submit(put_chunk, self.adl, part, lfile, o,
-                                        self.chunksize)
-                       for part, o in zip(parts, dic['waiting'])]
-            dic['futures'] = futures
+            if len(dic['waiting']) > 1:
+                parts = [self.temp_upload_path+unique+"_%i" % i for i
+                         in dic['waiting']]
+                futures = [self.pool.submit(put_chunk, self.adl, part, lfile, o,
+                                            self.chunksize)
+                           for part, o in zip(parts, dic['waiting'])]
+                dic['futures'] = futures
+            else:
+                dic['final'] = self.pool.submit(self.adl.put, lfile, rfile)
         if monitor:
             self._monitor()
 
     def _finalize(self, rfile, lfile):
         dic = self.progress[(rfile, lfile)]
         parts = dic['files']
-        dic['final'] = self.pool.submit(lambda: self.adl.concat(rfile, parts))
+        dic['final'] = self.pool.submit(self.adl.concat, rfile, parts)
 
     def _check(self):
         for key in list(self.progress):
@@ -287,7 +291,7 @@ class ADLUploader:
                     dic['waiting'].remove(offset)
                     dic['futures'].remove(future)
                     self.nchunks -= 1
-            if not dic['waiting']:
+            if not dic['waiting'] or dic['final']:
                 if dic['final'] is None:
                     logger.debug('Finalizing (%s -> %s)' % (key[1], key[0]))
                     self._finalize(*key)
@@ -296,6 +300,7 @@ class ADLUploader:
                     logger.debug('File uploaded (%s -> %s)' % (key[1], key[0]))
                     self.progress.pop(key)
                     self.nfiles -= 1
+                    self.nchunks -= len(dic['waiting'])
 
     def _monitor(self):
         """ Wait for upload to happen
