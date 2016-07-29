@@ -7,6 +7,7 @@ is used to its maximum throughput.
 Only implements upload and download of (massive) files and directory trees.
 """
 from concurrent.futures import ThreadPoolExecutor, wait
+import glob
 import os
 import pickle
 import time
@@ -94,10 +95,13 @@ class ADLDownloader:
         ----------
         nthreads: int (None)
             Override default nthreads, if given
+        monitor: bool (True)
+            To watch and wait (block) until completion. If False, `_check()`
+            should be called manually, otherwise process runs as "fire and
+            forget".
         """
         threads = nthreads or self.nthreads
         self.pool = ThreadPoolExecutor(threads)
-        self.futures = []
         for rfile, lfile in self.progress:
             root = os.path.dirname(lfile)
             if not os.path.exists(root) and root:
@@ -136,9 +140,9 @@ class ADLDownloader:
                 time.sleep(0.1)
                 self._check()
                 if self.nchunks == 0:
-                    return
+                    break
         except KeyboardInterrupt:
-            print('CANCEL!')
+            logger.warning("%s suspended and persisted", self)
             for dic in self.progress.values():
                 [f.cancel() for f in dic['futures']]
             self.pool.shutdown(wait=True)
@@ -149,8 +153,8 @@ class ADLDownloader:
         self.save()
 
     def __str__(self):
-        return "ADL Download: %s -> %s (%s of %s chunks remain)" % (self.rpath,
-                    self.lpath, self.nchunks, self.nchunks_orig)
+        return "<ADL Download: %s -> %s (%s of %s chunks remain)>" % (
+            self.rpath, self.lpath, self.nchunks, self.nchunks_orig)
 
     __repr__ = __str__
 
@@ -190,44 +194,179 @@ def get_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES):
                 fout.seek(offset)
                 fin.seek(offset)
                 fout.write(fin.read(size))
-                logger.debug('Written to %s, byte offset %s', lfile, offset)
             except Exception as e:
                 # TODO : only some exceptions should be retriable
-                logger.debug('Write failed %s, byte offset %s; %s, %s', lfile,
+                logger.debug('Download failed %s, byte offset %s; %s, %s', lfile,
                              offset, e, e.args)
                 tries += 1
                 if tries >= retries:
                     logger.debug('Aborting %s, byte offset %s', lfile, offset)
                     raise
+    logger.debug('Downloaded to %s, byte offset %s', lfile, offset)
 
 
+class ADLUploader:
+    temp_upload_path = '/uploads/tmp/'
+
+    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**26,
+                 run=True):
+        self.adl = adlfs
+        self.rpath = rpath
+        self.lpath = lpath
+        self.nthreads = nthreads
+        self.chunksize = chunksize
+        self.hash = tokenize(adlfs, rpath, lpath, chunksize)
+        self._setup()
+        if run:
+            self.run()
+
+    def _setup(self):
+        """ Create set of parameters to loop over
+        """
+        if "*" not in self.lpath:
+            out = os.walk(self.lpath)
+            lfiles = sum(([os.path.join(dir, f) for f in fnames] for
+                         (dir, dirs, fnames) in out), [])
+            if not lfiles and os.path.exists(lpath) and not os.path.isdir(lpath):
+                lfiles = [self.lpath]
+        else:
+            lfiles = glob.glob(self.lpath)
+        if len(lfiles) > 1:
+            rfiles = [os.path.join(self.rpath, os.path.relpath(f, self.lpath))
+                      for f in lfiles]
+        else:
+            if (self.adl.exists(self.rpath) and
+                        self.adl.info(self.rpath)['type'] == "DIRECTORY"):
+                rfiles = [os.path.join(self.rpath,
+                                       os.path.basename(self.lpath))]
+            else:
+                rfiles = [self.rpath]
+        self.rfiles = rfiles
+        self.lfiles = lfiles
+        self.progress = {}
+        num = 0
+        for lfile, rfile in zip(lfiles, rfiles):
+            fsize = os.stat(lfile).st_size
+            offsets = list(range(0, fsize, self.chunksize))
+            unique = uuid.uuid1().hex
+            parts = [self.temp_upload_path+unique+"_%i" % i for i in offsets]
+            self.progress[(rfile, lfile)] = {'waiting': offsets, 'uuid': unique,
+                                             'files': parts, 'final': None,
+                                             'futures': []}
+            num += len(offsets)
+        self.nchunks = num
+        self.nchunks_orig = num
+        self.nfiles = len(rfiles)
+
+    def run(self, nthreads=None, monitor=True):
+        threads = nthreads or self.nthreads
+        self.pool = ThreadPoolExecutor(threads)
+
+        for (rfile, lfile), dic in self.progress.items():
+            unique = dic['uuid']
+            parts = [self.temp_upload_path+unique+"_%i" % i for i
+                     in dic['waiting']]
+            futures = [self.pool.submit(put_chunk, self.adl, part, lfile, o,
+                                        self.chunksize)
+                       for part, o in zip(parts, dic['waiting'])]
+            dic['futures'] = futures
+        if monitor:
+            self._monitor()
+
+    def _finalize(self, rfile, lfile):
+        dic = self.progress[(rfile, lfile)]
+        parts = dic['files']
+        dic['final'] = self.pool.submit(lambda: self.adl.concat(rfile, parts))
+
+    def _check(self):
+        for key in list(self.progress):
+            dic = self.progress[key]
+            for offset, future in zip(list(dic['waiting']),
+                                      list(dic['futures'])):
+                if future.done() and not future.cancelled():
+                    dic['waiting'].remove(offset)
+                    dic['futures'].remove(future)
+                    self.nchunks -= 1
+            if not dic['waiting']:
+                if dic['final'] is None:
+                    logger.debug('Finalizing (%s -> %s)' % (key[1], key[0]))
+                    self._finalize(*key)
+                elif dic['final'].done():
+                    self.adl.invalidate_cache(key[0])
+                    logger.debug('File uploaded (%s -> %s)' % (key[1], key[0]))
+                    self.progress.pop(key)
+                    self.nfiles -= 1
+
+    def _monitor(self):
+        """ Wait for upload to happen
+        """
+        try:
+            while True:
+                time.sleep(0.1)
+                self._check()
+                if self.nchunks == 0 and self.nfiles == 0:
+                    break
+        except KeyboardInterrupt:
+            logger.warning("%s suspended and persisted", self)
+            for dic in self.progress.values():
+                [f.cancel() for f in dic['futures']]
+            self.pool.shutdown(wait=True)
+            self._check()
+        for dic in self.progress.values():
+            dic['futures'] = []
+            dic['final'] = None
+        self.pool = None
+        self.save()
+
+    def __str__(self):
+        return "<ADL Upload: %s -> %s (%s of %s chunks remain)>" % (self.lpath,
+                    self.rpath, self.nchunks, self.nchunks_orig)
+
+    __repr__ = __str__
+
+    def save(self, keep=True):
+        """ Persist this upload, if it is incomplete, otherwise discard.
+
+        Parameters
+        ----------
+        keep: bool (True)
+            if False, remove from persisted downloads even if incomplete.
+        """
+        all_uploads = self.load()
+        if self.nchunks and self.nfiles and keep:
+            all_uploads[self.hash] = self
+        else:
+            all_uploads.pop(self.hash, None)
+        with open(os.path.join(datadir, 'uploads'), 'wb') as f:
+            pickle.dump(all_uploads, f)
+
+    @staticmethod
+    def load():
+        try:
+            return pickle.load(open(os.path.join(datadir, 'uploads'), 'rb'))
+        except:
+            return {}
 
 
-def put_chunk(adlfs, rfile, lfile, offset, size):
+def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES):
     """ Upload a piece of a local file
 
     Internal function used by `upload`.
     """
     with adlfs.open(rfile, 'wb') as fout:
         with open(lfile, 'rb') as fin:
-            fin.seek(offset)
-            fout.write(fin.read(size))
+            tries = 0
+            try:
+                fin.seek(offset)
+                fout.write(fin.read(size))
+            except Exception as e:
+                # TODO : only some exceptions should be retriable
+                logger.debug('Upload failed %s, byte offset %s; %s, %s', lfile,
+                             offset, e, e.args)
+                tries += 1
+                if tries >= retries:
+                    logger.debug('Aborting %s, byte offset %s', lfile, offset)
+                    raise
+    logger.debug('Uploaded from %s, byte offset %s', lfile, offset)
 
-
-def threaded_file_uploader(adlfs, threadpool, rfile, lfile, chunksize,
-                           temp_upload_path='/upload/tmp/'):
-    """ Split remote file into chunks and assign pieces to threads
-
-    Internal function used by `upload`.
-    """
-    fsize = os.stat(lfile).st_size
-    offsets = range(0, fsize, chunksize)
-    unique = uuid.uuid1().hex
-    parts = [temp_upload_path+unique+"_%i" % i for i in range(len(offsets))]
-    futures = [threadpool.submit(put_chunk, adlfs, part, lfile, o, chunksize)
-               for part, o in zip(parts, offsets)]
-    # TODO : add 'done' callbacks and log
-    wait(futures)
-    [f.result() for f in futures]
-    adlfs.concat(rfile, parts)
 
