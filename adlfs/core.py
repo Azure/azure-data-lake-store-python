@@ -281,7 +281,7 @@ class AzureDLFileSystem(object):
             self.dirs.clear()
         else:
             self.dirs.pop(path, None)
-            parent = path.rsplit('/', 1)[0]
+            parent = os.path.split(path)[0]
             self.dirs.pop(parent, None)
 
     def touch(self, path):

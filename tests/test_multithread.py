@@ -5,8 +5,10 @@ import signal
 import tempfile
 import threading
 
-from adlfs.multithread import ADLDownloader
+from adlfs.multithread import ADLDownloader, ADLUploader
 from adlfs.utils import azure
+
+test_dir = 'azure_test_dir/'
 
 
 @pytest.yield_fixture()
@@ -84,7 +86,7 @@ def test_download_many(azure, tempdir):
     assert nfiles > 1
 
 
-def test_save(azure, tempdir):
+def test_save_down(azure, tempdir):
     down = ADLDownloader(azure, '', tempdir, 5, 2**24, run=False)
     down.save()
 
@@ -96,7 +98,7 @@ def test_save(azure, tempdir):
     assert down.hash not in alldownloads
 
 
-def test_interrupt(azure, tempdir):
+def test_interrupt_down(azure, tempdir):
     down = ADLDownloader(azure, '', tempdir, 5, 2**24, run=False)
 
     def interrupt():
@@ -109,3 +111,86 @@ def test_interrupt(azure, tempdir):
 
     down.run()
     assert down.nchunks == 0
+
+
+@pytest.yield_fixture()
+def local_files(tempdir):
+    filenames = [os.path.join(tempdir, f) for f in ['bigfile', 'littlefile']]
+    with open(filenames[0], 'wb') as f:
+        for char in b"0 1 2 3 4 5 6 7 8 9".split():
+            f.write(char * 1000000)
+    with open(filenames[1], 'wb') as f:
+        f.write(b'0123456789')
+    nestpath = os.sep.join([tempdir, 'nested1', 'nested2'])
+    os.makedirs(nestpath)
+    for filename in ['a', 'b', 'c']:
+        filenames.append(os.path.join(nestpath, filename))
+        with open(os.path.join(nestpath, filename), 'wb') as f:
+            f.write(b'0123456789')
+    yield filenames
+
+
+def test_upload_one(azure, local_files):
+    bigfile, littlefile, a, b, c = local_files
+
+    # single chunk
+    up = ADLUploader(azure, test_dir+'littlefile', littlefile)
+    assert azure.info(test_dir+'littlefile')['length'] == 10
+
+    # multiple chunks, one thread
+    size = 10000000
+    up = ADLUploader(azure, test_dir+'bigfile', bigfile, nthreads=1,
+                     chunksize=size//5)
+    assert azure.info(test_dir+'bigfile')['length'] == size
+
+    azure.rm(test_dir+'bigfile')
+
+    # multiple chunks, multiple threads
+    up = ADLUploader(azure, test_dir+'bigfile', bigfile, nthreads=5,
+                     chunksize=size//5)
+    assert azure.info(test_dir+'bigfile')['length'] == size
+
+
+def test_upload_many(azure, local_files):
+    bigfile, littlefile, a, b, c = local_files
+    root = os.path.dirname(bigfile)
+
+    # single thread
+    up = ADLUploader(azure, test_dir, root)
+    assert azure.info(test_dir+'littlefile')['length'] == 10
+    assert azure.cat(test_dir+'/nested1/nested2/a') == b'0123456789'
+    assert len(azure.du(test_dir, deep=True)) == 5
+    assert azure.du(test_dir, deep=True, total=True) == 10000000 + 40
+
+
+def test_save_up(azure, local_files):
+    bigfile, littlefile, a, b, c = local_files
+    root = os.path.dirname(bigfile)
+
+    up = ADLUploader(azure, '', root, 5, 1000000, run=False)
+    up.save()
+
+    alluploads = ADLUploader.load()
+    assert up.hash in alluploads
+
+    up.save(keep=False)
+    alluploads = ADLUploader.load()
+    assert up.hash not in alluploads
+
+
+def test_interrupt_up(azure, local_files):
+    bigfile, littlefile, a, b, c = local_files
+    root = os.path.dirname(bigfile)
+
+    up = ADLUploader(azure, test_dir, root, 5, 1000000, run=False)
+
+    def interrupt():
+        os.kill(os.getpid(), signal.SIGINT)
+
+    threading.Timer(1, interrupt).start()
+
+    up.run()
+    assert up.nchunks > 0
+
+    up.run()
+    assert up.nchunks == 0

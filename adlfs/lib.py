@@ -149,7 +149,7 @@ class DatalakeRESTInterface:
         # OP: (HTTP method, required fields, allowed fields)
         'APPEND': ('post', set(), set()),
         'CHECKACCESS': ('get', set(), {'fsaction'}),
-        'CONCAT': ('post', {'source'}, {'sources'}),
+        'CONCAT': ('post', {'sources'}, {'sources'}),
         'CREATE': ('put', set(), {'overwrite'}),
         'DELETE': ('delete', set(), {'recursive'}),
         'GETCONTENTSUMMARY': ('get', set(), set()),
