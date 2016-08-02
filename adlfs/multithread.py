@@ -277,7 +277,7 @@ class ADLUploader:
         for lfile, rfile in zip(lfiles, rfiles):
             fsize = os.stat(lfile).st_size
             offsets = list(range(0, fsize, self.chunksize))
-            unique = uuid.uuid1().hex
+            unique = uuid.uuid1().hex[:10]
             parts = [self.temp_upload_path+unique+"_%i" % i for i in offsets]
             self.progress[(rfile, lfile)] = {'waiting': offsets, 'uuid': unique,
                                              'files': parts, 'final': None,
