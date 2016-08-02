@@ -8,6 +8,7 @@ Only implements upload and download of (massive) files and directory trees.
 """
 from concurrent.futures import ThreadPoolExecutor, wait
 import glob
+import multiprocessing
 import os
 import pickle
 import time
@@ -31,11 +32,12 @@ class ADLDownloader:
     rpath: str
         remote path/globstring to use to find remote files
     lpath: str
-        local path. If downloading multiple files must be existing director,
-        or a place a directory can be created. If downloading a single file,
-        maybe either directory or file path.
+        local path. If downloading a single file, will write to this specific
+        file, unless it is an existing directory, in which case a file is
+        created within it. If downloading multiple files, this is the root
+        directory to write within. Will create directories as required.
     nthreads: int [None]
-        Number of threads to use. If None, uses the number of cores * 5.
+        Number of threads to use. If None, uses the number of cores.
     chunksize: int [2**26]
         Number of bytes in each chunk for splitting big files. Files smaller
         than this number will always be downloaded in a single thread.
@@ -44,8 +46,7 @@ class ADLDownloader:
 
     Returns
     -------
-    List of complete and incomplete futures, which may include exception
-    information.
+    downloader object
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**26,
                  run=True):
@@ -100,7 +101,7 @@ class ADLDownloader:
             should be called manually, otherwise process runs as "fire and
             forget".
         """
-        threads = nthreads or self.nthreads
+        threads = nthreads or self.nthreads or multiprocessing.cpu_count()
         self.pool = ThreadPoolExecutor(threads)
         for rfile, lfile in self.progress:
             root = os.path.dirname(lfile)
@@ -206,6 +207,33 @@ def get_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES):
 
 
 class ADLUploader:
+    """ Upload local file(s) using chunks and threads
+
+    Launches multiple threads for efficient uploading, with `chunksize`
+    assigned to each. The path can be a single file, a directory
+    of files or a glob pattern.
+
+    Parameters
+    ----------
+    adlfs: ADL filesystem instance
+    rpath: str
+        remote path to upload to; if multiple files, this is the dircetory
+        root to write within
+    lpath: str
+        local path. Can be single file, directory (in which case, upload
+        recursively) or glob pattern.
+    nthreads: int [None]
+        Number of threads to use. If None, uses the number of cores.
+    chunksize: int [2**26]
+        Number of bytes in each chunk for splitting big files. Files smaller
+        than this number will always be sent in a single thread.
+    run: bool (True)
+        Whether to begin executing immediately.
+
+    Returns
+    -------
+    uploader object
+    """
     temp_upload_path = '/uploads/tmp/'
 
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**26,
@@ -260,7 +288,7 @@ class ADLUploader:
         self.nfiles = len(rfiles)
 
     def run(self, nthreads=None, monitor=True):
-        threads = nthreads or self.nthreads
+        threads = nthreads or self.nthreads or multiprocessing.cpu_count()
         self.pool = ThreadPoolExecutor(threads)
 
         for (rfile, lfile), dic in self.progress.items():
