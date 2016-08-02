@@ -31,6 +31,21 @@ To play with the code, here is a starting point:
     adl.cat('littlefile')
     adl.head('gdelt20150827.csv')
 
+    # file-like object
+    with adl.open('gdelt20150827.csv', blocksize=2**20) as f:
+        print(f.readline())
+        print(f.readline())
+        print(f.readline())
+        # could have passed f to any function requiring a file object:
+        # pandas.read_csv(f)
+
     with adl.open('anewfile', 'wb') as f:
+        # data is written on flush/close, or when buffer is bigger than
+        # blocksize
         f.write(b'important data')
 
+    adl.du('anewfile')
+
+    # recursively download the whole directory tree with 5 threads and
+    # 16MB chunks
+    multithread.ADLDownloader(adl, "", 'my_temp_dir', 5, 2**24)

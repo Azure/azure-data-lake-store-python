@@ -234,7 +234,7 @@ class ADLUploader:
     -------
     uploader object
     """
-    temp_upload_path = '/uploads/tmp/'
+    temp_upload_path = '/tmp/'
 
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**26,
                  run=True):
