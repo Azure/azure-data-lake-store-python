@@ -158,7 +158,9 @@ class DatalakeRESTInterface:
         'MKDIRS': ('put', set(), set()),
         'OPEN': ('get', set(), {'offset', 'length'}),
         'RENAME': ('put', {'destination'}, {'destination'}),
-        'TRUNCATE': ('post', {'newlength'}, {'newlength'})
+        'TRUNCATE': ('post', {'newlength'}, {'newlength'}),
+        'SETOWNER': ('put', set(), {'owner', 'group'}),
+        'SETPERMISSION': ('put', set(), {'permission'})
     }
 
     def __init__(self, store_name, token):
@@ -232,8 +234,6 @@ GETXATTRS
 LISTXATTRS
 CREATESYMLINK n/a
 SETREPLICATION n/a
-SETOWNER
-SETPERMISSION
 SETTIMES
 RENEWDELEGATIONTOKEN n/a - use auth
 CANCELDELEGATIONTOKEN n/a - use auth
