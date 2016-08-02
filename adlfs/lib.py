@@ -143,6 +143,9 @@ class DatalakeRESTInterface:
     store_name: str
     token: str
         from `auth()` or `refresh_token()`, the 'access' field.
+    base_url: str
+        Alternative URL base to call. If this is provided, store_name is
+        ignored.
     """
 
     ends = {
@@ -161,10 +164,10 @@ class DatalakeRESTInterface:
         'TRUNCATE': ('post', {'newlength'}, {'newlength'})
     }
 
-    def __init__(self, store_name, token):
+    def __init__(self, store_name, token, base_url=None):
         self.head = {'Authorization': 'Bearer ' + token}
-        self.url = ('https://%s.azuredatalakestore.net/webhdfs/v1/' %
-                    store_name)
+        self.url = (base_url or
+                    'https://%s.azuredatalakestore.net/webhdfs/v1/' % store_name)
 
     def call(self, op, path='', **kwargs):
         """ Execute a REST call
