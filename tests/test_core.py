@@ -480,3 +480,13 @@ def test_chmod(azure):
 
     azure.chmod(a, '0770')
     azure.rm(a)
+
+    azure.mkdir(test_dir+'/deep')
+    azure.touch(test_dir+'/deep/file')
+    azure.chmod(test_dir+'/deep', '660')
+
+    with pytest.raises((OSError, IOError)):
+        azure.ls(test_dir+'/deep')
+
+    azure.chmod(test_dir+'/deep', '770')
+
