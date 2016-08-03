@@ -191,14 +191,14 @@ class AzureDLFileSystem(object):
             Location to change
         mod: str
             Octal representation of access, e.g., "0777" for public read/write.
-            See [docs](https://en.wikipedia.org/wiki/File_system_permissions#Numeric_notation)
+            See [docs](http://hadoop.apache.org/docs/r2.4.1/hadoop-project-dist/hadoop-hdfs/WebHDFS.html#Permission)
         """
         self.azure.call('SETPERMISSION', path, permission=mod)
         self.invalidate_cache(path)
 
     def chown(self, path, owner=None, group=None):
         """
-        Change owner and/or group
+        Change owner and/or owning group
 
         Note this is not recursive.
 
