@@ -168,7 +168,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split(' '))
 
-        self.fs.mv(args.files[0], args.files[1])
+        self._fs.mv(args.files[0], args.files[1])
 
     def do_put(self, line):
         """put local-file [remote-file]
