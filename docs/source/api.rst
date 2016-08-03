@@ -1,0 +1,4 @@
+API
+===
+
+.. currentmodule:: adlfs.core
