@@ -230,6 +230,16 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         for f in args.files:
             print(self._fs.tail(f, size=args.bytes))
 
+    def do_touch(self, line):
+        """touch file ...
+        Change file access and modification times"""
+        parser = argparse.ArgumentParser(prog="touch")
+        parser.add_argument('files', type=str, nargs='+')
+        args = parser.parse_args(line.split())
+
+        for f in args.files:
+            self._fs.touch(f)
+
     def do_EOF(self, line):
         return True
 
