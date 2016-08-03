@@ -19,7 +19,7 @@ from adlfs.utils import azure
 
 @pytest.yield_fixture
 def azuredir(azure):
-    d = uuid.uuid4().hex[:8]
+    d = 'azure_test_dir/' + uuid.uuid4().hex[:8]
     azure.mkdir(d)
     try:
         yield d
