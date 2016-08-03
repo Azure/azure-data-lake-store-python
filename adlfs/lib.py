@@ -143,9 +143,9 @@ class DatalakeRESTInterface:
     store_name: str
     token: str
         from `auth()` or `refresh_token()`, the 'access' field.
-    base_url: str
-        Alternative URL base to call. If this is provided, store_name is
-        ignored.
+    url_suffix: str (None)
+        Domain to send REST requests to. The end-point URL is constructed
+        using this and the store_name. If None, use default.
     """
 
     ends = {
@@ -164,10 +164,10 @@ class DatalakeRESTInterface:
         'TRUNCATE': ('post', {'newlength'}, {'newlength'})
     }
 
-    def __init__(self, store_name, token, base_url=None):
+    def __init__(self, store_name, token, url_suffix=None):
+        url_suffix = url_suffix or "azuredatalakestore.net"
         self.head = {'Authorization': 'Bearer ' + token}
-        self.url = (base_url or
-                    'https://%s.azuredatalakestore.net/webhdfs/v1/' % store_name)
+        self.url = 'https://%s.%s/webhdfs/v1/' % (store_name, url_suffix)
 
     def call(self, op, path='', **kwargs):
         """ Execute a REST call
