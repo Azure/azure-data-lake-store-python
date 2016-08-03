@@ -44,13 +44,13 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         self._fs = AzureDLFileSystem(self._store_name, self._token)
 
     def do_close(self, line):
-        """close
-        Exit the application"""
         return True
 
+    def help_close(self):
+        print("close\n")
+        print("Exit the application")
+
     def do_cat(self, line):
-        """cat file ...
-        Display contents of files"""
         parser = argparse.ArgumentParser(prog="cat")
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
@@ -58,19 +58,23 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         for f in args.files:
             print(self._fs.cat(f))
 
+    def help_cat(self):
+        print("cat file ...\n")
+        print("Display contents of files")
+
     def _display_dict(self, d):
         width = max([len(k) for k in d.keys()])
         for k, v in sorted(list(d.items())):
             print("{0:{width}} = {1}".format(k, v, width=width))
 
     def do_df(self, line):
-        """df
-        Display Azure account statistics"""
         self._display_dict(self._fs.df())
 
+    def help_df(self):
+        print("df\n")
+        print("Display Azure account statistics")
+
     def do_du(self, line):
-        """du [file ...]
-        Display disk usage statistics"""
         parser = argparse.ArgumentParser(prog="du")
         parser.add_argument('files', type=str, nargs='*', default=[''])
         args = parser.parse_args(line.split())
@@ -79,18 +83,22 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             for name, size in sorted(list(self._fs.du(f).items())):
                 print("{:<9d} {}".format(size, os.path.basename(name)))
 
+    def help_du(self):
+        print("du [file ...]\n")
+        print("Display disk usage statistics")
+
     def do_exists(self, line):
-        """exists file
-        Check if file/directory exists"""
         parser = argparse.ArgumentParser(prog="exists")
         parser.add_argument('file', type=str)
         args = parser.parse_args(line.split())
 
         print(self._fs.exists(args.file))
 
+    def help_exists(self):
+        print("exists file\n")
+        print("Check if file/directory exists")
+
     def do_get(self, line):
-        """get remote-file [local-file]
-        Retrieve the remote file and store it locally"""
         parser = argparse.ArgumentParser(prog="get")
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
@@ -103,9 +111,11 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             local_path = os.path.basename(args.files[0])
         ADLDownloader(self._fs, remote_path, local_path)
 
+    def help_get(self):
+        print("get remote-file [local-file]\n")
+        print("Retrieve the remote file and store it locally")
+
     def do_head(self, line):
-        """head [-c bytes] file ...
-        Display first bytes of a file"""
         parser = argparse.ArgumentParser(prog="head")
         parser.add_argument('files', type=str, nargs='+')
         parser.add_argument('-c', '--bytes', type=int, default=1024)
@@ -114,15 +124,21 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         for f in args.files:
             print(self._fs.head(f, size=args.bytes))
 
+    def help_head(self):
+        print("head [-c bytes] file ...\n")
+        print("Display first bytes of a file")
+
     def do_info(self, line):
-        """info file ...
-        Display file information"""
         parser = argparse.ArgumentParser(prog="info")
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
         for f in args.files:
             self._display_dict(self._fs.info(f))
+
+    def help_info(self):
+        print("info file ...\n")
+        print("Display file information")
 
     def _display_item(self, item):
         mode = int(item['permission'], 8)
@@ -156,8 +172,6 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             os.path.basename(item['name'])))
 
     def do_ls(self, line):
-        """ls [-l | --detail] [file ...]
-        List directory contents"""
         parser = argparse.ArgumentParser(prog="ls")
         parser.add_argument('dirs', type=str, nargs='*', default=[''])
         parser.add_argument('-l', '--detail', action='store_true')
@@ -170,9 +184,11 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
                 else:
                     print(os.path.basename(item))
 
+    def help_ls(self):
+        print("ls [-l | --detail] [file ...]\n")
+        print("List directory contents")
+
     def do_mkdir(self, line):
-        """mkdir directory ...
-        Create directories"""
         parser = argparse.ArgumentParser(prog="mkdir")
         parser.add_argument('dirs', type=str, nargs='+', default=[''])
         args = parser.parse_args(line.split())
@@ -180,18 +196,22 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         for d in args.dirs:
             self._fs.mkdir(d)
 
+    def help_mkdir(self):
+        print("mkdir directory ...\n")
+        print("Create directories")
+
     def do_mv(self, line):
-        """mv from-path to-path
-        Rename from-path to to-path"""
         parser = argparse.ArgumentParser(prog="mv")
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
         self._fs.mv(args.files[0], args.files[1])
 
+    def help_mv(self):
+        print("mv from-path to-path\n")
+        print("Rename from-path to to-path")
+
     def do_put(self, line):
-        """put local-file [remote-file]
-        Store a local file on the remote machine"""
         parser = argparse.ArgumentParser(prog="put")
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
@@ -204,14 +224,18 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             remote_path = os.path.basename(args.files[1])
         ADLUploader(self._fs, remote_path, local_path)
 
+    def help_put(self):
+        print("put local-file [remote-file]\n")
+        print("Store a local file on the remote machine")
+
     def do_quit(self, line):
-        """quit
-        Exit the application"""
         return True
 
+    def help_quit(self):
+        print("quit\n")
+        print("Exit the application")
+
     def do_rm(self, line):
-        """rm file ...
-        Remove directory entries"""
         parser = argparse.ArgumentParser(prog="rm")
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
@@ -219,9 +243,11 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         for f in args.files:
             self._fs.rm(f)
 
+    def help_rm(self):
+        print("rm file ...\n")
+        print("Remove directory entries")
+
     def do_rmdir(self, line):
-        """rmdir directory ...
-        Remove directories"""
         parser = argparse.ArgumentParser(prog="rmdir")
         parser.add_argument('dirs', type=str, nargs='+', default=[''])
         args = parser.parse_args(line.split())
@@ -229,9 +255,11 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         for d in args.dirs:
             self._fs.rmdir(d)
 
+    def help_rmdir(self):
+        print("rmdir directory ...\n")
+        print("Remove directories")
+
     def do_tail(self, line):
-        """tail [-c bytes] file ...
-        Display last bytes of a file"""
         parser = argparse.ArgumentParser(prog="tail")
         parser.add_argument('files', type=str, nargs='+')
         parser.add_argument('-c', '--bytes', type=int, default=1024)
@@ -240,15 +268,21 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         for f in args.files:
             print(self._fs.tail(f, size=args.bytes))
 
+    def help_tail(self):
+        print("tail [-c bytes] file ...\n")
+        print("Display last bytes of a file")
+
     def do_touch(self, line):
-        """touch file ...
-        Change file access and modification times"""
         parser = argparse.ArgumentParser(prog="touch")
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
         for f in args.files:
             self._fs.touch(f)
+
+    def help_touch(self):
+        print("touch file ...\n")
+        print("Change file access and modification times")
 
     def do_EOF(self, line):
         return True
