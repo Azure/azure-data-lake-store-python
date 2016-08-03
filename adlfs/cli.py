@@ -69,6 +69,15 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             for name, size in sorted(list(self._fs.du(f).items())):
                 print("{:<9d} {}".format(size, os.path.basename(name)))
 
+    def do_exists(self, line):
+        """exists file
+        Check if file/directory exists"""
+        parser = argparse.ArgumentParser(prog="exists")
+        parser.add_argument('file', type=str)
+        args = parser.parse_args(line.split())
+
+        print(self._fs.exists(args.file))
+
     def do_get(self, line):
         """get remote-file [local-file]
         Retrieve the remote file and store it locally"""
