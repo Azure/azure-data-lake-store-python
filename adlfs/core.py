@@ -31,13 +31,17 @@ class AzureDLFileSystem(object):
     token : dict
         When setting up a new connection, this contains the authorization
         credentials (see `lib.auth()`).
+    url_suffix: str (None)
+        Domain to send REST requests to. The end-point URL is constructed
+        using this and the store_name. If None, use default.
     """
     _conn = {}
     _singleton = [None]
 
-    def __init__(self, store, token=None):
+    def __init__(self, store, token=None, url_suffix=None):
         # store instance vars
         self.store = store
+        self.url_suffix = url_suffix
         self.token = token
         self.connect()
         self.dirs = {}
@@ -68,7 +72,8 @@ class AzureDLFileSystem(object):
         else:
             token = self.token
         self.azure = DatalakeRESTInterface(store_name=self.store,
-                                           token=token['access'])
+                                           token=token['access'],
+                                           url_suffix=self.url_suffix)
         self._conn[self.store] = token
         self.token = token
 
