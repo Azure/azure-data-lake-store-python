@@ -135,6 +135,8 @@ class AzureDLFileSystem(object):
         return [f for f in fi if f['type'] == 'FILE']
 
     def walk(self, path):
+        """ Get all files below given path
+        """
         return [f['name'] for f in self._walk(path)]
 
     def glob(self, path):
@@ -174,7 +176,49 @@ class AzureDLFileSystem(object):
             return {p['name']: p['length'] for p in files}
 
     def df(self):
+        """ Resource summary
+        """
         return self.azure.call('GETCONTENTSUMMARY')['ContentSummary']
+
+    def chmod(self, path, mod):
+        """  Change access mode of path
+
+        Note this is not recursive.
+
+        Parameters
+        ----------
+        path: str
+            Location to change
+        mod: str
+            Octal representation of access, e.g., "0777" for public read/write.
+            See [docs](http://hadoop.apache.org/docs/r2.4.1/hadoop-project-dist/hadoop-hdfs/WebHDFS.html#Permission)
+        """
+        self.azure.call('SETPERMISSION', path, permission=mod)
+        self.invalidate_cache(path)
+
+    def chown(self, path, owner=None, group=None):
+        """
+        Change owner and/or owning group
+
+        Note this is not recursive.
+
+        Parameters
+        ----------
+        path: str
+            Location to change
+        owner: str
+            UUID of owning entity
+        group: str
+            UUID of group
+        """
+        parms = {}
+        if owner is None and group is None:
+            raise ValueError('Must supply owner and/or group')
+        if owner:
+            parms['owner'] = owner
+        if group:
+            parms['group'] = group
+        self.azure.call('SETOWNER', path, **parms)
 
     def exists(self, path):
         """ Does such a file/directory exist? """
@@ -277,6 +321,7 @@ class AzureDLFileSystem(object):
             [self.invalidate_cache(m) for m in matches]
 
     def invalidate_cache(self, path=None):
+        """Remove entry from object file-cache"""
         if path is None:
             self.dirs.clear()
         else:
@@ -286,7 +331,7 @@ class AzureDLFileSystem(object):
 
     def touch(self, path):
         """
-        Create empty key
+        Create empty file
 
         If path is a bucket only, attempt to create bucket.
         """
