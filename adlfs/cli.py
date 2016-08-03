@@ -43,7 +43,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         Display contents of files"""
         parser = argparse.ArgumentParser(prog="cat")
         parser.add_argument('files', type=str, nargs='+')
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         for f in args.files:
             print(self._fs.cat(f))
@@ -63,7 +63,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         Display disk usage statistics"""
         parser = argparse.ArgumentParser(prog="du")
         parser.add_argument('files', type=str, nargs='*', default=[''])
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         for f in args.files:
             for name, size in sorted(list(self._fs.du(f).items())):
@@ -74,7 +74,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         Retrieve the remote file and store it locally"""
         parser = argparse.ArgumentParser(prog="get")
         parser.add_argument('files', type=str, nargs='+')
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         if len(args.files) == 2:
             remote_path = args.files[0]
@@ -90,7 +90,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser = argparse.ArgumentParser(prog="head")
         parser.add_argument('files', type=str, nargs='+')
         parser.add_argument('-c', '--bytes', type=int, default=1024)
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         for f in args.files:
             print(self._fs.head(f, size=args.bytes))
@@ -100,7 +100,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         Display file information"""
         parser = argparse.ArgumentParser(prog="info")
         parser.add_argument('files', type=str, nargs='+')
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         for f in args.files:
             self._display_dict(self._fs.info(f))
@@ -142,7 +142,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser = argparse.ArgumentParser(prog="ls")
         parser.add_argument('dirs', type=str, nargs='*', default=[''])
         parser.add_argument('-l', '--detail', action='store_true')
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         for d in args.dirs:
             for item in self._fs.ls(d, detail=args.detail):
@@ -156,7 +156,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         Create directories"""
         parser = argparse.ArgumentParser(prog="mkdir")
         parser.add_argument('dirs', type=str, nargs='+', default=[''])
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         for d in args.dirs:
             self._fs.mkdir(d)
@@ -166,7 +166,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         Rename from-path to to-path"""
         parser = argparse.ArgumentParser(prog="mv")
         parser.add_argument('files', type=str, nargs='+')
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         self._fs.mv(args.files[0], args.files[1])
 
@@ -175,7 +175,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         Store a local file on the remote machine"""
         parser = argparse.ArgumentParser(prog="put")
         parser.add_argument('files', type=str, nargs='+')
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         if len(args.files) == 2:
             local_path = args.files[0]
@@ -195,7 +195,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         Remove directory entries"""
         parser = argparse.ArgumentParser(prog="rm")
         parser.add_argument('files', type=str, nargs='+')
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         for f in args.files:
             self._fs.rm(f)
@@ -205,7 +205,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         Remove directories"""
         parser = argparse.ArgumentParser(prog="rmdir")
         parser.add_argument('dirs', type=str, nargs='+', default=[''])
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         for d in args.dirs:
             self._fs.rmdir(d)
@@ -216,7 +216,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser = argparse.ArgumentParser(prog="tail")
         parser.add_argument('files', type=str, nargs='+')
         parser.add_argument('-c', '--bytes', type=int, default=1024)
-        args = parser.parse_args(line.split(' '))
+        args = parser.parse_args(line.split())
 
         for f in args.files:
             print(self._fs.tail(f, size=args.bytes))
