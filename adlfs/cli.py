@@ -238,13 +238,14 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
     def do_rm(self, line):
         parser = argparse.ArgumentParser(prog="rm")
         parser.add_argument('files', type=str, nargs='+')
+        parser.add_argument('-r', '--recursive', action='store_true')
         args = parser.parse_args(line.split())
 
         for f in args.files:
-            self._fs.rm(f)
+            self._fs.rm(f, recursive=args.recursive)
 
     def help_rm(self):
-        print("rm file ...\n")
+        print("rm [-r | --recursive] file ...\n")
         print("Remove directory entries")
 
     def do_rmdir(self, line):
