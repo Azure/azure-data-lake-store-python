@@ -543,8 +543,11 @@ class AzureDLFile(object):
         Without delimiter: Uploads the current buffer.
 
         With delimiter: writes an amount of data less than or equal to the
-        block-size, which ends on the delimiter. If there is no delimiter in
-        the buffer, uploads the whole buffer.
+        block-size, which ends on the delimiter, until buffer is smaller than
+        the blocksize. If there is no delimiter in a block uploads whole block.
+
+        If force=True, flushes all data in the buffer, even if it doesn't end
+        with a delimiter; appropriate when closing the file.
         """
         if self.mode in {'wb', 'ab'} and not self.closed:
             if self.buffer.tell() == 0:

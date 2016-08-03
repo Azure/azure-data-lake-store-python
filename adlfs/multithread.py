@@ -267,13 +267,15 @@ class ADLUploader:
         if len(lfiles) > 1:
             rfiles = [os.path.join(self.rpath, os.path.relpath(f, self.lpath))
                       for f in lfiles]
-        else:
+        elif lfiles:
             if (self.adl.exists(self.rpath) and
                         self.adl.info(self.rpath)['type'] == "DIRECTORY"):
                 rfiles = [os.path.join(self.rpath,
                                        os.path.basename(self.lpath))]
             else:
                 rfiles = [self.rpath]
+        else:
+            raise ValueError('No files to upload')
         self.rfiles = rfiles
         self.lfiles = lfiles
         self.progress = {}
@@ -395,7 +397,6 @@ def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES,
         with open(lfile, 'rb') as fin:
             tries = 0
             try:
-                fin.seek(offset)
                 fout.write(read_block(fin, offset, size, delimiter))
             except Exception as e:
                 # TODO : only some exceptions should be retriable
