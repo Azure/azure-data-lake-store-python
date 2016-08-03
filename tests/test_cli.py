@@ -6,7 +6,7 @@ import uuid
 import pytest
 
 from adlfs.cli import AzureDataLakeFSCommand
-from adlfs.utils import azure, FileNotFoundError
+from adlfs.utils import azure
 
 
 @pytest.yield_fixture
