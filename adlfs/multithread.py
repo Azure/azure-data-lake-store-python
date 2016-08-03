@@ -303,11 +303,13 @@ class ADLUploader:
                 parts = [self.temp_upload_path+unique+"_%i" % i for i
                          in dic['waiting']]
                 futures = [self.pool.submit(put_chunk, self.adl, part, lfile, o,
-                                            self.chunksize, self.delimiter)
+                                            self.chunksize, MAXRETRIES,
+                                            self.delimiter)
                            for part, o in zip(parts, dic['waiting'])]
                 dic['futures'] = futures
             else:
-                dic['final'] = self.pool.submit(self.adl.put, lfile, rfile)
+                dic['final'] = self.pool.submit(self.adl.put, lfile, rfile,
+                                                self.delimiter)
         if monitor:
             self._monitor()
 
