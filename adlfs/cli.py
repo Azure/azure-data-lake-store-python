@@ -149,7 +149,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
                 if args.detail:
                     self._display_item(item)
                 else:
-                    print(item)
+                    print(os.path.basename(item))
 
     def do_mkdir(self, line):
         """mkdir directory ...
