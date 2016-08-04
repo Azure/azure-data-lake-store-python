@@ -49,6 +49,20 @@ def test_cat(capsys, command, azurefile):
     assert out == '123456\n'
 
 
+def test_chmod(capsys, command, azurefile):
+    command.onecmd('info ' + azurefile)
+    out, _ = capsys.readouterr()
+    assert 'permission       = 770' in out
+
+    command.onecmd('chmod 0550 ' + azurefile)
+    out, _ = capsys.readouterr()
+    assert not out
+
+    command.onecmd('info ' + azurefile)
+    out, _ = capsys.readouterr()
+    assert 'permission       = 550' in out
+
+
 def test_df(capsys, command):
     command.onecmd('df')
     out, _ = capsys.readouterr()

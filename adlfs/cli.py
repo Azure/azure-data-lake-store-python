@@ -67,6 +67,58 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("cat file ...\n")
         print("Display contents of files")
 
+    def do_chgrp(self, line):
+        parser = argparse.ArgumentParser(prog="chgrp", add_help=False)
+        parser.add_argument('group', type=str)
+        parser.add_argument('files', type=str, nargs='+', default=[''])
+        args = parser.parse_args(line.split())
+
+        for f in args.files:
+            self._fs.chown(f, group=args.group)
+
+    def help_chgrp(self):
+        print("chgrp group file ...\n")
+        print("Change file group")
+
+    def do_chmod(self, line):
+        parser = argparse.ArgumentParser(prog="chmod", add_help=False)
+        parser.add_argument('mode', type=str)
+        parser.add_argument('files', type=str, nargs='+', default=[''])
+        args = parser.parse_args(line.split())
+
+        for f in args.files:
+            self._fs.chmod(f, args.mode)
+
+    def help_chmod(self):
+        print("chmod mode file ...\n")
+        print("Change file permissions")
+
+    def _parse_ownership(self, ownership):
+        if ':' in ownership:
+            user, group = ownership.split(':')
+            if not user:
+                user = None
+        else:
+            user = ownership
+            group = None
+        return user, group
+
+    def do_chown(self, line):
+        parser = argparse.ArgumentParser(prog="chown", add_help=False)
+        parser.add_argument('ownership', type=str)
+        parser.add_argument('files', type=str, nargs='+', default=[''])
+        args = parser.parse_args(line.split())
+
+        user, group = self._parse_ownership(args.ownership)
+
+        for f in args.files:
+            self._fs.chown(f, user=user, group=group)
+
+    def help_chown(self):
+        print("chown owner[:group] file ...")
+        print("chown :group file ...\n")
+        print("Change file owner and group")
+
     def _display_dict(self, d):
         width = max([len(k) for k in d.keys()])
         for k, v in sorted(list(d.items())):
