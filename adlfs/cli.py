@@ -113,7 +113,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             self._display_path_with_size("total", total, args.human_readable)
 
     def help_du(self):
-        print("du [file ...]\n")
+        print("du [-c | --total] [-r | --recursive] [-H | --human-readable] [file ...]\n")
         print("Display disk usage statistics")
 
     def do_exists(self, line):
@@ -154,7 +154,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             print(self._fs.head(f, size=args.bytes))
 
     def help_head(self):
-        print("head [-c bytes] file ...\n")
+        print("head [-c bytes | --bytes bytes] file ...\n")
         print("Display first bytes of a file")
 
     def do_info(self, line):
@@ -299,7 +299,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             print(self._fs.tail(f, size=args.bytes))
 
     def help_tail(self):
-        print("tail [-c bytes] file ...\n")
+        print("tail [-c bytes | --bytes bytes] file ...\n")
         print("Display last bytes of a file")
 
     def do_touch(self, line):
