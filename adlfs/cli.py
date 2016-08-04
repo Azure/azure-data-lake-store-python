@@ -77,10 +77,12 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
     def do_du(self, line):
         parser = argparse.ArgumentParser(prog="du")
         parser.add_argument('files', type=str, nargs='*', default=[''])
+        parser.add_argument('-r', '--recursive', action='store_true')
         args = parser.parse_args(line.split())
 
         for f in args.files:
-            for name, size in sorted(list(self._fs.du(f).items())):
+            items = sorted(list(self._fs.du(f, deep=args.recursive).items()))
+            for name, size in items:
                 print("{:<9d} {}".format(size, os.path.basename(name)))
 
     def help_du(self):
