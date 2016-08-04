@@ -76,12 +76,7 @@ def azure():
     from adlfs.lib import auth
     test_dir = 'azure_test_dir/'
 
-    tenant_id = os.environ['azure_tenant_id']
-    username = os.environ['azure_username']
-    password = os.environ['azure_password']
-    token = auth(tenant_id, username, password)
-    store_name = os.environ['azure_store_name']
-    out = AzureDLFileSystem(store_name, token)
+    out = AzureDLFileSystem()
     out.mkdir(test_dir)
     try:
         yield out
