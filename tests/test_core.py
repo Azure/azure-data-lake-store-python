@@ -11,7 +11,7 @@ from threading import Thread
 import pytest
 
 from adlfs.core import AzureDLFile, AzureDLFileSystem, ensure_writable
-from adlfs.lib import auth
+from adlfs.lib import auth, DatalakeRESTException
 from adlfs.utils import tmpfile, azure
 
 test_dir = 'azure_test_dir/'
@@ -464,3 +464,29 @@ def test_array(azure):
     with azure.open(a, 'rb') as f:
         out = f.read()
         assert out == b'A' * 1000
+
+
+def test_chmod(azure):
+    azure.touch(a)
+
+    assert azure.info(a)['permission'] == '770'
+
+    azure.chmod(a, '0555')
+    assert azure.info(a)['permission'] == '555'
+
+    with pytest.raises((OSError, IOError)):
+        with azure.open(a, 'ab') as f:
+            f.write(b'data')
+
+    azure.chmod(a, '0770')
+    azure.rm(a)
+
+    azure.mkdir(test_dir+'/deep')
+    azure.touch(test_dir+'/deep/file')
+    azure.chmod(test_dir+'/deep', '660')
+
+    with pytest.raises((OSError, IOError)):
+        azure.ls(test_dir+'/deep')
+
+    azure.chmod(test_dir+'/deep', '770')
+
