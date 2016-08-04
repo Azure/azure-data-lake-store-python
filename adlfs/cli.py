@@ -169,7 +169,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("info file ...\n")
         print("Display file information")
 
-    def _display_item(self, item):
+    def _display_item(self, item, human_readable):
         mode = int(item['permission'], 8)
 
         if item['type'] == 'DIRECTORY':
@@ -192,29 +192,35 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         timestamp = item['modificationTime'] // 1000
         modified_at = datetime.fromtimestamp(timestamp).strftime('%b %d %H:%M')
 
-        print("{} {} {} {:9d} {} {}".format(
+        if human_readable:
+            size = "{:5s}".format(self._format_size(item['length']))
+        else:
+            size = "{:9d}".format(item['length'])
+
+        print("{} {} {} {} {} {}".format(
             permissions,
             item['owner'][:8],
             item['group'][:8],
-            item['length'],
+            size,
             modified_at,
             os.path.basename(item['name'])))
 
     def do_ls(self, line):
-        parser = argparse.ArgumentParser(prog="ls")
+        parser = argparse.ArgumentParser(prog="ls", add_help=False)
         parser.add_argument('dirs', type=str, nargs='*', default=[''])
+        parser.add_argument('-h', '--human-readable', action='store_true')
         parser.add_argument('-l', '--detail', action='store_true')
         args = parser.parse_args(line.split())
 
         for d in args.dirs:
             for item in self._fs.ls(d, detail=args.detail):
                 if args.detail:
-                    self._display_item(item)
+                    self._display_item(item, args.human_readable)
                 else:
                     print(os.path.basename(item))
 
     def help_ls(self):
-        print("ls [-l | --detail] [file ...]\n")
+        print("ls [-h | --human-readable] [-l | --detail] [file ...]\n")
         print("List directory contents")
 
     def do_mkdir(self, line):
