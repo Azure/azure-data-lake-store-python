@@ -83,7 +83,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         for f in args.files:
             items = sorted(list(self._fs.du(f, deep=args.recursive).items()))
             for name, size in items:
-                print("{:<9d} {}".format(size, os.path.basename(name)))
+                print("{:<9d} {}".format(size, name))
 
     def help_du(self):
         print("du [file ...]\n")
