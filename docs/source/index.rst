@@ -1,7 +1,9 @@
 adlfs
 ====
 
-Headline description here
+A pure-python interface to the Azure Data-lake Storage system, providing
+pythonic file-system and file objects, high-performance up- and down-loader
+and CLI commands.
 
 Examples
 --------

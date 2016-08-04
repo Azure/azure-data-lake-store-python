@@ -419,7 +419,7 @@ class AzureDLFile(object):
 
     See Also
     --------
-    `AzureDLFileSystem.open`: used to create ``AzureDLFile`` objects
+    AzureDLFileSystem.open: used to create AzureDLFile objects
     """
 
     def __init__(self, azure, path, mode='rb', blocksize=2**25,
