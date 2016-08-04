@@ -473,6 +473,18 @@ def test_array(azure):
         out = f.read()
         assert out == b'A' * 1000
 
+@pytest.mark.parametrize('delimiter', [b'\n', b'--'])
+def test_delimiters(azure, delimiter):
+    data = delimiter.join([b'123', b'456', b'789'])
+    data2 = data + delimiter
+    with azure.open(a, 'wb', delimiter=delimiter, blocksize=6) as f:
+        f.write(b'123' + delimiter)
+        assert f.buffer.tell() == 3 + len(delimiter)
+        f.write(b'456' + delimiter) # causes flush
+        assert azure.cat(a) == b'123' + delimiter
+        f.write(b'789')
+    # close causes forced flush
+    assert azure.cat(a) == data
 
 def test_chmod(azure):
     azure.touch(a)

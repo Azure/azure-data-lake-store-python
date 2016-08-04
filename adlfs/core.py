@@ -99,7 +99,7 @@ class AzureDLFileSystem(object):
         self.__dict__.update(state)
         self.connect()
 
-    def open(self, path, mode='rb', blocksize=2**25):
+    def open(self, path, mode='rb', blocksize=2**25, delimiter=None):
         """ Open a file for reading or writing
 
         Parameters
@@ -110,11 +110,14 @@ class AzureDLFileSystem(object):
             One of 'rb' or 'wb'
         blocksize: int
             Size of data-node blocks if reading
+        delimiter: byte(s) or None
+            For writing delimiter-ended blocks
         """
         if 'b' not in mode:
             raise NotImplementedError("Text mode not supported, use mode='%s'"
                                       " and manage bytes" % (mode[0] + 'b'))
-        return AzureDLFile(self, path, mode, blocksize=blocksize)
+        return AzureDLFile(self, path, mode, blocksize=blocksize,
+                           delimiter=delimiter)
 
     def _ls(self, path):
         """ List files at given path """
@@ -280,10 +283,10 @@ class AzureDLFileSystem(object):
                         break
                     f2.write(data)
 
-    def put(self, filename, path):
+    def put(self, filename, path, delimiter=None):
         """ Stream data from local filename to file at path """
         with open(filename, 'rb') as f:
-            with self.open(path, 'wb') as f2:
+            with self.open(path, 'wb', delimiter=delimiter) as f2:
                 while True:
                     data = f.read(f2.blocksize)
                     if len(data) == 0:
@@ -426,6 +429,12 @@ class AzureDLFile(object):
     path : str
         location of file
     mode : str {'wb', 'rb', 'ab'}
+    blocksize : int
+        Size of the write or read-ahead buffer. For writing, will be
+        truncated to 4MB (2**22).
+    delimiter : bytes or None
+        If specified and in write mode, each flush will send data terminating
+        on this bytestring, potentially leaving some data in the buffer.
 
     Examples
     --------
@@ -438,15 +447,16 @@ class AzureDLFile(object):
     `AzureDLFileSystem.open`: used to create ``AzureDLFile`` objects
     """
 
-    def __init__(self, azure, path, mode='rb', blocksize=2**25):
+    def __init__(self, azure, path, mode='rb', blocksize=2**25,
+                 delimiter=None):
         self.mode = mode
         if mode not in {'rb', 'wb', 'ab'}:
             raise NotImplementedError("File mode must be {'rb', 'wb', 'ab'}, not %s" % mode)
-        self.blocksize = blocksize
         self.path = path
         self.azure = azure
         self.cache = b""
         self.loc = 0
+        self.delimiter = delimiter
         self.start = None
         self.end = None
         self.closed = False
@@ -461,6 +471,10 @@ class AzureDLFile(object):
                 self.loc = self.info()['length']
         if mode == 'rb':
             self.size = self.info()['length']
+            self.blocksize = blocksize
+        elif delimiter:
+            # force writing to 4MB blocks ending in delimiter
+            self.blocksize = min(2**22, blocksize)
 
     def info(self):
         """ File information about this path """
@@ -594,42 +608,59 @@ class AzureDLFile(object):
             raise ValueError('I/O operation on closed file.')
         out = self.buffer.write(ensure_writable(data))
         self.loc += out
-        if self.buffer.tell() > self.blocksize:
+        if self.buffer.tell() >= self.blocksize:
             self.flush()
         return out
 
-    def flush(self):
+    def flush(self, force=False):
         """
         Write buffered data to ADL.
 
-        Uploads the current buffer, if it is larger than the block-size.
+        Without delimiter: Uploads the current buffer.
 
-        Parameters
-        ----------
-        reopen : bool (True)
-            If writing is incomplete, write data and immediately get new
-            upload URL
+        With delimiter: writes an amount of data less than or equal to the
+        block-size, which ends on the delimiter, until buffer is smaller than
+        the blocksize. If there is no delimiter in a block uploads whole block.
+
+        If force=True, flushes all data in the buffer, even if it doesn't end
+        with a delimiter; appropriate when closing the file.
         """
         if self.mode in {'wb', 'ab'} and not self.closed:
             if self.buffer.tell() == 0:
                 # no data in the buffer to write
                 return
             self.buffer.seek(0)
-            out = self.azure.azure.call('APPEND', path=self.path,
-                                        data=self.buffer.read())
-            self.buffer = io.BytesIO()
+            data = self.buffer.read()
+            if self.delimiter:
+                while len(data) >= self.blocksize:
+                    place = data[:self.blocksize].rfind(self.delimiter)
+                    if place < 0:
+                        # not found - write whole block
+                        limit = self.blocksize
+                    else:
+                        limit = place + len(self.delimiter)
+                    out = self.azure.azure.call('APPEND', path=self.path,
+                                                data=data[:limit])
+                    logger.debug('Wrote %d bytes to %s' % (limit, self))
+                    data = data[limit:]
+                self.buffer = io.BytesIO(data)
+                self.buffer.seek(0, 2)
+            if not self.delimiter or force:
+                out = self.azure.azure.call('APPEND', path=self.path,
+                                            data=data)
+                logger.debug('Wrote %d bytes to %s' % (len(data), self))
+                self.buffer = io.BytesIO()
             return out
 
     def close(self):
         """ Close file
 
-        If in write mode, key is only finalized upon close, and key will then
-        be available to other processes.
+        If in write mode, causes flush of any unwritten data.
         """
         if self.closed:
             return
         if self.mode in {'wb', 'ab'}:
-            self.flush()
+            self.flush(force=True)
             self.azure.invalidate_cache(self.path)
         self.closed = True
 
