@@ -56,7 +56,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("Exit the application")
 
     def do_cat(self, line):
-        parser = argparse.ArgumentParser(prog="cat")
+        parser = argparse.ArgumentParser(prog="cat", add_help=False)
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
@@ -96,11 +96,11 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             print("{:<9d} {}".format(size, name))
 
     def do_du(self, line):
-        parser = argparse.ArgumentParser(prog="du")
+        parser = argparse.ArgumentParser(prog="du", add_help=False)
         parser.add_argument('files', type=str, nargs='*', default=[''])
         parser.add_argument('-c', '--total', action='store_true')
+        parser.add_argument('-h', '--human-readable', action='store_true')
         parser.add_argument('-r', '--recursive', action='store_true')
-        parser.add_argument('-H', '--human-readable', action='store_true')
         args = parser.parse_args(line.split())
 
         total = 0
@@ -113,11 +113,11 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             self._display_path_with_size("total", total, args.human_readable)
 
     def help_du(self):
-        print("du [-c | --total] [-r | --recursive] [-H | --human-readable] [file ...]\n")
+        print("du [-c | --total] [-r | --recursive] [-h | --human-readable] [file ...]\n")
         print("Display disk usage statistics")
 
     def do_exists(self, line):
-        parser = argparse.ArgumentParser(prog="exists")
+        parser = argparse.ArgumentParser(prog="exists", add_help=False)
         parser.add_argument('file', type=str)
         args = parser.parse_args(line.split())
 
@@ -128,7 +128,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("Check if file/directory exists")
 
     def do_get(self, line):
-        parser = argparse.ArgumentParser(prog="get")
+        parser = argparse.ArgumentParser(prog="get", add_help=False)
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
@@ -145,7 +145,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("Retrieve the remote file and store it locally")
 
     def do_head(self, line):
-        parser = argparse.ArgumentParser(prog="head")
+        parser = argparse.ArgumentParser(prog="head", add_help=False)
         parser.add_argument('files', type=str, nargs='+')
         parser.add_argument('-c', '--bytes', type=int, default=1024)
         args = parser.parse_args(line.split())
@@ -158,7 +158,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("Display first bytes of a file")
 
     def do_info(self, line):
-        parser = argparse.ArgumentParser(prog="info")
+        parser = argparse.ArgumentParser(prog="info", add_help=False)
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
@@ -224,7 +224,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("List directory contents")
 
     def do_mkdir(self, line):
-        parser = argparse.ArgumentParser(prog="mkdir")
+        parser = argparse.ArgumentParser(prog="mkdir", add_help=False)
         parser.add_argument('dirs', type=str, nargs='+', default=[''])
         args = parser.parse_args(line.split())
 
@@ -236,7 +236,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("Create directories")
 
     def do_mv(self, line):
-        parser = argparse.ArgumentParser(prog="mv")
+        parser = argparse.ArgumentParser(prog="mv", add_help=False)
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
@@ -247,7 +247,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("Rename from-path to to-path")
 
     def do_put(self, line):
-        parser = argparse.ArgumentParser(prog="put")
+        parser = argparse.ArgumentParser(prog="put", add_help=False)
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
@@ -271,7 +271,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("Exit the application")
 
     def do_rm(self, line):
-        parser = argparse.ArgumentParser(prog="rm")
+        parser = argparse.ArgumentParser(prog="rm", add_help=False)
         parser.add_argument('files', type=str, nargs='+')
         parser.add_argument('-r', '--recursive', action='store_true')
         args = parser.parse_args(line.split())
@@ -284,7 +284,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("Remove directory entries")
 
     def do_rmdir(self, line):
-        parser = argparse.ArgumentParser(prog="rmdir")
+        parser = argparse.ArgumentParser(prog="rmdir", add_help=False)
         parser.add_argument('dirs', type=str, nargs='+', default=[''])
         args = parser.parse_args(line.split())
 
@@ -296,7 +296,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("Remove directories")
 
     def do_tail(self, line):
-        parser = argparse.ArgumentParser(prog="tail")
+        parser = argparse.ArgumentParser(prog="tail", add_help=False)
         parser.add_argument('files', type=str, nargs='+')
         parser.add_argument('-c', '--bytes', type=int, default=1024)
         args = parser.parse_args(line.split())
@@ -309,7 +309,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("Display last bytes of a file")
 
     def do_touch(self, line):
-        parser = argparse.ArgumentParser(prog="touch")
+        parser = argparse.ArgumentParser(prog="touch", add_help=False)
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
