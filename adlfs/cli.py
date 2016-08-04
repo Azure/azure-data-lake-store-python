@@ -74,16 +74,30 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("df\n")
         print("Display Azure account statistics")
 
+    def _truncate(self, num, fmt):
+        return '{:{fmt}}'.format(num, fmt=fmt).rstrip('0').rstrip('.')
+
+    def _format_size(self, num):
+        for unit in ['B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
+            if abs(num) < 1024.0:
+                return '{:>3s}{}'.format(self._truncate(num, '3.1f'), unit)
+            num /= 1024.0
+        return self._truncate(num, '.1f') + 'Y'
+
     def do_du(self, line):
         parser = argparse.ArgumentParser(prog="du")
         parser.add_argument('files', type=str, nargs='*', default=[''])
         parser.add_argument('-r', '--recursive', action='store_true')
+        parser.add_argument('-H', '--human-readable', action='store_true')
         args = parser.parse_args(line.split())
 
         for f in args.files:
             items = sorted(list(self._fs.du(f, deep=args.recursive).items()))
             for name, size in items:
-                print("{:<9d} {}".format(size, name))
+                if args.human_readable:
+                    print("{:7s} {}".format(self._format_size(size), name))
+                else:
+                    print("{:<9d} {}".format(size, name))
 
     def help_du(self):
         print("du [file ...]\n")
