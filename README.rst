@@ -55,12 +55,12 @@ To play with the code, here is a starting point:
 
 
 To interact with the API at a higher-level, you can use the provided
-command-line interface in `adlfs/cli.py`. You will need to set the appropriate
+command-line interface in "adlfs/cli.py". You will need to set the appropriate
 environment variables as described above to connect to the Azure Data Lake
 Store.
 
-To start the CLI in interactive mode, run `python adlfs/cli.py` and then type
-`help` to see all available commands (similiar to Unix utilities):
+To start the CLI in interactive mode, run "python adlfs/cli.py" and then type
+"help" to see all available commands (similiar to Unix utilities):
 
 .. code-block:: bash
 
@@ -75,9 +75,9 @@ To start the CLI in interactive mode, run `python adlfs/cli.py` and then type
     azure>
 
 
-While still in interactive mode, you can run `ls -l` to list the entries in the
-home directory (`help ls` will show the command's usage details). If you're not
-familiar with the Unix/Linux `ls` command, the columns represent 1) permissions,
+While still in interactive mode, you can run "ls -l" to list the entries in the
+home directory ("help ls" will show the command's usage details). If you're not
+familiar with the Unix/Linux "ls" command, the columns represent 1) permissions,
 2) file owner, 3) file group, 4) file size, 5-7) file's modification time, and
 8) file name.
 
@@ -97,8 +97,8 @@ familiar with the Unix/Linux `ls` command, the columns represent 1) permissions,
     azure>
 
 
-To download a remote file, run `get remote-file [local-file]`. The second
-argument, `local-file`, is optional. If not provided, the local file will be
+To download a remote file, run "get remote-file [local-file]". The second
+argument, "local-file", is optional. If not provided, the local file will be
 named after the remote file minus the directory path.
 
 .. code-block:: bash
