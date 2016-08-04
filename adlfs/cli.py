@@ -78,11 +78,11 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         return '{:{fmt}}'.format(num, fmt=fmt).rstrip('0').rstrip('.')
 
     def _format_size(self, num):
-        for unit in ['B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
+        for unit in ['B', 'K', 'M', 'G', 'T']:
             if abs(num) < 1024.0:
                 return '{:>3s}{}'.format(self._truncate(num, '3.1f'), unit)
             num /= 1024.0
-        return self._truncate(num, '.1f') + 'Y'
+        return self._truncate(num, '.1f') + 'P'
 
     def do_du(self, line):
         parser = argparse.ArgumentParser(prog="du")
