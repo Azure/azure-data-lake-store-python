@@ -32,6 +32,8 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
     """Accept commands via an interactive prompt or the command line."""
 
     prompt = 'azure> '
+    undoc_header = None
+    _hidden_methods = ('do_EOF',)
 
     def __init__(self):
         super(AzureDataLakeFSCommand, self).__init__()
@@ -42,6 +44,9 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         self._store_name = os.environ['azure_store_name']
         self._token = auth(self._tenant_id, self._username, self._password)
         self._fs = AzureDLFileSystem(self._store_name, self._token)
+
+    def get_names(self):
+        return [n for n in dir(self.__class__) if n not in self._hidden_methods]
 
     def do_close(self, line):
         return True
