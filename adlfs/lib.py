@@ -143,6 +143,9 @@ class DatalakeRESTInterface:
     store_name: str
     token: str
         from `auth()` or `refresh_token()`, the 'access' field.
+    url_suffix: str (None)
+        Domain to send REST requests to. The end-point URL is constructed
+        using this and the store_name. If None, use default.
     """
 
     ends = {
@@ -158,13 +161,15 @@ class DatalakeRESTInterface:
         'MKDIRS': ('put', set(), set()),
         'OPEN': ('get', set(), {'offset', 'length'}),
         'RENAME': ('put', {'destination'}, {'destination'}),
-        'TRUNCATE': ('post', {'newlength'}, {'newlength'})
+        'TRUNCATE': ('post', {'newlength'}, {'newlength'}),
+        'SETOWNER': ('put', set(), {'owner', 'group'}),
+        'SETPERMISSION': ('put', set(), {'permission'})
     }
 
-    def __init__(self, store_name, token):
+    def __init__(self, store_name, token, url_suffix=None):
+        url_suffix = url_suffix or "azuredatalakestore.net"
         self.head = {'Authorization': 'Bearer ' + token}
-        self.url = ('https://%s.azuredatalakestore.net/webhdfs/v1/' %
-                    store_name)
+        self.url = 'https://%s.%s/webhdfs/v1/' % (store_name, url_suffix)
 
     def call(self, op, path='', **kwargs):
         """ Execute a REST call
@@ -232,8 +237,6 @@ GETXATTRS
 LISTXATTRS
 CREATESYMLINK n/a
 SETREPLICATION n/a
-SETOWNER
-SETPERMISSION
 SETTIMES
 RENEWDELEGATIONTOKEN n/a - use auth
 CANCELDELEGATIONTOKEN n/a - use auth
