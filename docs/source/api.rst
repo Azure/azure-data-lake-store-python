@@ -31,8 +31,24 @@ API
    AzureDLFile.tell
    AzureDLFile.write
 
+.. currentmodule:: adlfs.multithread
+
+.. autosummary::
+   ADLUploader
+   ADLDownloader
+
+.. currentmodule:: adlfs.core
+
 .. autoclass:: AzureDLFileSystem
    :members:
 
+.. currentmodule:: adlfs.multithread
+
 .. autoclass:: AzureDLFile
+   :members:
+
+.. autoclass:: ADLUploader
+   :members:
+
+.. autoclass:: ADLDownloader
    :members:
