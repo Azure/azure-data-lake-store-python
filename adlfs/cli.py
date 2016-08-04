@@ -80,24 +80,32 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
     def _format_size(self, num):
         for unit in ['B', 'K', 'M', 'G', 'T']:
             if abs(num) < 1024.0:
-                return '{:>3s}{}'.format(self._truncate(num, '3.1f'), unit)
+                return '{:>4s}{}'.format(self._truncate(num, '3.1f'), unit)
             num /= 1024.0
         return self._truncate(num, '.1f') + 'P'
+
+    def _display_path_with_size(self, name, size, human_readable):
+        if human_readable:
+            print("{:7s} {}".format(self._format_size(size), name))
+        else:
+            print("{:<9d} {}".format(size, name))
 
     def do_du(self, line):
         parser = argparse.ArgumentParser(prog="du")
         parser.add_argument('files', type=str, nargs='*', default=[''])
+        parser.add_argument('-c', '--total', action='store_true')
         parser.add_argument('-r', '--recursive', action='store_true')
         parser.add_argument('-H', '--human-readable', action='store_true')
         args = parser.parse_args(line.split())
 
+        total = 0
         for f in args.files:
             items = sorted(list(self._fs.du(f, deep=args.recursive).items()))
             for name, size in items:
-                if args.human_readable:
-                    print("{:7s} {}".format(self._format_size(size), name))
-                else:
-                    print("{:<9d} {}".format(size, name))
+                total += size
+                self._display_path_with_size(name, size, args.human_readable)
+        if args.total:
+            self._display_path_with_size("total", total, args.human_readable)
 
     def help_du(self):
         print("du [file ...]\n")
