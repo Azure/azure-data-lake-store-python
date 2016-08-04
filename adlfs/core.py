@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+# coding=utf-8
+# --------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License.txt in the project root for
+# license information.
+# --------------------------------------------------------------------------
+
 """
 The main file-system class and functionality.
 
@@ -38,7 +45,7 @@ class AzureDLFileSystem(object):
     _conn = {}
     _singleton = [None]
 
-    def __init__(self, store, token=None, url_suffix=None):
+    def __init__(self, store=None, token=None, url_suffix=None):
         # store instance vars
         self.store = store
         self.url_suffix = url_suffix
@@ -71,6 +78,17 @@ class AzureDLFileSystem(object):
                 token = refresh_token(token)
         else:
             token = self.token
+
+        if token is None:
+            # default connection
+            tenant_id = os.environ['azure_tenant_id']
+            username = os.environ['azure_username']
+            password = os.environ['azure_password']
+            self.store = self.store or os.environ['azure_store_name']
+            self.url_suffix = (self.url_suffix or
+                               os.environ.get('azure_url_suffix'))
+            token = auth(tenant_id, username, password)
+
         self.azure = DatalakeRESTInterface(store_name=self.store,
                                            token=token['access'],
                                            url_suffix=self.url_suffix)
@@ -112,7 +130,7 @@ class AzureDLFileSystem(object):
                 f['name'] = ('/'.join(bits))
         return self.dirs[path]
 
-    def ls(self, path, detail=False):
+    def ls(self, path="", detail=False):
         """ List single directory with or without details """
         files = self._ls(path)
         if not files:
@@ -393,6 +411,13 @@ class AzureDLFileSystem(object):
             bytes = read_block(f, offset, length, delimiter)
         return bytes
 
+    # ALIASES
+    listdir = ls
+    access = exists
+    rename = mv
+    stat = info
+    unlink = remove = rm
+
 
 class AzureDLFile(object):
     """
@@ -447,7 +472,7 @@ class AzureDLFile(object):
         if mode == 'rb':
             self.size = self.info()['length']
             self.blocksize = blocksize
-        else:
+(??)
             self.blocksize = min(2**22, blocksize)
 
     def info(self):
