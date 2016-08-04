@@ -447,7 +447,8 @@ class AzureDLFile(object):
         if mode == 'rb':
             self.size = self.info()['length']
             self.blocksize = blocksize
-        else:
+        elif delimiter:
+            # force writing to 4MB blocks ending in delimiter
             self.blocksize = min(2**22, blocksize)
 
     def info(self):
