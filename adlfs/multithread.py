@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+# coding=utf-8
+# --------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License.txt in the project root for
+# license information.
+# --------------------------------------------------------------------------
+
 """
 High performance multi-threaded module to up/download
 
@@ -14,7 +22,7 @@ import pickle
 import time
 import uuid
 
-from .utils import tokenize, logger, datadir
+from .utils import tokenize, logger, datadir, read_block
 
 MAXRETRIES = 5
 
@@ -229,6 +237,9 @@ class ADLUploader:
         than this number will always be sent in a single thread.
     run: bool (True)
         Whether to begin executing immediately.
+    delimiter: byte(s) or None
+        If set, will write blocks using delimiters in the backend, as well as
+        split files for uploading on that delimiter.
 
     Returns
     -------
@@ -237,11 +248,12 @@ class ADLUploader:
     temp_upload_path = '/tmp/'
 
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**26,
-                 run=True):
+                 run=True, delimiter=None):
         self.adl = adlfs
         self.rpath = rpath
         self.lpath = lpath
         self.nthreads = nthreads
+        self.delimiter = delimiter
         self.chunksize = chunksize
         self.hash = tokenize(adlfs, rpath, lpath, chunksize)
         self._setup()
@@ -263,13 +275,15 @@ class ADLUploader:
         if len(lfiles) > 1:
             rfiles = [os.path.join(self.rpath, os.path.relpath(f, self.lpath))
                       for f in lfiles]
-        else:
+        elif lfiles:
             if (self.adl.exists(self.rpath) and
                         self.adl.info(self.rpath)['type'] == "DIRECTORY"):
                 rfiles = [os.path.join(self.rpath,
                                        os.path.basename(self.lpath))]
             else:
                 rfiles = [self.rpath]
+        else:
+            raise ValueError('No files to upload')
         self.rfiles = rfiles
         self.lfiles = lfiles
         self.progress = {}
@@ -297,11 +311,13 @@ class ADLUploader:
                 parts = [self.temp_upload_path+unique+"_%i" % i for i
                          in dic['waiting']]
                 futures = [self.pool.submit(put_chunk, self.adl, part, lfile, o,
-                                            self.chunksize)
+                                            self.chunksize, MAXRETRIES,
+                                            self.delimiter)
                            for part, o in zip(parts, dic['waiting'])]
                 dic['futures'] = futures
             else:
-                dic['final'] = self.pool.submit(self.adl.put, lfile, rfile)
+                dic['final'] = self.pool.submit(self.adl.put, lfile, rfile,
+                                                self.delimiter)
         if monitor:
             self._monitor()
 
@@ -381,17 +397,17 @@ class ADLUploader:
             return {}
 
 
-def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES):
+def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES,
+              delimiter=None):
     """ Upload a piece of a local file
 
     Internal function used by `upload`.
     """
-    with adlfs.open(rfile, 'wb') as fout:
+    with adlfs.open(rfile, 'wb', delimiter=delimiter) as fout:
         with open(lfile, 'rb') as fin:
             tries = 0
             try:
-                fin.seek(offset)
-                fout.write(fin.read(size))
+                fout.write(read_block(fin, offset, size, delimiter))
             except Exception as e:
                 # TODO : only some exceptions should be retriable
                 logger.debug('Upload failed %s, byte offset %s; %s, %s', lfile,

@@ -3,6 +3,9 @@ adlfs
 
 |Build Status| |Doc Status|
 
+NOTE: This management package is currently under active development
+and should not be consumed until the first version is published.
+
 adlfs is a file-system management system in python for the
 Azure Data-Lake Store.
 
