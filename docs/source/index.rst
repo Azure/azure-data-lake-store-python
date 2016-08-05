@@ -47,7 +47,11 @@ store
 
 .. code-block:: python
 
-    adl = AzureDLFileSystem()  # uses environment variables for auth
+    token = lib.auth(tenant_id, username, password)
+    adl = core.AzureDLFileSystem(store_name, token)
+    # alternatively, adl = core.AzureDLFileSystem()
+    # uses environment variables
+
     print(adl.ls())  # list files in the root directory
     for item in adl.ls(detail=True):
         print(item)  # same, but with file details as dictionaries
