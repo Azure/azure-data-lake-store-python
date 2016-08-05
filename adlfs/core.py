@@ -472,7 +472,7 @@ class AzureDLFile(object):
         if mode == 'rb':
             self.size = self.info()['length']
             self.blocksize = blocksize
-(??)
+        elif delimiter:
             self.blocksize = min(2**22, blocksize)
 
     def info(self):
