@@ -48,13 +48,14 @@ store
 .. code-block:: python
 
     adl = AzureDLFileSystem()  # uses environment variables for auth
-    adl.ls()  # list files in the root directory
-    adl.ls(detail=True) # same, but with file details
-    adl.walk('')  # list all files at any directory depth
-    adl.du('', deep=True, total=True)  # total bytes usage
+    print(adl.ls())  # list files in the root directory
+    for item in adl.ls(detail=True):
+        print(item)  # same, but with file details as dictionaries
+    print(adl.walk(''))  # list all files at any directory depth
+    print('Usage:', adl.du('', deep=True, total=True))  # total bytes usage
     adl.mkdir('newdir')  # create directory
     adl.touch('newdir/newfile') # create empty file
-    adl.put('remotefile', 'localfile') # upload a local file
+    adl.put('remotefile', '/home/myuser/localfile') # upload a local file
 
 In addition, the file-system generates file objects that are compatible with
 the python file interface, ensuring compatibility with libraries that work on

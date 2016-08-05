@@ -160,7 +160,7 @@ class AzureDLFileSystem(object):
                 fi.extend(self._ls(apath['name']))
         return [f for f in fi if f['type'] == 'FILE']
 
-    def walk(self, path):
+    def walk(self, path=''):
         """ Get all files below given path
         """
         return [f['name'] for f in self._walk(path)]
