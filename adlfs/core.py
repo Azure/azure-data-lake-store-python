@@ -81,7 +81,7 @@ class AzureDLFileSystem(object):
 
         if token is None:
             # default connection
-            tenant_id = os.environ['azure_tenant_id']
+            tenant_id = os.environ.get('azure_tenant_id', "common")
             username = os.environ['azure_username']
             password = os.environ['azure_password']
             self.store = self.store or os.environ['azure_store_name']

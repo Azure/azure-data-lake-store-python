@@ -37,7 +37,7 @@ def auth(tenant_id, username, password):
     ----------
 
     tenant_id : str
-        associated with the user's subscription
+        associated with the user's subscription, or "common"
     username : str
         active directory user
     password : str
@@ -234,8 +234,6 @@ class DatalakeRESTInterface:
 """
 Not yet implemented (or not applicable)
 http://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/WebHDFS.html
-
-Note that permissions, acl, group/owners can only be set at the root level.
 
 GETFILECHECKSUM
 GETHOMEDIRECTORY
