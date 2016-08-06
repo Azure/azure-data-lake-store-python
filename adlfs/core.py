@@ -462,6 +462,7 @@ class AzureDLFile(object):
         self.closed = False
         self.trim = True
         self.buffer = io.BytesIO()
+        self.blocksize = blocksize
         if mode == 'wb':
             self.azure.azure.call('CREATE', path, overwrite=True)
         if mode == 'ab':
@@ -471,7 +472,6 @@ class AzureDLFile(object):
                 self.loc = self.info()['length']
         if mode == 'rb':
             self.size = self.info()['length']
-            self.blocksize = blocksize
         elif delimiter:
             # force writing to 4MB blocks ending in delimiter
             self.blocksize = min(2**22, blocksize)
