@@ -15,6 +15,7 @@ This file is the only executable in the project.
 """
 
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import argparse
 import cmd
@@ -70,7 +71,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
     def do_chgrp(self, line):
         parser = argparse.ArgumentParser(prog="chgrp", add_help=False)
         parser.add_argument('group', type=str)
-        parser.add_argument('files', type=str, nargs='+', default=[''])
+        parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
         for f in args.files:
@@ -83,7 +84,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
     def do_chmod(self, line):
         parser = argparse.ArgumentParser(prog="chmod", add_help=False)
         parser.add_argument('mode', type=str)
-        parser.add_argument('files', type=str, nargs='+', default=[''])
+        parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
         for f in args.files:
@@ -106,7 +107,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
     def do_chown(self, line):
         parser = argparse.ArgumentParser(prog="chown", add_help=False)
         parser.add_argument('ownership', type=str)
-        parser.add_argument('files', type=str, nargs='+', default=[''])
+        parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
         user, group = self._parse_ownership(args.ownership)
@@ -181,16 +182,11 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
 
     def do_get(self, line):
         parser = argparse.ArgumentParser(prog="get", add_help=False)
-        parser.add_argument('files', type=str, nargs='+')
+        parser.add_argument('remote_path', type=str)
+        parser.add_argument('local_path', type=str, nargs='?', default='.')
         args = parser.parse_args(line.split())
 
-        if len(args.files) == 2:
-            remote_path = args.files[0]
-            local_path = args.files[1]
-        else:
-            remote_path = args.files[0]
-            local_path = os.path.basename(args.files[0])
-        ADLDownloader(self._fs, remote_path, local_path)
+        ADLDownloader(self._fs, args.remote_path, args.local_path)
 
     def help_get(self):
         print("get remote-file [local-file]\n")
@@ -277,7 +273,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
 
     def do_mkdir(self, line):
         parser = argparse.ArgumentParser(prog="mkdir", add_help=False)
-        parser.add_argument('dirs', type=str, nargs='+', default=[''])
+        parser.add_argument('dirs', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
         for d in args.dirs:
@@ -300,16 +296,11 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
 
     def do_put(self, line):
         parser = argparse.ArgumentParser(prog="put", add_help=False)
-        parser.add_argument('files', type=str, nargs='+')
+        parser.add_argument('local_path', type=str)
+        parser.add_argument('remote_path', type=str, nargs='?', default='.')
         args = parser.parse_args(line.split())
 
-        if len(args.files) == 2:
-            local_path = args.files[0]
-            remote_path = args.files[1]
-        else:
-            local_path = args.files[0]
-            remote_path = os.path.basename(args.files[1])
-        ADLUploader(self._fs, remote_path, local_path)
+        ADLUploader(self._fs, args.remote_path, args.local_path)
 
     def help_put(self):
         print("put local-file [remote-file]\n")
@@ -337,7 +328,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
 
     def do_rmdir(self, line):
         parser = argparse.ArgumentParser(prog="rmdir", add_help=False)
-        parser.add_argument('dirs', type=str, nargs='+', default=[''])
+        parser.add_argument('dirs', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
         for d in args.dirs:
