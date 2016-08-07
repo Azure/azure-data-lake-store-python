@@ -187,3 +187,25 @@ def tokenize(*args, **kwargs):
     if kwargs:
         args = args + (kwargs,)
     return md5(str(tuple(args)).encode()).hexdigest()
+
+
+def commonprefix(paths):
+    """ Find common directory for all paths
+
+    Python's ``os.path.commonprefix`` will not return a valid directory path in
+    some cases, so we wrote this convenience method.
+
+    Examples
+    --------
+
+    >>> # os.path.commonprefix returns '/disk1/foo'
+    >>> commonprefix(['/disk1/foobar', '/disk1/foobaz'])
+    '/disk1'
+
+    >>> commonprefix(['a/b/c', 'a/b/d', 'a/c/d'])
+    'a'
+
+    >>> commonprefix(['a/b/c', 'd/e/f', 'g/h/i'])
+    ''
+    """
+    return os.path.dirname(os.path.commonprefix(paths))

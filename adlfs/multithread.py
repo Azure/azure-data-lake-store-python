@@ -22,7 +22,7 @@ import pickle
 import time
 import uuid
 
-from .utils import tokenize, logger, datadir, read_block
+from .utils import commonprefix, datadir, logger, read_block, tokenize
 
 MAXRETRIES = 5
 
@@ -76,12 +76,12 @@ class ADLDownloader:
         else:
             rfiles = self.adl.glob(self.rpath)
         if len(rfiles) > 1:
-            lfiles = [os.path.join(self.lpath, os.path.relpath(f, self.rpath))
+            prefix = commonprefix(rfiles)
+            lfiles = [os.path.join(self.lpath, os.path.relpath(f, prefix))
                       for f in rfiles]
         else:
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
-                lfiles = [os.path.join(self.lpath,
-                                       os.path.basename(self.rpath))]
+                lfiles = [os.path.join(self.lpath, os.path.basename(rfiles[0]))]
             else:
                 lfiles = [self.lpath]
         self.rfiles = rfiles
@@ -266,20 +266,20 @@ class ADLUploader:
         if "*" not in self.lpath:
             out = os.walk(self.lpath)
             lfiles = sum(([os.path.join(dir, f) for f in fnames] for
-                         (dir, dirs, fnames) in out), [])
+                         (dir, _, fnames) in out), [])
             if (not lfiles and os.path.exists(self.lpath) and
                     not os.path.isdir(self.lpath)):
                 lfiles = [self.lpath]
         else:
             lfiles = glob.glob(self.lpath)
         if len(lfiles) > 1:
-            rfiles = [os.path.join(self.rpath, os.path.relpath(f, self.lpath))
+            prefix = commonprefix(lfiles)
+            rfiles = [os.path.join(self.rpath, os.path.relpath(f, prefix))
                       for f in lfiles]
         elif lfiles:
             if (self.adl.exists(self.rpath) and
                         self.adl.info(self.rpath)['type'] == "DIRECTORY"):
-                rfiles = [os.path.join(self.rpath,
-                                       os.path.basename(self.lpath))]
+                rfiles = [os.path.join(self.rpath, os.path.basename(lfiles[0]))]
             else:
                 rfiles = [self.rpath]
         else:
