@@ -129,7 +129,7 @@ def local_files(tempdir):
             f.write(char * 1000000)
     with open(filenames[1], 'wb') as f:
         f.write(b'0123456789')
-    nestpath = os.sep.join([tempdir, 'nested1', 'nested2'])
+    nestpath = os.path.join(tempdir, 'nested1', 'nested2')
     os.makedirs(nestpath)
     for filename in ['a', 'b', 'c']:
         filenames.append(os.path.join(nestpath, filename))
