@@ -79,11 +79,13 @@ class ADLDownloader:
             prefix = commonprefix(rfiles)
             lfiles = [os.path.join(self.lpath, os.path.relpath(f, prefix))
                       for f in rfiles]
-        else:
+        elif rfiles:
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
                 lfiles = [os.path.join(self.lpath, os.path.basename(rfiles[0]))]
             else:
                 lfiles = [self.lpath]
+        else:
+            raise ValueError('No files to download')
         self.rfiles = rfiles
         self.lfiles = lfiles
         self.progress = {}
