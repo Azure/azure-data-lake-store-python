@@ -94,6 +94,31 @@ def test_download_many(azure, tempdir):
     assert nfiles > 1
 
 
+def test_download_glob(azure, tempdir):
+    for directory in ['data/a/', 'data/b/']:
+        azure.mkdir(test_dir + directory)
+        for f in ['x.csv', 'y.csv', 'z.txt']:
+            azure.touch(test_dir + directory + f)
+
+    down = ADLDownloader(azure, test_dir + 'data/a/*.csv', tempdir, run=False)
+    assert len(down.rfiles) == 2
+
+    lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
+    assert lfiles == ['x.csv', 'y.csv']
+
+    down = ADLDownloader(azure, test_dir + 'data/*/*.csv', tempdir, run=False)
+    assert len(down.rfiles) == 4
+
+    lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
+    assert lfiles == ['a/x.csv', 'a/y.csv', 'b/x.csv', 'b/y.csv']
+
+    down = ADLDownloader(azure, test_dir + 'data/*/z.txt', tempdir, run=False)
+    assert len(down.rfiles) == 2
+
+    lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
+    assert lfiles == ['a/z.txt', 'b/z.txt']
+
+
 def test_save_down(azure, tempdir):
     down = ADLDownloader(azure, '', tempdir, 5, 2**24, run=False)
     down.save()
@@ -169,6 +194,33 @@ def test_upload_many(azure, local_files):
     assert azure.cat(test_dir+'/nested1/nested2/a') == b'0123456789'
     assert len(azure.du(test_dir, deep=True)) == 5
     assert azure.du(test_dir, deep=True, total=True) == 10000000 + 40
+
+
+def test_upload_glob(azure, tempdir):
+    for directory in ['data/a/', 'data/b/']:
+        d = os.path.join(tempdir, directory)
+        os.makedirs(d)
+        for data in ['x.csv', 'y.csv', 'z.txt']:
+            with open(d + '/' + data, 'wb') as f:
+                f.write(b'0123456789')
+
+    up = ADLUploader(azure, test_dir, tempdir + '/data/a/*.csv', run=False)
+    assert len(up.lfiles) == 2
+
+    rfiles = [os.path.relpath(f, test_dir) for f in up.rfiles]
+    assert rfiles == ['x.csv', 'y.csv']
+
+    up = ADLUploader(azure, test_dir, tempdir + '/data/*/*.csv', run=False)
+    assert len(up.lfiles) == 4
+
+    rfiles = [os.path.relpath(f, test_dir) for f in up.rfiles]
+    assert rfiles == ['a/x.csv', 'a/y.csv', 'b/x.csv', 'b/y.csv']
+
+    up = ADLUploader(azure, test_dir, tempdir + '/data/*/z.txt', run=False)
+    assert len(up.lfiles) == 2
+
+    rfiles = [os.path.relpath(f, test_dir) for f in up.rfiles]
+    assert rfiles == ['a/z.txt', 'b/z.txt']
 
 
 def test_save_up(azure, local_files):
