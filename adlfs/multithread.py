@@ -38,7 +38,8 @@ class ADLDownloader:
     ----------
     adlfs: ADL filesystem instance
     rpath: str
-        remote path/globstring to use to find remote files
+        remote path/globstring to use to find remote files. Recursive glob
+        patterns using `**` are not supported.
     lpath: str
         local path. If downloading a single file, will write to this specific
         file, unless it is an existing directory, in which case a file is
@@ -231,7 +232,8 @@ class ADLUploader:
         root to write within
     lpath: str
         local path. Can be single file, directory (in which case, upload
-        recursively) or glob pattern.
+        recursively) or glob pattern. Recursive glob patterns using `**` are
+        not supported.
     nthreads: int [None]
         Number of threads to use. If None, uses the number of cores.
     chunksize: int [2**26]
