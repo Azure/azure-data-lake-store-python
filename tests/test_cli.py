@@ -16,6 +16,8 @@ import pytest
 from adlfs.cli import AzureDataLakeFSCommand
 from adlfs.utils import azure
 
+from tests import my_vcr
+
 
 @pytest.yield_fixture
 def azuredir(azure):
@@ -43,12 +45,14 @@ def command(azure):
     yield AzureDataLakeFSCommand()
 
 
+@my_vcr.use_cassette
 def test_cat(capsys, command, azurefile):
     command.onecmd('cat ' + azurefile)
     out, _ = capsys.readouterr()
     assert out == '123456\n'
 
 
+@my_vcr.use_cassette
 def test_chmod(capsys, command, azurefile):
     command.onecmd('info ' + azurefile)
     out, _ = capsys.readouterr()
@@ -63,6 +67,7 @@ def test_chmod(capsys, command, azurefile):
     assert 'permission       = 550' in out
 
 
+@my_vcr.use_cassette
 def test_df(capsys, command):
     command.onecmd('df')
     out, _ = capsys.readouterr()
@@ -70,18 +75,21 @@ def test_df(capsys, command):
     assert 'quota' in out
 
 
+@my_vcr.use_cassette
 def test_du(capsys, command, azurefile):
     command.onecmd('du ' + azurefile)
     out, _ = capsys.readouterr()
     assert len(out.strip().split('\n')) == 1
 
 
+@my_vcr.use_cassette
 def test_exists(capsys, command, azurefile):
     command.onecmd('exists ' + azurefile)
     out, _ = capsys.readouterr()
     assert out == 'True\n'
 
 
+@my_vcr.use_cassette
 def test_get(command, azurefile, tmpdir):
     f = os.path.basename(azurefile)
     localfile = tmpdir.dirname + '/' + f
@@ -95,18 +103,21 @@ def test_get(command, azurefile, tmpdir):
         assert content == '123456'
 
 
+@my_vcr.use_cassette
 def test_head(capsys, command, azurefile):
     command.onecmd('head ' + azurefile)
     out, _ = capsys.readouterr()
     assert out == '123456\n'
 
 
+@my_vcr.use_cassette
 def test_head_bytes(capsys, command, azurefile):
     command.onecmd('head -c 3 ' + azurefile)
     out, _ = capsys.readouterr()
     assert out == '123\n'
 
 
+@my_vcr.use_cassette
 def test_info(capsys, command, azurefile):
     command.onecmd('info ' + azurefile)
     out, _ = capsys.readouterr()
@@ -114,6 +125,7 @@ def test_info(capsys, command, azurefile):
     assert 'modificationTime' in out
 
 
+@my_vcr.use_cassette
 def test_ls(capsys, command, azurefile):
     d = os.path.dirname(azurefile)
     f = os.path.basename(azurefile)
@@ -123,6 +135,7 @@ def test_ls(capsys, command, azurefile):
     assert out == f + '\n'
 
 
+@my_vcr.use_cassette
 def test_ls_detailed(capsys, command, azurefile):
     d = os.path.dirname(azurefile)
     f = os.path.basename(azurefile)
@@ -133,6 +146,7 @@ def test_ls_detailed(capsys, command, azurefile):
     assert f in out
 
 
+@my_vcr.use_cassette
 def test_mkdir_and_rmdir(capsys, command, azuredir):
     d = azuredir + '/foo'
 
@@ -153,6 +167,7 @@ def test_mkdir_and_rmdir(capsys, command, azuredir):
     assert out == 'False\n'
 
 
+@my_vcr.use_cassette
 def test_mv(capsys, command, azurefile):
     f = os.path.dirname(azurefile) + '/foo'
 
@@ -173,6 +188,7 @@ def test_mv(capsys, command, azurefile):
     assert out == 'True\n'
 
 
+@my_vcr.use_cassette
 def test_put(capsys, command, azuredir, tmpdir):
     localfile = tmpdir.dirname + '/foo'
 
@@ -190,18 +206,21 @@ def test_put(capsys, command, azuredir, tmpdir):
     assert not out
 
 
+@my_vcr.use_cassette
 def test_tail(capsys, command, azurefile):
     command.onecmd('tail ' + azurefile)
     out, _ = capsys.readouterr()
     assert out == '123456\n'
 
 
+@my_vcr.use_cassette
 def test_tail_bytes(capsys, command, azurefile):
     command.onecmd('tail -c 3 ' + azurefile)
     out, _ = capsys.readouterr()
     assert out == '456\n'
 
 
+@my_vcr.use_cassette
 def test_touch_and_rm(capsys, command, azuredir):
     f = azuredir + '/foo'
 

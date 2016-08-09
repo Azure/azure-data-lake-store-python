@@ -14,6 +14,8 @@ import time
 from adlfs.lib import (auth, refresh_token, DatalakeRESTInterface,
                        DatalakeRESTException, ManagementRESTInterface)
 
+from tests import my_vcr
+
 
 @pytest.fixture()
 def token():
@@ -37,6 +39,7 @@ def management(token):
     return ManagementRESTInterface(subscription_id, resource_group_name, token['access'])
 
 
+@my_vcr.use_cassette
 def test_errors():
     no_rest = DatalakeRESTInterface("none", "blank")
 
@@ -57,6 +60,7 @@ def test_errors():
         no_rest.call('GETCONTENTSUMMARY')
 
 
+@my_vcr.use_cassette
 def test_auth_refresh(token):
     assert token['access']
     time.sleep(3)
@@ -66,11 +70,13 @@ def test_auth_refresh(token):
     assert token2['time'] > token['time']
 
 
+@my_vcr.use_cassette
 def test_response(rest):
     out = rest.call('GETCONTENTSUMMARY')
     assert out
 
 
+@my_vcr.use_cassette
 def test_account_info(management):
     account = os.environ['azure_store_name']
     code, obj = management.info(account)
@@ -80,6 +86,7 @@ def test_account_info(management):
     assert obj['type'] == "Microsoft.DataLakeStore/accounts"
 
 
+@my_vcr.use_cassette
 def test_account_list_in_sub(management):
     account = os.environ['azure_store_name']
     code, obj = management.list_in_sub()
@@ -91,6 +98,7 @@ def test_account_list_in_sub(management):
     assert accounts[0]['type'] == "Microsoft.DataLakeStore/accounts"
 
 
+@my_vcr.use_cassette
 def test_account_list_in_res(management):
     account = os.environ['azure_store_name']
     code, obj = management.list_in_res()

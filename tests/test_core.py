@@ -22,6 +22,8 @@ from adlfs.core import AzureDLFile, AzureDLFileSystem, ensure_writable
 from adlfs.lib import auth, DatalakeRESTException
 from adlfs.utils import tmpfile, azure
 
+from tests import my_vcr
+
 test_dir = 'azure_test_dir/'
 
 a = test_dir + 'a'
@@ -30,6 +32,7 @@ c = test_dir + 'c'
 d = test_dir + 'd'
 
 
+@my_vcr.use_cassette
 def test_simple(azure):
     data = b'a' * (10 * 2**20)
 
@@ -43,11 +46,13 @@ def test_simple(azure):
         assert out == data
 
 
+@my_vcr.use_cassette
 def test_idempotent_connect(azure):
     azure.connect()
     azure.connect()
 
 
+@my_vcr.use_cassette
 def test_ls_touch(azure):
     assert not azure.ls(test_dir)
     azure.touch(a)
@@ -58,6 +63,7 @@ def test_ls_touch(azure):
     assert set(L) == set([a, b])
 
 
+@my_vcr.use_cassette
 def test_rm(azure):
     assert not azure.exists(a)
     azure.touch(a)
@@ -66,6 +72,7 @@ def test_rm(azure):
     assert not azure.exists(a)
 
 
+@my_vcr.use_cassette
 def test_pickle(azure):
     import pickle
     azure2 = pickle.loads(pickle.dumps(azure))
@@ -73,6 +80,7 @@ def test_pickle(azure):
     assert azure2.token == azure.token
 
 
+@my_vcr.use_cassette
 def test_seek(azure):
     with azure.open(a, 'wb') as f:
         f.write(b'123')
@@ -102,11 +110,13 @@ def test_seek(azure):
             assert f.seek(i) == i
 
 
+@my_vcr.use_cassette
 def test_bad_open(azure):
     with pytest.raises(IOError):
         azure.open('')
 
 
+@my_vcr.use_cassette
 def test_errors(azure):
     with pytest.raises((IOError, OSError)):
         azure.open(test_dir + 'shfoshf', 'rb')
@@ -131,6 +141,8 @@ def test_errors(azure):
     with pytest.raises(IOError):
         azure.rm(test_dir + '/unknown')
 
+
+@my_vcr.use_cassette
 def test_glob_walk(azure):
     azure.mkdir(test_dir + 'c/')
     azure.mkdir(test_dir + 'c/d/')
@@ -175,6 +187,7 @@ def test_glob_walk(azure):
     assert set(azure.walk(test_dir + 'c/')) == set(azure.walk(test_dir + 'c'))
 
 
+@my_vcr.use_cassette
 def test_info(azure):
     with azure.open(a, 'wb') as f:
         f.write(b'a' * 5)
@@ -187,6 +200,7 @@ def test_info(azure):
     assert azure.info(test_dir)['type'] == 'DIRECTORY'
 
 
+@my_vcr.use_cassette
 def test_df(azure):
     with azure.open(a, 'wb') as f:
         f.write(b'a' * 10)
@@ -198,6 +212,7 @@ def test_df(azure):
     assert result['spaceConsumed'] > 0
 
 
+@my_vcr.use_cassette
 def test_move(azure):
     azure.touch(a)
     assert azure.exists(a)
@@ -207,6 +222,7 @@ def test_move(azure):
     assert azure.exists(b)
 
 
+@my_vcr.use_cassette
 @pytest.mark.xfail(reason='copy not implemented on ADL')
 def test_copy(azure):
     azure.touch(a)
@@ -217,6 +233,7 @@ def test_copy(azure):
     assert azure.exists(b)
 
 
+@my_vcr.use_cassette
 def test_exists(azure):
     assert not azure.exists(a)
     azure.touch(a)
@@ -225,6 +242,7 @@ def test_exists(azure):
     assert not azure.exists(a)
 
 
+@my_vcr.use_cassette
 def test_cat(azure):
     with azure.open(a, 'wb') as f:
         f.write(b'0123456789')
@@ -233,6 +251,7 @@ def test_cat(azure):
         azure.cat(b)
 
 
+@my_vcr.use_cassette
 def test_full_read(azure):
     with azure.open(a, 'wb') as f:
         f.write(b'0123456789')
@@ -254,6 +273,7 @@ def test_full_read(azure):
         assert f.tell() == 10
 
 
+@my_vcr.use_cassette
 def test_tail_head(azure):
     with azure.open(a, 'wb') as f:
         f.write(b'0123456789')
@@ -263,6 +283,7 @@ def test_tail_head(azure):
     assert azure.tail(a, 100) == b'0123456789'
 
 
+@my_vcr.use_cassette
 def test_read_delimited_block(azure):
     fn = '/tmp/test/a'
     delimiter = b'\n'
@@ -288,6 +309,7 @@ def test_read_delimited_block(azure):
         assert b''.join(filter(None, out)) == data
 
 
+@my_vcr.use_cassette
 def test_readline(azure):
     with azure.open(a, 'wb') as f:
         f.write(b'\n'.join([b'123', b'456', b'789']))
@@ -299,11 +321,13 @@ def test_readline(azure):
         assert f.readline() == b''
 
 
+@my_vcr.use_cassette
 def test_touch_exists(azure):
     azure.touch(a)
     assert azure.exists(a)
 
 
+@my_vcr.use_cassette
 def test_write_in_read_mode(azure):
     azure.touch(a)
 
@@ -312,6 +336,7 @@ def test_write_in_read_mode(azure):
             f.write(b'123')
 
 
+@my_vcr.use_cassette
 def test_readlines(azure):
     with azure.open(a, 'wb') as f:
         f.write(b'123\n456')
@@ -335,6 +360,7 @@ def test_readlines(azure):
     assert all(l in [b'fe\n', b'fi\n', b'fo', b'fo\n'] for l in lines)
 
 
+@my_vcr.use_cassette
 def test_put(azure):
     data = b'1234567890' * 10000
     with tmpfile() as fn:
@@ -346,6 +372,7 @@ def test_put(azure):
         assert azure.cat(a) == data
 
 
+@my_vcr.use_cassette
 def test_get(azure):
     data = b'1234567890'
     with tmpfile() as fn:
@@ -362,6 +389,7 @@ def test_get(azure):
         azure.get(b, fn)
 
 
+@my_vcr.use_cassette
 def test_du(azure):
     with azure.open(a, 'wb') as f:
         f.write(b'123')
@@ -372,6 +400,7 @@ def test_du(azure):
     assert azure.du(test_dir, total=True) == 3 + 4
 
 
+@my_vcr.use_cassette
 def test_text_bytes(azure):
     with pytest.raises(NotImplementedError):
         azure.open(a, 'wt')
@@ -380,6 +409,7 @@ def test_text_bytes(azure):
         azure.open(a, 'rt')
 
 
+@my_vcr.use_cassette
 def test_append(azure):
     with azure.open(a, mode='ab') as f:
         f.write(b'123')
@@ -395,6 +425,7 @@ def test_append(azure):
         assert f.read() == b'123456789'
 
 
+@my_vcr.use_cassette
 def test_write_empty(azure):
     with azure.open(a, mode='wb') as f:
         f.write(b'')
@@ -403,6 +434,7 @@ def test_write_empty(azure):
         assert f.read() == b''
 
 
+@my_vcr.use_cassette
 def test_write_blocks(azure):
     with azure.open(a, mode='wb', blocksize=5) as f:
         f.write(b'000')
@@ -414,6 +446,7 @@ def test_write_blocks(azure):
     assert azure.du(a)[a] == 9
 
 
+@my_vcr.use_cassette
 def test_gzip(azure):
     import gzip
     data = b'name,amount\nAlice,100\nBob,200'
@@ -428,6 +461,7 @@ def test_gzip(azure):
     assert bytes == data
 
 
+@my_vcr.use_cassette
 def test_fooable(azure):
     azure.touch(a)
 
@@ -442,6 +476,7 @@ def test_fooable(azure):
         assert f.writable()
 
 
+@my_vcr.use_cassette
 def test_closed(azure):
     azure.touch(a)
 
@@ -451,6 +486,7 @@ def test_closed(azure):
     assert f.closed
 
 
+@my_vcr.use_cassette
 def test_TextIOWrapper(azure):
     with azure.open(a, mode='wb') as f:
         f.write(b'1,2\n3,4\n5,6')
@@ -462,6 +498,7 @@ def test_TextIOWrapper(azure):
     assert data == ['1,2\n', '3,4\n', '5,6']
 
 
+@my_vcr.use_cassette
 def test_array(azure):
     from array import array
     data = array('B', [65] * 1000)
@@ -473,8 +510,8 @@ def test_array(azure):
         out = f.read()
         assert out == b'A' * 1000
 
-@pytest.mark.parametrize('delimiter', [b'\n', b'--'])
-def test_delimiters(azure, delimiter):
+
+def write_delimited_data(azure, delimiter):
     data = delimiter.join([b'123', b'456', b'789'])
     data2 = data + delimiter
     with azure.open(a, 'wb', delimiter=delimiter, blocksize=6) as f:
@@ -486,6 +523,18 @@ def test_delimiters(azure, delimiter):
     # close causes forced flush
     assert azure.cat(a) == data
 
+
+@my_vcr.use_cassette
+def test_delimiters_newline(azure):
+    write_delimited_data(azure, b'\n')
+
+
+@my_vcr.use_cassette
+def test_delimiters_dash(azure):
+    write_delimited_data(azure, b'--')
+
+
+@my_vcr.use_cassette
 def test_chmod(azure):
     azure.touch(a)
 
@@ -509,4 +558,3 @@ def test_chmod(azure):
         azure.ls(test_dir+'/deep')
 
     azure.chmod(test_dir+'/deep', '770')
-

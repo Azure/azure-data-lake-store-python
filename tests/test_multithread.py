@@ -16,6 +16,8 @@ import threading
 from adlfs.multithread import ADLDownloader, ADLUploader
 from adlfs.utils import azure
 
+from tests import my_vcr
+
 test_dir = 'azure_test_dir/'
 
 
@@ -39,6 +41,7 @@ def linecount(infile):
 # rather than rely on file already in place.
 
 
+@my_vcr.use_cassette
 def test_download_single_file(azure, tempdir):
 
     fname = os.path.join(tempdir, 'agelt.csv')
@@ -76,6 +79,7 @@ def test_download_single_file(azure, tempdir):
     os.remove(fname)
 
 
+@my_vcr.use_cassette
 def test_download_single_to_dir(azure, tempdir):
     fname = os.path.join(tempdir, 'gdelt20150827.csv')
     size = 81840585
@@ -86,6 +90,7 @@ def test_download_single_to_dir(azure, tempdir):
     os.remove(fname)
 
 
+@my_vcr.use_cassette
 def test_download_many(azure, tempdir):
     down = ADLDownloader(azure, '', tempdir, 5, 2**24)
     nfiles = 0
@@ -94,6 +99,7 @@ def test_download_many(azure, tempdir):
     assert nfiles > 1
 
 
+@my_vcr.use_cassette
 def test_save_down(azure, tempdir):
     down = ADLDownloader(azure, '', tempdir, 5, 2**24, run=False)
     down.save()
@@ -106,6 +112,7 @@ def test_save_down(azure, tempdir):
     assert down.hash not in alldownloads
 
 
+@my_vcr.use_cassette
 def test_interrupt_down(azure, tempdir):
     down = ADLDownloader(azure, '', tempdir, 5, 2**24, run=False)
 
@@ -121,6 +128,7 @@ def test_interrupt_down(azure, tempdir):
     assert down.nchunks == 0
 
 
+@my_vcr.use_cassette
 @pytest.yield_fixture()
 def local_files(tempdir):
     filenames = [os.path.join(tempdir, f) for f in ['bigfile', 'littlefile']]
@@ -138,6 +146,7 @@ def local_files(tempdir):
     yield filenames
 
 
+@my_vcr.use_cassette
 def test_upload_one(azure, local_files):
     bigfile, littlefile, a, b, c = local_files
 
@@ -159,6 +168,7 @@ def test_upload_one(azure, local_files):
     assert azure.info(test_dir+'bigfile')['length'] == size
 
 
+@my_vcr.use_cassette
 def test_upload_many(azure, local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
@@ -171,6 +181,7 @@ def test_upload_many(azure, local_files):
     assert azure.du(test_dir, deep=True, total=True) == 10000000 + 40
 
 
+@my_vcr.use_cassette
 def test_save_up(azure, local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
@@ -186,6 +197,7 @@ def test_save_up(azure, local_files):
     assert up.hash not in alluploads
 
 
+@my_vcr.use_cassette
 def test_interrupt_up(azure, local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
