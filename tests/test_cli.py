@@ -14,7 +14,6 @@ import uuid
 import pytest
 
 from adlfs.cli import AzureDataLakeFSCommand
-from adlfs.utils import azure
 
 from tests import my_vcr
 

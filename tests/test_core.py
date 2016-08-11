@@ -20,7 +20,6 @@ import pytest
 
 from adlfs.core import AzureDLFile, AzureDLFileSystem, ensure_writable
 from adlfs.lib import auth, DatalakeRESTException
-from adlfs.utils import tmpfile, azure
 
 from tests import my_vcr
 

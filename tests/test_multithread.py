@@ -14,7 +14,6 @@ import tempfile
 import threading
 
 from adlfs.multithread import ADLDownloader, ADLUploader
-from adlfs.utils import azure
 
 from tests import my_vcr
 
