@@ -41,48 +41,51 @@ def linecount(infile):
 
 
 def test_download_single_file(tempdir):
-    with open_azure() as azure:
-        fname = os.path.join(tempdir, 'agelt.csv')
-        size = 81840585
-        lines = 217017
+    name = 'gdelt20150827.csv'
+    fname = os.path.join(tempdir, 'agelt.csv')
+    size = 81840585
+    lines = 217017
 
+    with open_azure() as azure:
         # single chunk
-        down = ADLDownloader(azure, 'gdelt20150827.csv', fname, 1, size + 10)
+        down = ADLDownloader(azure, name, fname, 1, size + 10)
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
 
         # multiple chunks, one thread
-        down = ADLDownloader(azure, 'gdelt20150827.csv', fname, 1, 2**24)
+        down = ADLDownloader(azure, name, fname, 1, 2**24)
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
 
         # one chunk, multiple threads
-        down = ADLDownloader(azure, 'gdelt20150827.csv', fname, 4, size + 10)
+        down = ADLDownloader(azure, name, fname, 4, size + 10)
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
 
         # multiple chunks, multiple threads, all simultaneous
-        down = ADLDownloader(azure, 'gdelt20150827.csv', fname, 5, 2**24)
+        down = ADLDownloader(azure, name, fname, 5, 2**24)
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
 
         # multiple chunks, multiple threads, oversubscribed
-        down = ADLDownloader(azure, 'gdelt20150827.csv', fname, 2, 2**24)
+        down = ADLDownloader(azure, name, fname, 2, 2**24)
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
 
 
 def test_download_single_to_dir(tempdir):
+    name = 'gdelt20150827.csv'
+    fname = os.path.join(tempdir, name)
+    size = 81840585
+    lines = 217017
+
     with open_azure() as azure:
-        fname = os.path.join(tempdir, 'gdelt20150827.csv')
-        size = 81840585
-        lines = 217017
-        down = ADLDownloader(azure, 'gdelt20150827.csv', tempdir, 5, 2**24)
+        down = ADLDownloader(azure, name, tempdir, 5, 2**24)
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
