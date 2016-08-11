@@ -8,13 +8,12 @@
 
 import os
 import pytest
-import requests.exceptions
 import time
 
 from adlfs.lib import (auth, refresh_token, DatalakeRESTInterface,
                        DatalakeRESTException, ManagementRESTInterface)
 
-from tests import my_vcr
+from tests.testing import my_vcr
 
 
 @pytest.fixture()
@@ -36,7 +35,8 @@ def rest(token):
 def management(token):
     subscription_id = os.environ['azure_subscription_id']
     resource_group_name = os.environ['azure_resource_group_name']
-    return ManagementRESTInterface(subscription_id, resource_group_name, token['access'])
+    return ManagementRESTInterface(subscription_id, resource_group_name,
+                                   token['access'])
 
 
 @my_vcr.use_cassette

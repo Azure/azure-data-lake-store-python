@@ -11,23 +11,37 @@ import os
 import shutil
 import tempfile
 
-import pytest
+import vcr
 
 
-@pytest.yield_fixture
-def azure():
+def _build_func_path_generator(function):
+    import inspect
+    module = os.path.basename(inspect.getfile(function)).replace('.py', '')
+    return module + '/' + function.__name__
+
+
+recording_path = os.path.join(os.path.dirname(__file__), 'recordings')
+
+my_vcr = vcr.VCR(
+    cassette_library_dir=recording_path,
+    record_mode="once",
+    func_path_generator=_build_func_path_generator,
+    path_transformer=vcr.VCR.ensure_suffix('.yaml'),
+    filter_headers=['authorization'],
+    )
+
+
+@contextmanager
+def open_azure():
     from adlfs import AzureDLFileSystem
     test_dir = 'azure_test_dir/'
 
-    out = AzureDLFileSystem()
-    print("connected to filesystem")
-    out.mkdir(test_dir)
-    print("created {}".format(test_dir))
+    fs = AzureDLFileSystem()
+    fs.mkdir(test_dir)
     try:
-        yield out
+        yield fs
     finally:
-        out.rm(test_dir, recursive=True)
-        print("removed {}".format(test_dir))
+        fs.rm(test_dir, recursive=True)
 
 
 @contextmanager
