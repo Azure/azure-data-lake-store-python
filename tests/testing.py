@@ -7,6 +7,7 @@
 # --------------------------------------------------------------------------
 
 from contextlib import contextmanager
+from hashlib import md5
 import os
 import shutil
 import tempfile
@@ -68,3 +69,11 @@ def tmpfile(extension='', dir=None):
             else:
                 with ignoring(OSError):
                     os.remove(filename)
+
+
+def md5sum(fname, chunksize=4096):
+    hashobj = md5()
+    with open(fname, 'rb') as f:
+        for chunk in iter(lambda: f.read(chunksize), b''):
+            hashobj.update(chunk)
+    return hashobj.hexdigest()

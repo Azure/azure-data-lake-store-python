@@ -15,7 +15,7 @@ import threading
 
 from adlfs.multithread import ADLDownloader, ADLUploader
 
-from tests.testing import my_vcr, open_azure
+from tests.testing import md5sum, my_vcr, open_azure
 
 test_dir = 'azure_test_dir/'
 
@@ -42,6 +42,7 @@ def linecount(infile):
 
 def test_download_single_file(tempdir):
     name = 'gdelt20150827.csv'
+    checksum = 'ce58e380a5783120e31b3934bab1b04b'
     fname = os.path.join(tempdir, 'agelt.csv')
     size = 81840585
     lines = 217017
@@ -49,30 +50,35 @@ def test_download_single_file(tempdir):
     with open_azure() as azure:
         # single chunk
         down = ADLDownloader(azure, name, fname, 1, size + 10)
+        assert md5sum(fname) == checksum
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
 
         # multiple chunks, one thread
         down = ADLDownloader(azure, name, fname, 1, 2**24)
+        assert md5sum(fname) == checksum
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
 
         # one chunk, multiple threads
         down = ADLDownloader(azure, name, fname, 4, size + 10)
+        assert md5sum(fname) == checksum
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
 
         # multiple chunks, multiple threads, all simultaneous
         down = ADLDownloader(azure, name, fname, 5, 2**24)
+        assert md5sum(fname) == checksum
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
 
         # multiple chunks, multiple threads, oversubscribed
         down = ADLDownloader(azure, name, fname, 2, 2**24)
+        assert md5sum(fname) == checksum
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
@@ -80,12 +86,14 @@ def test_download_single_file(tempdir):
 
 def test_download_single_to_dir(tempdir):
     name = 'gdelt20150827.csv'
+    checksum = 'ce58e380a5783120e31b3934bab1b04b'
     fname = os.path.join(tempdir, name)
     size = 81840585
     lines = 217017
 
     with open_azure() as azure:
         down = ADLDownloader(azure, name, tempdir, 5, 2**24)
+        assert md5sum(fname) == checksum
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
