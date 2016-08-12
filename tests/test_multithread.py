@@ -109,7 +109,7 @@ def test_download_many(tempdir):
 
 
 def test_save_down(tempdir):
-    with open_azure() as azure:
+    with open_azure(directory=None) as azure:
         down = ADLDownloader(azure, '', tempdir, 5, 2**24, run=False)
         down.save()
 
@@ -193,7 +193,7 @@ def test_save_up(local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
 
-    with open_azure() as azure:
+    with open_azure(directory=None) as azure:
         up = ADLUploader(azure, '', root, 5, 1000000, run=False)
         up.save()
 

@@ -29,20 +29,27 @@ my_vcr = vcr.VCR(
     func_path_generator=_build_func_path_generator,
     path_transformer=vcr.VCR.ensure_suffix('.yaml'),
     filter_headers=['authorization'],
+    match_on=['uri', 'method'],
     )
 
 
 @contextmanager
-def open_azure():
+def create_tmpdir(fs, directory):
+    fs.mkdir(directory)
+    yield
+    fs.rm(directory, recursive=True)
+
+
+@contextmanager
+def open_azure(directory='azure_test_dir/'):
     from adlfs import AzureDLFileSystem
-    test_dir = 'azure_test_dir/'
 
     fs = AzureDLFileSystem()
-    fs.mkdir(test_dir)
-    try:
+    if directory is None:
         yield fs
-    finally:
-        fs.rm(test_dir, recursive=True)
+    else:
+        with create_tmpdir(fs, directory):
+            yield fs
 
 
 @contextmanager
