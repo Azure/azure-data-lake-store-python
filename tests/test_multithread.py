@@ -99,7 +99,6 @@ def test_download_single_to_dir(tempdir):
         os.remove(fname)
 
 
-@my_vcr.use_cassette
 def test_download_many(tempdir):
     with open_azure() as azure:
         down = ADLDownloader(azure, '', tempdir, 5, 2**24)
@@ -109,7 +108,6 @@ def test_download_many(tempdir):
         assert nfiles > 1
 
 
-@my_vcr.use_cassette
 def test_save_down(tempdir):
     with open_azure() as azure:
         down = ADLDownloader(azure, '', tempdir, 5, 2**24, run=False)
@@ -191,7 +189,6 @@ def test_upload_many(local_files):
         assert azure.du(test_dir, deep=True, total=True) == 10000000 + 40
 
 
-@my_vcr.use_cassette
 def test_save_up(local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
