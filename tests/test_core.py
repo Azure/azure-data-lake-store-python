@@ -25,7 +25,7 @@ d = test_dir + 'd'
 @my_vcr.use_cassette
 def test_simple():
     with open_azure() as azure:
-        data = b'a' * (10 * 2**20)
+        data = b'a' * (2**16)
 
         with azure.open(a, 'wb') as f:
             l = f.write(data)
@@ -364,7 +364,7 @@ def test_readlines():
             with pytest.raises(ValueError):
                 f.read()
 
-        bigdata = [b'fe', b'fi', b'fo'] * 32000
+        bigdata = [b'fe', b'fi', b'fo'] * 1000
         with azure.open(a, 'wb') as f:
             f.write(b'\n'.join(bigdata))
         with azure.open(a, 'rb') as f:
@@ -375,7 +375,7 @@ def test_readlines():
 @my_vcr.use_cassette
 def test_put():
     with open_azure() as azure:
-        data = b'1234567890' * 10000
+        data = b'1234567890' * 100
         with tmpfile() as fn:
             with open(fn, 'wb') as f:
                 f.write(data)
