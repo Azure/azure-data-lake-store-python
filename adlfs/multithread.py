@@ -22,7 +22,7 @@ import pickle
 import time
 import uuid
 
-from .utils import tokenize, logger, datadir, read_block
+from .utils import commonprefix, datadir, logger, read_block, tokenize
 
 MAXRETRIES = 5
 
@@ -38,7 +38,8 @@ class ADLDownloader:
     ----------
     adlfs: ADL filesystem instance
     rpath: str
-        remote path/globstring to use to find remote files
+        remote path/globstring to use to find remote files. Recursive glob
+        patterns using `**` are not supported.
     lpath: str
         local path. If downloading a single file, will write to this specific
         file, unless it is an existing directory, in which case a file is
@@ -76,14 +77,16 @@ class ADLDownloader:
         else:
             rfiles = self.adl.glob(self.rpath)
         if len(rfiles) > 1:
-            lfiles = [os.path.join(self.lpath, os.path.relpath(f, self.rpath))
+            prefix = commonprefix(rfiles)
+            lfiles = [os.path.join(self.lpath, os.path.relpath(f, prefix))
                       for f in rfiles]
-        else:
+        elif rfiles:
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
-                lfiles = [os.path.join(self.lpath,
-                                       os.path.basename(self.rpath))]
+                lfiles = [os.path.join(self.lpath, os.path.basename(rfiles[0]))]
             else:
                 lfiles = [self.lpath]
+        else:
+            raise ValueError('No files to download')
         self.rfiles = rfiles
         self.lfiles = lfiles
         self.progress = {}
@@ -229,7 +232,8 @@ class ADLUploader:
         root to write within
     lpath: str
         local path. Can be single file, directory (in which case, upload
-        recursively) or glob pattern.
+        recursively) or glob pattern. Recursive glob patterns using `**` are
+        not supported.
     nthreads: int [None]
         Number of threads to use. If None, uses the number of cores.
     chunksize: int [2**26]
@@ -266,20 +270,20 @@ class ADLUploader:
         if "*" not in self.lpath:
             out = os.walk(self.lpath)
             lfiles = sum(([os.path.join(dir, f) for f in fnames] for
-                         (dir, dirs, fnames) in out), [])
+                         (dir, _, fnames) in out), [])
             if (not lfiles and os.path.exists(self.lpath) and
                     not os.path.isdir(self.lpath)):
                 lfiles = [self.lpath]
         else:
             lfiles = glob.glob(self.lpath)
         if len(lfiles) > 1:
-            rfiles = [os.path.join(self.rpath, os.path.relpath(f, self.lpath))
+            prefix = commonprefix(lfiles)
+            rfiles = [os.path.join(self.rpath, os.path.relpath(f, prefix))
                       for f in lfiles]
         elif lfiles:
             if (self.adl.exists(self.rpath) and
                         self.adl.info(self.rpath)['type'] == "DIRECTORY"):
-                rfiles = [os.path.join(self.rpath,
-                                       os.path.basename(self.lpath))]
+                rfiles = [os.path.join(self.rpath, os.path.basename(lfiles[0]))]
             else:
                 rfiles = [self.rpath]
         else:
