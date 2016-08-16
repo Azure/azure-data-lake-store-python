@@ -36,15 +36,9 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
     undoc_header = None
     _hidden_methods = ('do_EOF',)
 
-    def __init__(self):
+    def __init__(self, fs):
         super(AzureDataLakeFSCommand, self).__init__()
-
-        self._tenant_id = os.environ['azure_tenant_id']
-        self._username = os.environ['azure_username']
-        self._password = os.environ['azure_password']
-        self._store_name = os.environ['azure_store_name']
-        self._token = auth(self._tenant_id, self._username, self._password)
-        self._fs = AzureDLFileSystem(self._store_name, self._token)
+        self._fs = fs
 
     def get_names(self):
         return [n for n in dir(self.__class__) if n not in self._hidden_methods]
@@ -368,7 +362,8 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
 
 
 if __name__ == '__main__':
+    fs = AzureDLFileSystem()
     if len(sys.argv) > 1:
-        AzureDataLakeFSCommand().onecmd(' '.join(sys.argv[1:]))
+        AzureDataLakeFSCommand(fs).onecmd(' '.join(sys.argv[1:]))
     else:
-        AzureDataLakeFSCommand().cmdloop()
+        AzureDataLakeFSCommand(fs).cmdloop()
