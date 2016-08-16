@@ -40,6 +40,7 @@ def linecount(infile):
 # rather than rely on file already in place.
 
 
+@my_vcr.use_cassette
 def test_download_single_file(tempdir):
     name = 'gdelt20150827.csv'
     checksum = 'ce58e380a5783120e31b3934bab1b04b'
@@ -62,28 +63,8 @@ def test_download_single_file(tempdir):
         assert linecount(fname) == lines
         os.remove(fname)
 
-        # one chunk, multiple threads
-        down = ADLDownloader(azure, name, fname, 4, size + 10)
-        assert md5sum(fname) == checksum
-        assert os.stat(fname).st_size == size
-        assert linecount(fname) == lines
-        os.remove(fname)
 
-        # multiple chunks, multiple threads, all simultaneous
-        down = ADLDownloader(azure, name, fname, 5, 2**24)
-        assert md5sum(fname) == checksum
-        assert os.stat(fname).st_size == size
-        assert linecount(fname) == lines
-        os.remove(fname)
-
-        # multiple chunks, multiple threads, oversubscribed
-        down = ADLDownloader(azure, name, fname, 2, 2**24)
-        assert md5sum(fname) == checksum
-        assert os.stat(fname).st_size == size
-        assert linecount(fname) == lines
-        os.remove(fname)
-
-
+@my_vcr.use_cassette
 def test_download_single_to_dir(tempdir):
     name = 'gdelt20150827.csv'
     checksum = 'ce58e380a5783120e31b3934bab1b04b'
@@ -92,25 +73,27 @@ def test_download_single_to_dir(tempdir):
     lines = 217017
 
     with open_azure() as azure:
-        down = ADLDownloader(azure, name, tempdir, 5, 2**24)
+        down = ADLDownloader(azure, name, tempdir, 1, 2**24)
         assert md5sum(fname) == checksum
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
         os.remove(fname)
 
 
+@my_vcr.use_cassette
 def test_download_many(tempdir):
     with open_azure() as azure:
-        down = ADLDownloader(azure, '', tempdir, 5, 2**24)
+        down = ADLDownloader(azure, '', tempdir, 1, 2**24)
         nfiles = 0
         for dirpath, dirnames, filenames in os.walk(tempdir):
             nfiles += len(filenames)
         assert nfiles > 1
 
 
+@my_vcr.use_cassette
 def test_save_down(tempdir):
     with open_azure(directory=None) as azure:
-        down = ADLDownloader(azure, '', tempdir, 5, 2**24, run=False)
+        down = ADLDownloader(azure, '', tempdir, 1, 2**24, run=False)
         down.save()
 
         alldownloads = ADLDownloader.load()
@@ -121,9 +104,10 @@ def test_save_down(tempdir):
         assert down.hash not in alldownloads
 
 
+@my_vcr.use_cassette
 def test_interrupt_down(tempdir):
     with open_azure() as azure:
-        down = ADLDownloader(azure, '', tempdir, 5, 2**24, run=False)
+        down = ADLDownloader(azure, '', tempdir, 1, 2**24, run=False)
 
         def interrupt():
             os.kill(os.getpid(), signal.SIGINT)
@@ -154,12 +138,13 @@ def local_files(tempdir):
     yield filenames
 
 
+@my_vcr.use_cassette
 def test_upload_one(local_files):
     bigfile, littlefile, a, b, c = local_files
 
     with open_azure() as azure:
         # single chunk
-        up = ADLUploader(azure, test_dir+'littlefile', littlefile)
+        up = ADLUploader(azure, test_dir+'littlefile', littlefile, nthreads=1)
         assert azure.info(test_dir+'littlefile')['length'] == 10
 
         # multiple chunks, one thread
@@ -170,31 +155,28 @@ def test_upload_one(local_files):
 
         azure.rm(test_dir+'bigfile')
 
-        # multiple chunks, multiple threads
-        up = ADLUploader(azure, test_dir+'bigfile', bigfile, nthreads=5,
-                         chunksize=size//5)
-        assert azure.info(test_dir+'bigfile')['length'] == size
 
-
+@my_vcr.use_cassette
 def test_upload_many(local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
 
     with open_azure() as azure:
         # single thread
-        up = ADLUploader(azure, test_dir, root)
+        up = ADLUploader(azure, test_dir, root, nthreads=1)
         assert azure.info(test_dir+'littlefile')['length'] == 10
         assert azure.cat(test_dir+'/nested1/nested2/a') == b'0123456789'
         assert len(azure.du(test_dir, deep=True)) == 5
         assert azure.du(test_dir, deep=True, total=True) == 10000000 + 40
 
 
+@my_vcr.use_cassette
 def test_save_up(local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
 
     with open_azure(directory=None) as azure:
-        up = ADLUploader(azure, '', root, 5, 1000000, run=False)
+        up = ADLUploader(azure, '', root, 1, 1000000, run=False)
         up.save()
 
         alluploads = ADLUploader.load()
@@ -205,12 +187,13 @@ def test_save_up(local_files):
         assert up.hash not in alluploads
 
 
+@my_vcr.use_cassette
 def test_interrupt_up(local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
 
     with open_azure() as azure:
-        up = ADLUploader(azure, test_dir, root, 5, 1000000, run=False)
+        up = ADLUploader(azure, test_dir, root, 1, 1000000, run=False)
 
         def interrupt():
             os.kill(os.getpid(), signal.SIGINT)
