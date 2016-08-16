@@ -81,7 +81,7 @@ class AzureDLFileSystem(object):
 
         if token is None:
             # default connection
-            tenant_id = os.environ['azure_tenant_id']
+            tenant_id = os.environ.get('azure_tenant_id', "common")
             username = os.environ['azure_username']
             password = os.environ['azure_password']
             self.store = self.store or os.environ['azure_store_name']
@@ -160,7 +160,7 @@ class AzureDLFileSystem(object):
                 fi.extend(self._ls(apath['name']))
         return [f for f in fi if f['type'] == 'FILE']
 
-    def walk(self, path):
+    def walk(self, path=''):
         """ Get all files below given path
         """
         return [f['name'] for f in self._walk(path)]
@@ -444,7 +444,7 @@ class AzureDLFile(object):
 
     See Also
     --------
-    `AzureDLFileSystem.open`: used to create ``AzureDLFile`` objects
+    AzureDLFileSystem.open: used to create AzureDLFile objects
     """
 
     def __init__(self, azure, path, mode='rb', blocksize=2**25,
@@ -473,7 +473,6 @@ class AzureDLFile(object):
         if mode == 'rb':
             self.size = self.info()['length']
         elif delimiter:
-            # force writing to 4MB blocks ending in delimiter
             self.blocksize = min(2**22, blocksize)
 
     def info(self):

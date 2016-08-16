@@ -91,6 +91,33 @@ def test_download_many(tempdir):
 
 
 @my_vcr.use_cassette
+def test_download_glob(tempdir):
+    with open_azure() as azure:
+        for directory in ['data/a/', 'data/b/']:
+            azure.mkdir(test_dir + directory)
+            for f in ['x.csv', 'y.csv', 'z.txt']:
+                azure.touch(test_dir + directory + f)
+
+        down = ADLDownloader(azure, test_dir + 'data/a/*.csv', tempdir, run=False)
+        assert len(down.rfiles) == 2
+
+        lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
+        assert lfiles == ['x.csv', 'y.csv']
+
+        down = ADLDownloader(azure, test_dir + 'data/*/*.csv', tempdir, run=False)
+        assert len(down.rfiles) == 4
+
+        lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
+        assert lfiles == ['a/x.csv', 'a/y.csv', 'b/x.csv', 'b/y.csv']
+
+        down = ADLDownloader(azure, test_dir + 'data/*/z.txt', tempdir, run=False)
+        assert len(down.rfiles) == 2
+
+        lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
+        assert lfiles == ['a/z.txt', 'b/z.txt']
+
+
+@my_vcr.use_cassette
 def test_save_down(tempdir):
     with open_azure(directory=None) as azure:
         down = ADLDownloader(azure, '', tempdir, 1, 2**24, run=False)
@@ -129,7 +156,7 @@ def local_files(tempdir):
             f.write(char * 1000000)
     with open(filenames[1], 'wb') as f:
         f.write(b'0123456789')
-    nestpath = os.sep.join([tempdir, 'nested1', 'nested2'])
+    nestpath = os.path.join(tempdir, 'nested1', 'nested2')
     os.makedirs(nestpath)
     for filename in ['a', 'b', 'c']:
         filenames.append(os.path.join(nestpath, filename))
@@ -171,6 +198,34 @@ def test_upload_many(local_files):
 
 
 @my_vcr.use_cassette
+def test_upload_glob(tempdir):
+    with open_azure(directory=None) as azure:
+        for directory in ['data/a/', 'data/b/']:
+            d = os.path.join(tempdir, directory)
+            os.makedirs(d)
+            for data in ['x.csv', 'y.csv', 'z.txt']:
+                with open(d + '/' + data, 'wb') as f:
+                    f.write(b'0123456789')
+
+        up = ADLUploader(azure, test_dir, tempdir + '/data/a/*.csv', run=False)
+        assert len(up.lfiles) == 2
+
+        rfiles = [os.path.relpath(f, test_dir) for f in up.rfiles]
+        assert rfiles == ['x.csv', 'y.csv']
+
+        up = ADLUploader(azure, test_dir, tempdir + '/data/*/*.csv', run=False)
+        assert len(up.lfiles) == 4
+
+        rfiles = [os.path.relpath(f, test_dir) for f in up.rfiles]
+        assert rfiles == ['a/x.csv', 'a/y.csv', 'b/x.csv', 'b/y.csv']
+
+        up = ADLUploader(azure, test_dir, tempdir + '/data/*/z.txt', run=False)
+        assert len(up.lfiles) == 2
+
+        rfiles = [os.path.relpath(f, test_dir) for f in up.rfiles]
+        assert rfiles == ['a/z.txt', 'b/z.txt']
+
+
 def test_save_up(local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
