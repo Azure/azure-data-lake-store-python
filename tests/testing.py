@@ -42,12 +42,12 @@ def open_azure(directory='azure_test_dir/'):
     if directory is None:
         yield fs
     else:
-        directory += uuid.uuid4().hex[:8] + '/'
-        fs.mkdir(directory)
+        subdirectory = os.path.join(directory, uuid.uuid4().hex[:8])
+        fs.mkdir(subdirectory)
         try:
             yield fs
         finally:
-            fs.rm(directory, recursive=True)
+            fs.rm(subdirectory, recursive=True)
 
 
 @contextmanager
