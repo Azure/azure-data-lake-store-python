@@ -11,6 +11,7 @@ from hashlib import md5
 import os
 import shutil
 import tempfile
+import uuid
 
 import vcr
 
@@ -41,6 +42,7 @@ def open_azure(directory='azure_test_dir/'):
     if directory is None:
         yield fs
     else:
+        directory += uuid.uuid4().hex[:8] + '/'
         fs.mkdir(directory)
         try:
             yield fs
