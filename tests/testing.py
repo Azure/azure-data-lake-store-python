@@ -34,13 +34,6 @@ my_vcr = vcr.VCR(
 
 
 @contextmanager
-def create_tmpdir(fs, directory):
-    fs.mkdir(directory)
-    yield
-    fs.rm(directory, recursive=True)
-
-
-@contextmanager
 def open_azure(directory='azure_test_dir/'):
     from adlfs import AzureDLFileSystem
 
@@ -48,8 +41,9 @@ def open_azure(directory='azure_test_dir/'):
     if directory is None:
         yield fs
     else:
-        with create_tmpdir(fs, directory):
-            yield fs
+        fs.mkdir(directory)
+        yield fs
+        fs.rm(directory, recursive=True)
 
 
 @contextmanager
