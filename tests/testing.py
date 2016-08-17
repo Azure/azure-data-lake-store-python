@@ -42,8 +42,10 @@ def open_azure(directory='azure_test_dir/'):
         yield fs
     else:
         fs.mkdir(directory)
-        yield fs
-        fs.rm(directory, recursive=True)
+        try:
+            yield fs
+        finally:
+            fs.rm(directory, recursive=True)
 
 
 @contextmanager
