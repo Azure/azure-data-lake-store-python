@@ -30,8 +30,13 @@ def setup_test_dir(fs):
 def setup_test_file(fs):
     tmp = 'azure_test_dir/foo/bar'
     with fs.open(tmp, 'wb') as f:
-        f.write(b'123456')
+        f.write('123456'.encode())
     return tmp
+
+
+def read_stdout(captured):
+    out, _ = captured.readouterr()
+    return out
 
 
 @my_vcr.use_cassette
@@ -40,8 +45,7 @@ def test_cat(capsys):
         azurefile = setup_test_file(azure)
 
         command.onecmd('cat ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert out == '123456\n'
+        assert read_stdout(capsys) == '123456'
 
 
 @my_vcr.use_cassette
@@ -50,23 +54,20 @@ def test_chmod(capsys):
         azurefile = setup_test_file(azure)
 
         command.onecmd('info ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert 'permission       = 770' in out
+        assert 'permission       = 770' in read_stdout(capsys)
 
         command.onecmd('chmod 0550 ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert not out
+        assert not read_stdout(capsys)
 
         command.onecmd('info ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert 'permission       = 550' in out
+        assert 'permission       = 550' in read_stdout(capsys)
 
 
 @my_vcr.use_cassette
 def test_df(capsys):
     with open_azure() as azure, open_client(azure) as command:
         command.onecmd('df')
-        out, _ = capsys.readouterr()
+        out = read_stdout(capsys)
         assert len(out.strip().split('\n')) == 6
         assert 'quota' in out
 
@@ -77,7 +78,7 @@ def test_du(capsys):
         azurefile = setup_test_file(azure)
 
         command.onecmd('du ' + azurefile)
-        out, _ = capsys.readouterr()
+        out = read_stdout(capsys)
         assert len(out.strip().split('\n')) == 1
 
 
@@ -87,8 +88,7 @@ def test_exists(capsys):
         azurefile = setup_test_file(azure)
 
         command.onecmd('exists ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert out == 'True\n'
+        assert read_stdout(capsys) == 'True\n'
 
 
 @my_vcr.use_cassette
@@ -114,8 +114,7 @@ def test_head(capsys):
         azurefile = setup_test_file(azure)
 
         command.onecmd('head ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert out == '123456\n'
+        assert read_stdout(capsys) == '123456'
 
 
 @my_vcr.use_cassette
@@ -124,8 +123,7 @@ def test_head_bytes(capsys):
         azurefile = setup_test_file(azure)
 
         command.onecmd('head -c 3 ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert out == '123\n'
+        assert read_stdout(capsys) == '123'
 
 
 @my_vcr.use_cassette
@@ -134,7 +132,7 @@ def test_info(capsys):
         azurefile = setup_test_file(azure)
 
         command.onecmd('info ' + azurefile)
-        out, _ = capsys.readouterr()
+        out = read_stdout(capsys)
         assert len(out.strip().split('\n')) == 11
         assert 'modificationTime' in out
 
@@ -148,8 +146,7 @@ def test_ls(capsys):
         f = os.path.basename(azurefile)
 
         command.onecmd('ls ' + d)
-        out, _ = capsys.readouterr()
-        assert out == f + '\n'
+        assert read_stdout(capsys) == f + '\n'
 
 
 @my_vcr.use_cassette
@@ -161,7 +158,7 @@ def test_ls_detailed(capsys):
         f = os.path.basename(azurefile)
 
         command.onecmd('ls -l ' + d)
-        out, _ = capsys.readouterr()
+        out = read_stdout(capsys)
         assert len(out.strip().split('\n')) == 1
         assert f in out
 
@@ -174,20 +171,16 @@ def test_mkdir_and_rmdir(capsys):
         d = azuredir + '/foo'
 
         command.onecmd('mkdir ' + d)
-        out, _ = capsys.readouterr()
-        assert not out
+        assert not read_stdout(capsys)
 
         command.onecmd('info ' + d)
-        out, _ = capsys.readouterr()
-        assert 'DIRECTORY' in out
+        assert 'DIRECTORY' in read_stdout(capsys)
 
         command.onecmd('rmdir ' + d)
-        out, _ = capsys.readouterr()
-        assert not out
+        assert not read_stdout(capsys)
 
         command.onecmd('exists ' + d)
-        out, _ = capsys.readouterr()
-        assert out == 'False\n'
+        assert read_stdout(capsys) == 'False\n'
 
 
 @my_vcr.use_cassette
@@ -198,20 +191,16 @@ def test_mv(capsys):
         f = os.path.dirname(azurefile) + '/foo'
 
         command.onecmd(' '.join(['mv', azurefile, f]))
-        out, _ = capsys.readouterr()
-        assert not out
+        assert not read_stdout(capsys)
 
         command.onecmd('exists ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert out == 'False\n'
+        assert read_stdout(capsys) == 'False\n'
 
         command.onecmd(' '.join(['mv', f, azurefile]))
-        out, _ = capsys.readouterr()
-        assert not out
+        assert not read_stdout(capsys)
 
         command.onecmd('exists ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert out == 'True\n'
+        assert read_stdout(capsys) == 'True\n'
 
 
 @my_vcr.use_cassette
@@ -226,12 +215,10 @@ def test_put(capsys, tmpdir):
         command.onecmd(' '.join(['put', localfile, azuredir]))
 
         command.onecmd('head ' + azuredir + '/foo')
-        out, _ = capsys.readouterr()
-        assert out == '123456\n'
+        assert read_stdout(capsys) == '123456'
 
         command.onecmd('rm ' + azuredir + '/foo')
-        out, _ = capsys.readouterr()
-        assert not out
+        assert not read_stdout(capsys)
 
 
 @my_vcr.use_cassette
@@ -240,8 +227,7 @@ def test_tail(capsys):
         azurefile = setup_test_file(azure)
 
         command.onecmd('tail ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert out == '123456\n'
+        assert read_stdout(capsys) == '123456'
 
 
 @my_vcr.use_cassette
@@ -250,8 +236,7 @@ def test_tail_bytes(capsys):
         azurefile = setup_test_file(azure)
 
         command.onecmd('tail -c 3 ' + azurefile)
-        out, _ = capsys.readouterr()
-        assert out == '456\n'
+        assert read_stdout(capsys) == '456'
 
 
 @my_vcr.use_cassette
@@ -261,17 +246,13 @@ def test_touch_and_rm(capsys):
         f = azuredir + '/foo'
 
         command.onecmd('touch ' + f)
-        out, _ = capsys.readouterr()
-        assert not out
+        assert not read_stdout(capsys)
 
         command.onecmd('exists ' + f)
-        out, _ = capsys.readouterr()
-        assert out == 'True\n'
+        assert read_stdout(capsys) == 'True\n'
 
         command.onecmd('rm ' + f)
-        out, _ = capsys.readouterr()
-        assert not out
+        assert not read_stdout(capsys)
 
         command.onecmd('exists ' + f)
-        out, _ = capsys.readouterr()
-        assert out == 'False\n'
+        assert read_stdout(capsys) == 'False\n'
