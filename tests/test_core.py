@@ -12,9 +12,9 @@ import io
 
 import pytest
 
-from tests.testing import my_vcr, open_azure, tmpfile
+from tests.testing import default_home, my_vcr, open_azure, tmpfile
 
-test_dir = 'azure_test_dir/'
+test_dir = default_home()
 
 a = test_dir + 'a'
 b = test_dir + 'b'

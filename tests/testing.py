@@ -34,20 +34,25 @@ my_vcr = vcr.VCR(
     )
 
 
+def default_home():
+    if not hasattr(default_home, "path"):
+        default_home.path = os.path.join('azure_test_dir', uuid.uuid4().hex[:8], '')
+    return default_home.path
+
+
 @contextmanager
-def open_azure(directory='azure_test_dir/'):
+def open_azure(directory=default_home()):
     from adlfs import AzureDLFileSystem
 
     fs = AzureDLFileSystem()
     if directory is None:
         yield fs
     else:
-        subdirectory = os.path.join(directory, uuid.uuid4().hex[:8])
-        fs.mkdir(subdirectory)
+        fs.mkdir(directory)
         try:
             yield fs
         finally:
-            fs.rm(subdirectory, recursive=True)
+            fs.rm(directory, recursive=True)
 
 
 @contextmanager

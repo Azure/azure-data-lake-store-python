@@ -13,7 +13,7 @@ import os
 
 from adlfs.cli import AzureDataLakeFSCommand
 
-from tests.testing import my_vcr, open_azure
+from tests.testing import default_home, my_vcr, open_azure
 
 
 @contextmanager
@@ -22,13 +22,13 @@ def open_client(fs):
 
 
 def setup_test_dir(fs):
-    d = 'azure_test_dir/foo'
+    d = os.path.join(default_home(), 'foo')
     fs.mkdir(d)
     return d
 
 
 def setup_test_file(fs):
-    tmp = 'azure_test_dir/foo/bar'
+    tmp = os.path.join(default_home(), 'foo', 'bar')
     with fs.open(tmp, 'wb') as f:
         f.write('123456'.encode())
     return tmp

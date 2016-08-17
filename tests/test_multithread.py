@@ -15,9 +15,9 @@ import threading
 
 from adlfs.multithread import ADLDownloader, ADLUploader
 
-from tests.testing import md5sum, my_vcr, open_azure
+from tests.testing import default_home, md5sum, my_vcr, open_azure
 
-test_dir = 'azure_test_dir/'
+test_dir = default_home()
 
 
 @pytest.yield_fixture()
