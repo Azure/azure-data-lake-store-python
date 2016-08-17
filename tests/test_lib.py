@@ -92,7 +92,7 @@ def test_account_list_in_sub(management):
     code, obj = management.list_in_sub()
     assert code == 200
     assert obj['value']
-    assert len(obj['value']) == 1
+    assert len(obj['value']) > 0
     accounts = obj['value']
     assert accounts[0]['name'] == account
     assert accounts[0]['type'] == "Microsoft.DataLakeStore/accounts"
@@ -104,7 +104,7 @@ def test_account_list_in_res(management):
     code, obj = management.list_in_res()
     assert code == 200
     assert obj['value']
-    assert len(obj['value']) == 1
+    assert len(obj['value']) > 0
     accounts = obj['value']
     assert accounts[0]['name'] == account
     assert accounts[0]['type'] == "Microsoft.DataLakeStore/accounts"
