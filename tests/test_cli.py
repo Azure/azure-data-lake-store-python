@@ -103,9 +103,9 @@ def test_get(tmpdir):
 
         assert os.path.exists(localfile)
 
-        with open(localfile, 'r') as lf:
+        with open(localfile, 'rb') as lf:
             content = lf.read()
-            assert content == '123456'
+            assert content == b'123456'
 
 
 @my_vcr.use_cassette
