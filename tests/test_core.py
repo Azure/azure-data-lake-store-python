@@ -6,8 +6,6 @@
 # license information.
 # --------------------------------------------------------------------------
 
-from __future__ import unicode_literals
-
 import io
 
 import pytest
