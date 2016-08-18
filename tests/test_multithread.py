@@ -140,7 +140,7 @@ def test_save_down(tempdir):
         assert down.hash not in alldownloads
 
 
-@pytest.mark.skip(reason="first assert fails during VCR playback")
+@pytest.mark.skip(True, reason="first assert fails during VCR playback")
 def test_interrupt_down(tempdir):
     with open_azure() as azure:
         setup_test_tree(azure)
@@ -253,7 +253,7 @@ def test_save_up(local_files):
         assert up.hash not in alluploads
 
 
-@pytest.mark.skip(reason="first assert fails during VCR playback")
+@pytest.mark.skip(True, reason="first assert fails during VCR playback")
 def test_interrupt_up(local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
