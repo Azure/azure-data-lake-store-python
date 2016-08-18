@@ -40,6 +40,14 @@ def linecount(infile):
 # rather than rely on file already in place.
 
 
+def setup_test_tree(fs):
+    for directory in ['data/a/', 'data/b/']:
+        fs.mkdir(test_dir + directory)
+        for filename in ['x.csv', 'y.csv', 'z.txt']:
+            with fs.open(test_dir + directory + filename, 'wb') as f:
+                f.write(b'123456')
+
+
 @my_vcr.use_cassette
 def test_download_single_file(tempdir):
     name = 'gdelt20150827.csv'
@@ -83,7 +91,9 @@ def test_download_single_to_dir(tempdir):
 @my_vcr.use_cassette
 def test_download_many(tempdir):
     with open_azure() as azure:
-        down = ADLDownloader(azure, '', tempdir, 1, 2**24)
+        setup_test_tree(azure)
+
+        down = ADLDownloader(azure, test_dir, tempdir, 1, 2**24)
         nfiles = 0
         for dirpath, dirnames, filenames in os.walk(tempdir):
             nfiles += len(filenames)
@@ -93,10 +103,7 @@ def test_download_many(tempdir):
 @my_vcr.use_cassette
 def test_download_glob(tempdir):
     with open_azure() as azure:
-        for directory in ['data/a/', 'data/b/']:
-            azure.mkdir(test_dir + directory)
-            for f in ['x.csv', 'y.csv', 'z.txt']:
-                azure.touch(test_dir + directory + f)
+        setup_test_tree(azure)
 
         down = ADLDownloader(azure, test_dir + 'data/a/*.csv', tempdir, run=False)
         assert len(down.rfiles) == 2
@@ -119,8 +126,10 @@ def test_download_glob(tempdir):
 
 @my_vcr.use_cassette
 def test_save_down(tempdir):
-    with open_azure(directory=None) as azure:
-        down = ADLDownloader(azure, '', tempdir, 1, 2**24, run=False)
+    with open_azure() as azure:
+        setup_test_tree(azure)
+
+        down = ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
         down.save()
 
         alldownloads = ADLDownloader.load()
@@ -135,7 +144,9 @@ def test_save_down(tempdir):
 @my_vcr.use_cassette
 def test_interrupt_down(tempdir):
     with open_azure() as azure:
-        down = ADLDownloader(azure, '', tempdir, 1, 2**24, run=False)
+        setup_test_tree(azure)
+
+        down = ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
 
         def interrupt():
             os.kill(os.getpid(), signal.SIGINT)
