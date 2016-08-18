@@ -141,7 +141,6 @@ def test_save_down(tempdir):
 
 
 @pytest.mark.skip(reason="first assert fails during VCR playback")
-@my_vcr.use_cassette
 def test_interrupt_down(tempdir):
     with open_azure() as azure:
         setup_test_tree(azure)
@@ -255,7 +254,6 @@ def test_save_up(local_files):
 
 
 @pytest.mark.skip(reason="first assert fails during VCR playback")
-@my_vcr.use_cassette
 def test_interrupt_up(local_files):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
