@@ -13,7 +13,7 @@ import os
 
 from adlfs.cli import AzureDataLakeFSCommand
 
-from tests.testing import default_home, my_vcr, open_azure
+from tests.testing import azure, default_home, my_vcr
 
 
 @contextmanager
@@ -40,8 +40,8 @@ def read_stdout(captured):
 
 
 @my_vcr.use_cassette
-def test_cat(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_cat(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         command.onecmd('cat ' + azurefile)
@@ -49,8 +49,8 @@ def test_cat(capsys):
 
 
 @my_vcr.use_cassette
-def test_chmod(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_chmod(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         command.onecmd('info ' + azurefile)
@@ -64,8 +64,8 @@ def test_chmod(capsys):
 
 
 @my_vcr.use_cassette
-def test_df(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_df(capsys, azure):
+    with open_client(azure) as command:
         command.onecmd('df')
         out = read_stdout(capsys)
         assert len(out.strip().split('\n')) == 6
@@ -73,8 +73,8 @@ def test_df(capsys):
 
 
 @my_vcr.use_cassette
-def test_du(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_du(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         command.onecmd('du ' + azurefile)
@@ -83,8 +83,8 @@ def test_du(capsys):
 
 
 @my_vcr.use_cassette
-def test_exists(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_exists(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         command.onecmd('exists ' + azurefile)
@@ -92,8 +92,8 @@ def test_exists(capsys):
 
 
 @my_vcr.use_cassette
-def test_get(tmpdir):
-    with open_azure() as azure, open_client(azure) as command:
+def test_get(tmpdir, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         f = os.path.basename(azurefile)
@@ -109,8 +109,8 @@ def test_get(tmpdir):
 
 
 @my_vcr.use_cassette
-def test_head(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_head(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         command.onecmd('head ' + azurefile)
@@ -118,8 +118,8 @@ def test_head(capsys):
 
 
 @my_vcr.use_cassette
-def test_head_bytes(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_head_bytes(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         command.onecmd('head -c 3 ' + azurefile)
@@ -127,8 +127,8 @@ def test_head_bytes(capsys):
 
 
 @my_vcr.use_cassette
-def test_info(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_info(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         command.onecmd('info ' + azurefile)
@@ -138,8 +138,8 @@ def test_info(capsys):
 
 
 @my_vcr.use_cassette
-def test_ls(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_ls(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         d = os.path.dirname(azurefile)
@@ -150,8 +150,8 @@ def test_ls(capsys):
 
 
 @my_vcr.use_cassette
-def test_ls_detailed(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_ls_detailed(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         d = os.path.dirname(azurefile)
@@ -164,8 +164,8 @@ def test_ls_detailed(capsys):
 
 
 @my_vcr.use_cassette
-def test_mkdir_and_rmdir(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_mkdir_and_rmdir(capsys, azure):
+    with open_client(azure) as command:
         azuredir = setup_test_dir(azure)
 
         d = azuredir + '/foo'
@@ -184,8 +184,8 @@ def test_mkdir_and_rmdir(capsys):
 
 
 @my_vcr.use_cassette
-def test_mv(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_mv(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         f = os.path.dirname(azurefile) + '/foo'
@@ -204,8 +204,8 @@ def test_mv(capsys):
 
 
 @my_vcr.use_cassette
-def test_put(capsys, tmpdir):
-    with open_azure() as azure, open_client(azure) as command:
+def test_put(capsys, tmpdir, azure):
+    with open_client(azure) as command:
         azuredir = setup_test_dir(azure)
         localfile = tmpdir.dirname + '/foo'
 
@@ -222,8 +222,8 @@ def test_put(capsys, tmpdir):
 
 
 @my_vcr.use_cassette
-def test_tail(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_tail(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         command.onecmd('tail ' + azurefile)
@@ -231,8 +231,8 @@ def test_tail(capsys):
 
 
 @my_vcr.use_cassette
-def test_tail_bytes(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_tail_bytes(capsys, azure):
+    with open_client(azure) as command:
         azurefile = setup_test_file(azure)
 
         command.onecmd('tail -c 3 ' + azurefile)
@@ -240,8 +240,8 @@ def test_tail_bytes(capsys):
 
 
 @my_vcr.use_cassette
-def test_touch_and_rm(capsys):
-    with open_azure() as azure, open_client(azure) as command:
+def test_touch_and_rm(capsys, azure):
+    with open_client(azure) as command:
         azuredir = setup_test_dir(azure)
         f = azuredir + '/foo'
 

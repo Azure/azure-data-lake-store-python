@@ -11,8 +11,8 @@ from hashlib import md5
 import os
 import shutil
 import tempfile
-import uuid
 
+import pytest
 import vcr
 
 
@@ -30,29 +30,26 @@ my_vcr = vcr.VCR(
     func_path_generator=_build_func_path_generator,
     path_transformer=vcr.VCR.ensure_suffix('.yaml'),
     filter_headers=['authorization'],
-    match_on=['uri', 'method'],
     )
 
 
 def default_home():
     if not hasattr(default_home, "path"):
-        default_home.path = os.path.join('azure_test_dir', uuid.uuid4().hex[:8], '')
+        default_home.path = os.path.join('azure_test_dir', '')
     return default_home.path
 
 
-@contextmanager
-def open_azure(directory=default_home()):
+@pytest.yield_fixture()
+def azure():
     from adlfs import AzureDLFileSystem
 
     fs = AzureDLFileSystem()
-    if directory is None:
+    directory = default_home()
+    fs.mkdir(directory)
+    try:
         yield fs
-    else:
-        fs.mkdir(directory)
-        try:
-            yield fs
-        finally:
-            fs.rm(directory, recursive=True)
+    finally:
+        fs.rm(directory, recursive=True)
 
 
 @contextmanager
