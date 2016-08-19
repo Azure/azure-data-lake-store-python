@@ -48,13 +48,28 @@ def setup_test_tree(fs):
                 f.write(b'123456')
 
 
+def create_remote_csv(fs, name, columns, colwidth, lines):
+    from hashlib import md5
+    from itertools import cycle, islice
+    hashobj = md5()
+    haystack = '0123456789ABCDEF'
+    row = ','.join([ch * colwidth for ch in islice(cycle(haystack), columns)]) + '\n'
+    row = row.encode('utf-8')
+    fsize = 0
+    with fs.open(name, 'wb') as f:
+        for _ in range(0, lines):
+            hashobj.update(row)
+            f.write(row)
+            fsize += len(row)
+    return fsize, hashobj.hexdigest()
+
+
 @my_vcr.use_cassette
 def test_download_single_file(tempdir, azure):
-    name = 'gdelt20150827.csv'
-    checksum = 'ce58e380a5783120e31b3934bab1b04b'
-    fname = os.path.join(tempdir, 'agelt.csv')
-    size = 81840585
-    lines = 217017
+    name = os.path.join(test_dir, 'remote.csv')
+    lines = 100
+    size, checksum = create_remote_csv(azure, name, 10, 5, lines)
+    fname = os.path.join(tempdir, 'local.csv')
 
     # single chunk
     down = ADLDownloader(azure, name, fname, 1, size + 10)
@@ -64,7 +79,7 @@ def test_download_single_file(tempdir, azure):
     os.remove(fname)
 
     # multiple chunks, one thread
-    down = ADLDownloader(azure, name, fname, 1, 2**24)
+    down = ADLDownloader(azure, name, fname, 1, size // 5)
     assert md5sum(fname) == checksum
     assert os.stat(fname).st_size == size
     assert linecount(fname) == lines
@@ -73,11 +88,10 @@ def test_download_single_file(tempdir, azure):
 
 @my_vcr.use_cassette
 def test_download_single_to_dir(tempdir, azure):
-    name = 'gdelt20150827.csv'
-    checksum = 'ce58e380a5783120e31b3934bab1b04b'
-    fname = os.path.join(tempdir, name)
-    size = 81840585
-    lines = 217017
+    name = os.path.join(test_dir, 'remote.csv')
+    lines = 100
+    size, checksum = create_remote_csv(azure, name, 10, 5, lines)
+    fname = os.path.join(tempdir, 'remote.csv')
 
     down = ADLDownloader(azure, name, tempdir, 1, 2**24)
     assert md5sum(fname) == checksum
@@ -158,7 +172,7 @@ def local_files(tempdir):
     filenames = [os.path.join(tempdir, f) for f in ['bigfile', 'littlefile']]
     with open(filenames[0], 'wb') as f:
         for char in b"0 1 2 3 4 5 6 7 8 9".split():
-            f.write(char * 1000000)
+            f.write(char * 1000)
     with open(filenames[1], 'wb') as f:
         f.write(b'0123456789')
     nestpath = os.path.join(tempdir, 'nested1', 'nested2')
@@ -179,7 +193,7 @@ def test_upload_one(local_files, azure):
     assert azure.info(test_dir+'littlefile')['length'] == 10
 
     # multiple chunks, one thread
-    size = 10000000
+    size = 10000
     up = ADLUploader(azure, test_dir+'bigfile', bigfile, nthreads=1,
                         chunksize=size//5)
     assert azure.info(test_dir+'bigfile')['length'] == size
@@ -197,7 +211,7 @@ def test_upload_many(local_files, azure):
     assert azure.info(test_dir+'littlefile')['length'] == 10
     assert azure.cat(test_dir+'/nested1/nested2/a') == b'0123456789'
     assert len(azure.du(test_dir, deep=True)) == 5
-    assert azure.du(test_dir, deep=True, total=True) == 10000000 + 40
+    assert azure.du(test_dir, deep=True, total=True) == 10000 + 40
 
 
 @my_vcr.use_cassette
