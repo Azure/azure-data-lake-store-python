@@ -46,6 +46,16 @@ def azure():
 
 
 @contextmanager
+def azure_teardown(fs):
+    try:
+        yield
+    finally:
+        for path in fs.ls(default_home()):
+            if fs.exists(path):
+                fs.rm(path, recursive=True)
+
+
+@contextmanager
 def ignoring(*exceptions):
     try:
         yield
