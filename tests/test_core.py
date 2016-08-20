@@ -20,8 +20,18 @@ c = test_dir + 'c'
 d = test_dir + 'd'
 
 
+@pytest.yield_fixture()
+def azurefiles(azure):
+    try:
+        yield
+    finally:
+        for path in azure.ls(test_dir):
+            if azure.exists(path):
+                azure.rm(path, recursive=True)
+
+
 @my_vcr.use_cassette
-def test_simple(azure):
+def test_simple(azure, azurefiles):
     data = b'a' * (2**16)
 
     with azure.open(a, 'wb') as f:
@@ -41,7 +51,7 @@ def test_idempotent_connect(azure):
 
 
 @my_vcr.use_cassette
-def test_ls_touch(azure):
+def test_ls_touch(azure, azurefiles):
     assert not azure.ls(test_dir)
     azure.touch(a)
     azure.touch(b)
@@ -52,7 +62,7 @@ def test_ls_touch(azure):
 
 
 @my_vcr.use_cassette
-def test_rm(azure):
+def test_rm(azure, azurefiles):
     assert not azure.exists(a)
     azure.touch(a)
     assert azure.exists(a)
@@ -69,7 +79,7 @@ def test_pickle(azure):
 
 
 @my_vcr.use_cassette
-def test_seek(azure):
+def test_seek(azure, azurefiles):
     with azure.open(a, 'wb') as f:
         f.write(b'123')
 
@@ -131,7 +141,7 @@ def test_errors(azure):
 
 
 @my_vcr.use_cassette
-def test_glob_walk(azure):
+def test_glob_walk(azure, azurefiles):
     azure.mkdir(test_dir + 'c/')
     azure.mkdir(test_dir + 'c/d/')
     filenames = ['a', 'a1', 'a2', 'a3', 'b1', 'c/x1', 'c/x2', 'c/d/x3']
@@ -176,7 +186,7 @@ def test_glob_walk(azure):
 
 
 @my_vcr.use_cassette
-def test_info(azure):
+def test_info(azure, azurefiles):
     with azure.open(a, 'wb') as f:
         f.write(b'a' * 5)
 
@@ -189,7 +199,7 @@ def test_info(azure):
 
 
 @my_vcr.use_cassette
-def test_df(azure):
+def test_df(azure, azurefiles):
     with azure.open(a, 'wb') as f:
         f.write(b'a' * 10)
     with azure.open(b, 'wb') as f:
@@ -201,7 +211,7 @@ def test_df(azure):
 
 
 @my_vcr.use_cassette
-def test_move(azure):
+def test_move(azure, azurefiles):
     azure.touch(a)
     assert azure.exists(a)
     assert not azure.exists(b)
@@ -212,7 +222,7 @@ def test_move(azure):
 
 @my_vcr.use_cassette
 @pytest.mark.xfail(reason='copy not implemented on ADL')
-def test_copy(azure):
+def test_copy(azure, azurefiles):
     azure.touch(a)
     assert azure.exists(a)
     assert not azure.exists(b)
@@ -222,7 +232,7 @@ def test_copy(azure):
 
 
 @my_vcr.use_cassette
-def test_exists(azure):
+def test_exists(azure, azurefiles):
     assert not azure.exists(a)
     azure.touch(a)
     assert azure.exists(a)
@@ -231,7 +241,7 @@ def test_exists(azure):
 
 
 @my_vcr.use_cassette
-def test_cat(azure):
+def test_cat(azure, azurefiles):
     with azure.open(a, 'wb') as f:
         f.write(b'0123456789')
     assert azure.cat(a) == b'0123456789'
@@ -240,7 +250,7 @@ def test_cat(azure):
 
 
 @my_vcr.use_cassette
-def test_full_read(azure):
+def test_full_read(azure, azurefiles):
     with azure.open(a, 'wb') as f:
         f.write(b'0123456789')
 
@@ -262,7 +272,7 @@ def test_full_read(azure):
 
 
 @my_vcr.use_cassette
-def test_tail_head(azure):
+def test_tail_head(azure, azurefiles):
     with azure.open(a, 'wb') as f:
         f.write(b'0123456789')
 
@@ -298,7 +308,7 @@ def test_read_delimited_block(azure):
 
 
 @my_vcr.use_cassette
-def test_readline(azure):
+def test_readline(azure, azurefiles):
     with azure.open(a, 'wb') as f:
         f.write(b'\n'.join([b'123', b'456', b'789']))
 
@@ -310,13 +320,13 @@ def test_readline(azure):
 
 
 @my_vcr.use_cassette
-def test_touch_exists(azure):
+def test_touch_exists(azure, azurefiles):
     azure.touch(a)
     assert azure.exists(a)
 
 
 @my_vcr.use_cassette
-def test_write_in_read_mode(azure):
+def test_write_in_read_mode(azure, azurefiles):
     azure.touch(a)
 
     with azure.open(a, 'rb') as f:
@@ -325,7 +335,7 @@ def test_write_in_read_mode(azure):
 
 
 @my_vcr.use_cassette
-def test_readlines(azure):
+def test_readlines(azure, azurefiles):
     with azure.open(a, 'wb') as f:
         f.write(b'123\n456')
 
@@ -349,7 +359,7 @@ def test_readlines(azure):
 
 
 @my_vcr.use_cassette
-def test_put(azure):
+def test_put(azure, azurefiles):
     data = b'1234567890' * 100
     with tmpfile() as fn:
         with open(fn, 'wb') as f:
@@ -361,7 +371,7 @@ def test_put(azure):
 
 
 @my_vcr.use_cassette
-def test_get(azure):
+def test_get(azure, azurefiles):
     data = b'1234567890'
     with tmpfile() as fn:
         with azure.open(a, 'wb') as f:
@@ -378,7 +388,7 @@ def test_get(azure):
 
 
 @my_vcr.use_cassette
-def test_du(azure):
+def test_du(azure, azurefiles):
     with azure.open(a, 'wb') as f:
         f.write(b'123')
     with azure.open(b, 'wb') as f:
@@ -398,7 +408,7 @@ def test_text_bytes(azure):
 
 
 @my_vcr.use_cassette
-def test_append(azure):
+def test_append(azure, azurefiles):
     with azure.open(a, mode='ab') as f:
         f.write(b'123')
     with azure.open(a, mode='ab') as f:
@@ -414,7 +424,7 @@ def test_append(azure):
 
 
 @my_vcr.use_cassette
-def test_write_empty(azure):
+def test_write_empty(azure, azurefiles):
     with azure.open(a, mode='wb') as f:
         f.write(b'')
 
@@ -423,7 +433,7 @@ def test_write_empty(azure):
 
 
 @my_vcr.use_cassette
-def test_write_blocks(azure):
+def test_write_blocks(azure, azurefiles):
     with azure.open(a, mode='wb', blocksize=5) as f:
         f.write(b'000')
         assert f.buffer.tell() == 3
@@ -435,7 +445,7 @@ def test_write_blocks(azure):
 
 
 @my_vcr.use_cassette
-def test_gzip(azure):
+def test_gzip(azure, azurefiles):
     import gzip
     data = b'name,amount\nAlice,100\nBob,200'
     with azure.open(a, mode='wb') as f:
@@ -450,7 +460,7 @@ def test_gzip(azure):
 
 
 @my_vcr.use_cassette
-def test_fooable(azure):
+def test_fooable(azure, azurefiles):
     azure.touch(a)
 
     with azure.open(a, mode='rb') as f:
@@ -465,7 +475,7 @@ def test_fooable(azure):
 
 
 @my_vcr.use_cassette
-def test_closed(azure):
+def test_closed(azure, azurefiles):
     azure.touch(a)
 
     f = azure.open(a, mode='rb')
@@ -475,7 +485,7 @@ def test_closed(azure):
 
 
 @my_vcr.use_cassette
-def test_TextIOWrapper(azure):
+def test_TextIOWrapper(azure, azurefiles):
     with azure.open(a, mode='wb') as f:
         f.write(b'1,2\n3,4\n5,6')
 
@@ -487,7 +497,7 @@ def test_TextIOWrapper(azure):
 
 
 @my_vcr.use_cassette
-def test_array(azure):
+def test_array(azure, azurefiles):
     from array import array
     data = array('B', [65] * 1000)
 
@@ -513,17 +523,17 @@ def write_delimited_data(azure, delimiter):
 
 
 @my_vcr.use_cassette
-def test_delimiters_newline(azure):
+def test_delimiters_newline(azure, azurefiles):
     write_delimited_data(azure, b'\n')
 
 
 @my_vcr.use_cassette
-def test_delimiters_dash(azure):
+def test_delimiters_dash(azure, azurefiles):
     write_delimited_data(azure, b'--')
 
 
 @my_vcr.use_cassette
-def test_chmod(azure):
+def test_chmod(azure, azurefiles):
     azure.touch(a)
 
     assert azure.info(a)['permission'] == '770'

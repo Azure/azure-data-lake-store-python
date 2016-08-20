@@ -40,12 +40,19 @@ def linecount(infile):
 # rather than rely on file already in place.
 
 
-def setup_test_tree(fs):
-    for directory in ['data/a/', 'data/b/']:
-        fs.mkdir(test_dir + directory)
+@pytest.yield_fixture()
+def azuretree(azure):
+    for directory in ['', 'data/a/', 'data/b/']:
+        azure.mkdir(test_dir + directory)
         for filename in ['x.csv', 'y.csv', 'z.txt']:
-            with fs.open(test_dir + directory + filename, 'wb') as f:
+            with azure.open(test_dir + directory + filename, 'wb') as f:
                 f.write(b'123456')
+    try:
+        yield
+    finally:
+        for path in azure.ls(test_dir):
+            if azure.exists(path):
+                azure.rm(path, recursive=True)
 
 
 def create_remote_csv(fs, name, columns, colwidth, lines):
@@ -101,9 +108,8 @@ def test_download_single_to_dir(tempdir, azure):
 
 
 @my_vcr.use_cassette
-def test_download_many(tempdir, azure):
-    setup_test_tree(azure)
-
+def test_download_many(tempdir, azure, azuretree):
+    print(azure.ls(test_dir))
     down = ADLDownloader(azure, test_dir, tempdir, 1, 2**24)
     nfiles = 0
     for dirpath, dirnames, filenames in os.walk(tempdir):
@@ -112,9 +118,7 @@ def test_download_many(tempdir, azure):
 
 
 @my_vcr.use_cassette
-def test_download_glob(tempdir, azure):
-    setup_test_tree(azure)
-
+def test_download_glob(tempdir, azure, azuretree):
     down = ADLDownloader(azure, test_dir + 'data/a/*.csv', tempdir, run=False)
     assert len(down.rfiles) == 2
 
@@ -135,9 +139,7 @@ def test_download_glob(tempdir, azure):
 
 
 @my_vcr.use_cassette
-def test_save_down(tempdir, azure):
-    setup_test_tree(azure)
-
+def test_save_down(tempdir, azure, azuretree):
     down = ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
     down.save()
 
@@ -150,9 +152,7 @@ def test_save_down(tempdir, azure):
 
 
 @pytest.mark.skip(True, reason="first assert fails during VCR playback")
-def test_interrupt_down(tempdir, azure):
-    setup_test_tree(azure)
-
+def test_interrupt_down(tempdir, azure, azuretree):
     down = ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
 
     def interrupt():
