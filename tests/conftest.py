@@ -12,14 +12,9 @@ from adlfs import AzureDLFileSystem
 from tests.testing import default_home
 
 
-@pytest.fixture(scope="session")
-def teardown_env():
-    fs = AzureDLFileSystem.current()
-    fs.rm(default_home(), recursive=True)
-
-
 @pytest.fixture(scope="session", autouse=True)
 def setup_env(request):
+    home = default_home()
     fs = AzureDLFileSystem()
-    fs.mkdir(default_home())
-    request.addfinalizer(teardown_env)
+    if not fs.exists(home):
+        fs.mkdir(default_home())
