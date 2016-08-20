@@ -10,9 +10,9 @@ import io
 
 import pytest
 
-from tests.testing import azure, azure_teardown, default_home, my_vcr, tmpfile
+from tests.testing import azure, azure_teardown, my_vcr, tmpfile, working_dir
 
-test_dir = default_home()
+test_dir = working_dir()
 
 a = test_dir + 'a'
 b = test_dir + 'b'

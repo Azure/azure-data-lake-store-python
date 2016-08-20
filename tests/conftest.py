@@ -9,12 +9,12 @@
 import pytest
 
 from adlfs import AzureDLFileSystem
-from tests.testing import default_home
+from tests.testing import working_dir
 
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_env(request):
-    home = default_home()
+    home = working_dir()
     fs = AzureDLFileSystem()
     if not fs.exists(home):
-        fs.mkdir(default_home())
+        fs.mkdir(home)

@@ -33,10 +33,10 @@ my_vcr = vcr.VCR(
     )
 
 
-def default_home():
-    if not hasattr(default_home, "path"):
-        default_home.path = os.path.join('azure_test_dir', '')
-    return default_home.path
+def working_dir():
+    if not hasattr(working_dir, "path"):
+        working_dir.path = os.path.join('azure_test_dir', '')
+    return working_dir.path
 
 
 @pytest.yield_fixture()
@@ -50,7 +50,7 @@ def azure_teardown(fs):
     try:
         yield
     finally:
-        for path in fs.ls(default_home()):
+        for path in fs.ls(working_dir()):
             if fs.exists(path):
                 fs.rm(path, recursive=True)
 
