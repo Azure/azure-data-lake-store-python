@@ -42,14 +42,7 @@ def default_home():
 @pytest.yield_fixture()
 def azure():
     from adlfs import AzureDLFileSystem
-
-    fs = AzureDLFileSystem()
-    directory = default_home()
-    fs.mkdir(directory)
-    try:
-        yield fs
-    finally:
-        fs.rm(directory, recursive=True)
+    yield AzureDLFileSystem.current()
 
 
 @contextmanager
