@@ -18,8 +18,8 @@ if 'AZURE_TEST' in os.environ:
     STORE_NAME = fake_settings.STORE_NAME
     TENANT_ID = fake_settings.TENANT_ID
     TOKEN = dict(
-        access=base64.b64encode(os.urandom(64)),
-        refresh=base64.b64encode(os.urandom(64)),
+        access=str(base64.b64encode(os.urandom(64))),
+        refresh=str(base64.b64encode(os.urandom(64))),
         time=time.time(),
         tenant=TENANT_ID)
     SUBSCRIPTION_ID = fake_settings.SUBSCRIPTION_ID
