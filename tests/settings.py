@@ -14,7 +14,9 @@ from adlfs.lib import auth
 from tests import fake_settings
 
 
-if 'AZURE_TEST' in os.environ:
+RECORD_MODE = os.environ.get('RECORD_MODE', 'none').lower()
+
+if RECORD_MODE == 'none':
     STORE_NAME = fake_settings.STORE_NAME
     TENANT_ID = fake_settings.TENANT_ID
     TOKEN = dict(

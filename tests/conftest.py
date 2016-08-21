@@ -6,8 +6,6 @@
 # license information.
 # --------------------------------------------------------------------------
 
-import os
-
 import pytest
 
 from adlfs import AzureDLFileSystem
@@ -19,6 +17,6 @@ from tests.testing import working_dir
 def setup_env(request):
     home = working_dir()
     fs = AzureDLFileSystem(store=settings.STORE_NAME, token=settings.TOKEN)
-    if 'AZURE_TEST' not in os.environ:
+    if settings.RECORD_MODE != 'none':
         if not fs.exists(home):
             fs.mkdir(home)

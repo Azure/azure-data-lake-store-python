@@ -54,7 +54,7 @@ recording_path = os.path.join(os.path.dirname(__file__), 'recordings')
 
 my_vcr = vcr.VCR(
     cassette_library_dir=recording_path,
-    record_mode="once",
+    record_mode=settings.RECORD_MODE,
     before_record=_scrub_sensitive_request_info,
     before_record_response=_scrub_sensitive_response_info,
     func_path_generator=_build_func_path_generator,
