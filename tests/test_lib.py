@@ -33,7 +33,6 @@ def management(token):
                                    token['access'])
 
 
-@my_vcr.use_cassette
 def test_errors():
     no_rest = DatalakeRESTInterface("none", "blank")
 
