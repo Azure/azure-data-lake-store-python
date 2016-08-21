@@ -7,6 +7,7 @@
 # --------------------------------------------------------------------------
 
 from contextlib import contextmanager
+import copy
 from hashlib import md5
 import os
 import shutil
@@ -15,6 +16,8 @@ import tempfile
 import pytest
 import vcr
 
+from tests import fake_settings, settings
+
 
 def _build_func_path_generator(function):
     import inspect
@@ -22,11 +25,38 @@ def _build_func_path_generator(function):
     return module + '/' + function.__name__
 
 
+def _scrub(val):
+    val = val.replace(settings.STORE_NAME, fake_settings.STORE_NAME)
+    val = val.replace(settings.TENANT_ID, fake_settings.TENANT_ID)
+    val = val.replace(settings.SUBSCRIPTION_ID, fake_settings.SUBSCRIPTION_ID)
+    val = val.replace(settings.RESOURCE_GROUP_NAME, fake_settings.RESOURCE_GROUP_NAME)
+    return val
+
+
+def _scrub_sensitive_request_info(request):
+    request.uri = _scrub(request.uri)
+    return request
+
+
+def _scrub_sensitive_response_info(response):
+    response = copy.deepcopy(response)
+
+    headers = response.get('headers')
+    if headers:
+        for name, val in headers.items():
+            for i, v in enumerate(val):
+                val[i] = _scrub(v)
+
+    return response
+
+
 recording_path = os.path.join(os.path.dirname(__file__), 'recordings')
 
 my_vcr = vcr.VCR(
     cassette_library_dir=recording_path,
     record_mode="once",
+    before_record=_scrub_sensitive_request_info,
+    before_record_response=_scrub_sensitive_response_info,
     func_path_generator=_build_func_path_generator,
     path_transformer=vcr.VCR.ensure_suffix('.yaml'),
     filter_headers=['authorization'],
@@ -42,7 +72,12 @@ def working_dir():
 @pytest.yield_fixture()
 def azure():
     from adlfs import AzureDLFileSystem
-    yield AzureDLFileSystem.current()
+    fs = AzureDLFileSystem.current()
+
+    # Clear filesystem cache to ensure we capture all requests from a test
+    fs.invalidate_cache()
+
+    yield fs
 
 
 @contextmanager

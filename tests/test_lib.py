@@ -6,36 +6,30 @@
 # license information.
 # --------------------------------------------------------------------------
 
-import os
 import pytest
 import time
 
-from adlfs.lib import (auth, refresh_token, DatalakeRESTInterface,
+from adlfs.lib import (refresh_token, DatalakeRESTInterface,
                        DatalakeRESTException, ManagementRESTInterface)
 
+from tests import settings
 from tests.testing import my_vcr
 
 
 @pytest.fixture()
 def token():
-    tenant_id = os.environ['azure_tenant_id']
-    username = os.environ['azure_username']
-    password = os.environ['azure_password']
-    token = auth(tenant_id, username, password)
-    return token
+    return settings.TOKEN
 
 
 @pytest.fixture()
 def rest(token):
-    store_name = os.environ['azure_store_name']
-    return DatalakeRESTInterface(store_name, token['access'])
+    return DatalakeRESTInterface(settings.STORE_NAME, token['access'])
 
 
 @pytest.fixture()
 def management(token):
-    subscription_id = os.environ['azure_subscription_id']
-    resource_group_name = os.environ['azure_resource_group_name']
-    return ManagementRESTInterface(subscription_id, resource_group_name,
+    return ManagementRESTInterface(settings.SUBSCRIPTION_ID,
+                                   settings.RESOURCE_GROUP_NAME,
                                    token['access'])
 
 
@@ -78,33 +72,27 @@ def test_response(rest):
 
 @my_vcr.use_cassette
 def test_account_info(management):
-    account = os.environ['azure_store_name']
-    code, obj = management.info(account)
+    code, obj = management.info(settings.STORE_NAME)
     assert code == 200
     assert obj['id']
-    assert obj['name'] == account
     assert obj['type'] == "Microsoft.DataLakeStore/accounts"
 
 
 @my_vcr.use_cassette
 def test_account_list_in_sub(management):
-    account = os.environ['azure_store_name']
     code, obj = management.list_in_sub()
     assert code == 200
     assert obj['value']
     assert len(obj['value']) > 0
     accounts = obj['value']
-    assert accounts[0]['name'] == account
     assert accounts[0]['type'] == "Microsoft.DataLakeStore/accounts"
 
 
 @my_vcr.use_cassette
 def test_account_list_in_res(management):
-    account = os.environ['azure_store_name']
     code, obj = management.list_in_res()
     assert code == 200
     assert obj['value']
     assert len(obj['value']) > 0
     accounts = obj['value']
-    assert accounts[0]['name'] == account
     assert accounts[0]['type'] == "Microsoft.DataLakeStore/accounts"

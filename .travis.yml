@@ -17,7 +17,7 @@ install:
   - python setup.py develop
 
 script:
-  - py.test -x -vvv --doctest-modules --pyargs adlfs tests
+  - AZURE_TEST=1 py.test -x -vvv --doctest-modules --pyargs adlfs tests
 
 notifications:
   email: false
