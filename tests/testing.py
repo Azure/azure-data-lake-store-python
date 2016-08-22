@@ -34,7 +34,7 @@ def _scrub(val):
 
 
 def _scrub_sensitive_request_info(request):
-    request.uri = _scrub(request.uri)
+    request.uri = _scrub(request.uri.replace('%5C', '/'))
     return request
 
 
