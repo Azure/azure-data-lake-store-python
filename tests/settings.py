@@ -28,7 +28,7 @@ if RECORD_MODE == 'none':
     RESOURCE_GROUP_NAME = fake_settings.RESOURCE_GROUP_NAME
 else:
     STORE_NAME = os.environ['azure_store_name']
-    TENANT_ID = os.environ['azure_tenant_id']
+    TENANT_ID = os.environ.get('azure_tenant_id', 'common')
     TOKEN = auth(TENANT_ID,
                  os.environ['azure_username'],
                  os.environ['azure_password'])
