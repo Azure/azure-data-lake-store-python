@@ -706,13 +706,33 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
 
 class AzureDLPath(type(pathlib.PurePath())):
     """
+    Subclass of native object-oriented filesystem path.
+
+    This is used as a convenience class for reducing boilerplate and
+    eliminating differences between system-dependent paths.
+
+    We subclass the system's concrete pathlib class due to this issue:
+
     http://stackoverflow.com/questions/29850801/subclass-pathlib-path-fails
+
+    Parameters
+    ----------
+    path : AzureDLPath or string
+        location of file or directory
+
+    Examples
+    --------
+    >>> p1 = AzureDLPath('/Users/foo')  # doctest: +SKIP
+    >>> p2 = AzureDLPath(p1.name)  # doctest: +SKIP
     """
+
     def __contains__(self, s):
+        """ Return whether string is contained in path. """
         return s in self.as_posix()
 
     @property
     def globless_prefix(self):
+        """ Return shortest path prefix without glob quantifiers. """
         def no_quantifier(s):
             quantifiers = ['*', '?']
             return all(q not in s for q in quantifiers)
@@ -720,7 +740,12 @@ class AzureDLPath(type(pathlib.PurePath())):
         return pathlib.PurePath(*itertools.takewhile(no_quantifier, self.parts))
 
     def startswith(self, prefix, *args, **kwargs):
+        """ Return whether string starts with the prefix.
+
+        This is equivalent to `str.startswith`.
+        """
         return self.as_posix().startswith(prefix.as_posix(), *args, **kwargs)
 
     def trim(self):
+        """ Return path without anchor (concatenation of drive and root). """
         return self.relative_to(self.anchor)
