@@ -13,7 +13,7 @@ setup(name='adlfs',
       keywords='azure',
       packages=['adlfs'],
       install_requires=[open('requirements.txt').read().strip().split('\n')],
-      extras_require={":python_version<'3.4'": ["pathlib"]}
+      extras_require={":python_version<'3.4'": ["pathlib"]},
       long_description=(open('README.rst').read() if os.path.exists('README.rst')
                         else ''),
       zip_safe=False)
