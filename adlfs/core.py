@@ -16,8 +16,10 @@ which is compatible with the built-in File.
 
 # standard imports
 import io
+import itertools
 import logging
 import os
+import pathlib
 import re
 import sys
 import time
@@ -116,22 +118,22 @@ class AzureDLFileSystem(object):
         if 'b' not in mode:
             raise NotImplementedError("Text mode not supported, use mode='%s'"
                                       " and manage bytes" % (mode[0] + 'b'))
-        return AzureDLFile(self, path, mode, blocksize=blocksize,
+        return AzureDLFile(self, AzureDLPath(path), mode, blocksize=blocksize,
                            delimiter=delimiter)
 
     def _ls(self, path):
         """ List files at given path """
-        path = path.rstrip('/').lstrip('/')
+        path = AzureDLPath(path).trim()
         if path not in self.dirs:
-            out = self.azure.call('LISTSTATUS', path)
+            out = self.azure.call('LISTSTATUS', path.as_posix())
             self.dirs[path] = out['FileStatuses']['FileStatus']
             for f in self.dirs[path]:
-                bits = [b for b in [path, f['pathSuffix'].lstrip('/')] if b]
-                f['name'] = ('/'.join(bits))
+                f['name'] = (path / f['pathSuffix']).as_posix()
         return self.dirs[path]
 
     def ls(self, path="", detail=False):
         """ List single directory with or without details """
+        path = AzureDLPath(path)
         files = self._ls(path)
         if not files:
             inf = self.info(path)
@@ -146,9 +148,9 @@ class AzureDLFileSystem(object):
     def info(self, path):
         """ File information
         """
-        path = path.rstrip('/').lstrip('/')
-        root, fname = os.path.split(path)
-        myfile = [f for f in self._ls(root) if f['name'] == path]
+        path = AzureDLPath(path).trim()
+        root = path.parent
+        myfile = [f for f in self._ls(root) if f['name'] == path.as_posix()]
         if len(myfile) == 1:
             return myfile[0]
         raise FileNotFoundError(path)
@@ -168,26 +170,16 @@ class AzureDLFileSystem(object):
     def glob(self, path):
         """
         Find files (not directories) by glob-matching.
-
-        Note that the bucket part of the path must not contain a "*"
         """
-        path0 = path
-        if '*' not in path:
-            path = path.rstrip('/') + '/*'
-        if '/' in path[:path.index('*')]:
-            ind = path[:path.index('*')].rindex('/')
-            root = path[:ind + 1]
-        else:
-            root = ''
-        allfiles = self.walk(root)
-        pattern = re.compile("^" + path.replace('//', '/')
-                             .rstrip('/')
-                             .replace('*', '[^/]*')
-                             .replace('?', '.') + "$")
-        out = [f for f in allfiles if re.match(pattern,
-               f.replace('//', '/').rstrip('/'))]
-        if not out:
-            out = self.ls(path0)
+        path = AzureDLPath(path).trim()
+        prefix = path.globless_prefix
+        allfiles = self.walk(prefix)
+        pattern = re.compile("^" + path.as_posix()
+                                       .replace('*', '[^/]*')
+                                       .replace('?', '.') + "$")
+        out = [f for f in allfiles if re.match(pattern, f)]
+        if not out and prefix == path:
+            out = self.ls(path)
         return out
 
     def du(self, path, total=False, deep=False):
@@ -219,8 +211,9 @@ class AzureDLFileSystem(object):
             Octal representation of access, e.g., "0777" for public read/write.
             See [docs](http://hadoop.apache.org/docs/r2.4.1/hadoop-project-dist/hadoop-hdfs/WebHDFS.html#Permission)
         """
-        self.azure.call('SETPERMISSION', path, permission=mod)
-        self.invalidate_cache(path)
+        path = AzureDLPath(path).trim()
+        self.azure.call('SETPERMISSION', path.as_posix(), permission=mod)
+        self.invalidate_cache(path.as_posix())
 
     def chown(self, path, owner=None, group=None):
         """
@@ -244,7 +237,8 @@ class AzureDLFileSystem(object):
             parms['owner'] = owner
         if group:
             parms['group'] = group
-        self.azure.call('SETOWNER', path, **parms)
+        path = AzureDLPath(path).trim()
+        self.azure.call('SETOWNER', path.as_posix(), **parms)
 
     def exists(self, path):
         """ Does such a file/directory exist? """
@@ -295,7 +289,8 @@ class AzureDLFileSystem(object):
 
     def mkdir(self, path):
         """ Make new directory """
-        self.azure.call('MKDIRS', path)
+        path = AzureDLPath(path).trim()
+        self.azure.call('MKDIRS', path.as_posix())
         self.invalidate_cache(path)
 
     def rmdir(self, path):
@@ -308,13 +303,18 @@ class AzureDLFileSystem(object):
 
     def mv(self, path1, path2):
         """ Move file between locations on ADL """
-        self.azure.call('RENAME', path1, destination=path2)
+        path1 = AzureDLPath(path1).trim()
+        path2 = AzureDLPath(path2).trim()
+        self.azure.call('RENAME', path1.as_posix(),
+                        destination=path2.as_posix())
         self.invalidate_cache(path1)
         self.invalidate_cache(path2)
 
     def concat(self, outfile, filelist):
         """ Concatenate a list of files into one new file"""
-        self.azure.call('CONCAT', outfile, sources=','.join(filelist))
+        outfile = AzureDLPath(outfile).trim()
+        self.azure.call('CONCAT', outfile.as_posix(),
+                        sources=','.join(filelist))
         self.invalidate_cache(outfile)
 
     merge = concat
@@ -336,14 +336,13 @@ class AzureDLFileSystem(object):
             Whether to remove also all entries below, i.e., which are returned
             by `walk()`.
         """
-        path = path.lstrip('/').rstrip('/')
+        path = AzureDLPath(path).trim()
         if not self.exists(path):
             raise FileNotFoundError(path)
-        self.azure.call('DELETE', path, recursive=recursive)
+        self.azure.call('DELETE', path.as_posix(), recursive=recursive)
         self.invalidate_cache(path)
         if recursive:
-            matches = [p for p in self.dirs if p.startswith(
-                       path.rstrip('/') + '/')]
+            matches = [p for p in self.dirs if p.startswith(path)]
             [self.invalidate_cache(m) for m in matches]
 
     def invalidate_cache(self, path=None):
@@ -351,9 +350,9 @@ class AzureDLFileSystem(object):
         if path is None:
             self.dirs.clear()
         else:
+            path = AzureDLPath(path)
             self.dirs.pop(path, None)
-            parent = os.path.split(path)[0]
-            self.dirs.pop(parent, None)
+            self.dirs.pop(path.parent, None)
 
     def touch(self, path):
         """
@@ -426,7 +425,7 @@ class AzureDLFile(object):
     Parameters
     ----------
     azure : azure connection
-    path : str
+    path : AzureDLPath
         location of file
     mode : str {'wb', 'rb', 'ab'}
     blocksize : int
@@ -464,10 +463,10 @@ class AzureDLFile(object):
         self.buffer = io.BytesIO()
         self.blocksize = blocksize
         if mode == 'wb':
-            self.azure.azure.call('CREATE', path, overwrite=True)
+            self.azure.azure.call('CREATE', path.as_posix(), overwrite=True)
         if mode == 'ab':
             if not self.azure.exists(path):
-                self.azure.azure.call('CREATE', path)
+                self.azure.azure.call('CREATE', path.as_posix())
             else:
                 self.loc = self.info()['length']
         if mode == 'rb':
@@ -529,7 +528,7 @@ class AzureDLFile(object):
             self._fetch(self.start, self.end + self.blocksize)
 
     def __next__(self):
-        out =  self.readline()
+        out = self.readline()
         if not out:
             raise StopIteration
         return out
@@ -548,17 +547,19 @@ class AzureDLFile(object):
             # First read
             self.start = start
             self.end = min(end + self.blocksize, self.size)
-            self.cache = _fetch_range(self.azure.azure, self.path, start,
-                                      self.end)
+            self.cache = _fetch_range(self.azure.azure, self.path.as_posix(),
+                                      start, self.end)
         if start < self.start:
-            new = _fetch_range(self.azure.azure, self.path, start, self.start)
+            new = _fetch_range(self.azure.azure, self.path.as_posix(), start,
+                               self.start)
             self.start = start
             self.cache = new + self.cache
         if end > self.end:
             if self.end >= self.size:
                 return
             newend = min(self.size, end + self.blocksize)
-            new = _fetch_range(self.azure.azure, self.path, self.end, newend)
+            new = _fetch_range(self.azure.azure, self.path.as_posix(),
+                               self.end, newend)
             self.end = newend
             self.cache = self.cache + new
 
@@ -594,7 +595,8 @@ class AzureDLFile(object):
         """
         Write data to buffer.
 
-        Buffer only sent to ADL on flush() or if buffer is bigger than blocksize.
+        Buffer only sent to ADL on flush() or if buffer is bigger than
+        blocksize.
 
         Parameters
         ----------
@@ -638,14 +640,16 @@ class AzureDLFile(object):
                         limit = self.blocksize
                     else:
                         limit = place + len(self.delimiter)
-                    out = self.azure.azure.call('APPEND', path=self.path,
+                    out = self.azure.azure.call('APPEND',
+                                                path=self.path.as_posix(),
                                                 data=data[:limit])
                     logger.debug('Wrote %d bytes to %s' % (limit, self))
                     data = data[limit:]
                 self.buffer = io.BytesIO(data)
                 self.buffer.seek(0, 2)
             if not self.delimiter or force:
-                out = self.azure.azure.call('APPEND', path=self.path,
+                out = self.azure.azure.call('APPEND',
+                                            path=self.path.as_posix(),
                                             data=data)
                 logger.debug('Wrote %d bytes to %s' % (len(data), self))
                 self.buffer = io.BytesIO()
@@ -660,7 +664,7 @@ class AzureDLFile(object):
             return
         if self.mode in {'wb', 'ab'}:
             self.flush(force=True)
-            self.azure.invalidate_cache(self.path)
+            self.azure.invalidate_cache(self.path.as_posix())
         self.closed = True
 
     def readable(self):
@@ -679,7 +683,7 @@ class AzureDLFile(object):
         self.close()
 
     def __str__(self):
-        return "<ADL file: %s>" % (self.path)
+        return "<ADL file: %s>" % (self.path.as_posix())
 
     __repr__ = __str__
 
@@ -702,3 +706,25 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
             logger.debug('Exception %e on ADL download, retrying', e,
                          exc_info=True)
     raise RuntimeError("Max number of ADL retries exceeded")
+
+
+class AzureDLPath(type(pathlib.PurePath())):
+    """
+    http://stackoverflow.com/questions/29850801/subclass-pathlib-path-fails
+    """
+    def __contains__(self, s):
+        return s in self.as_posix()
+
+    @property
+    def globless_prefix(self):
+        def no_quantifier(s):
+            quantifiers = ['*', '?']
+            return all(q not in s for q in quantifiers)
+
+        return pathlib.PurePath(*itertools.takewhile(no_quantifier, self.parts))
+
+    def startswith(self, prefix, *args, **kwargs):
+        return self.as_posix().startswith(prefix.as_posix(), *args, **kwargs)
+
+    def trim(self):
+        return self.relative_to(self.anchor)
