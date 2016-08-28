@@ -549,4 +549,141 @@ interactions:
       x-ms-request-id: [74eefeea-6f44-4e77-8a27-72f0fa115197]
       x-ms-webhdfs-version: [16.07.07.01]
     status: {code: 404, message: Not Found}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.10.0]
+    method: PUT
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/deep?OP=MKDIRS
+  response:
+    body: {string: !!python/unicode '{"boolean":true}'}
+    headers:
+      cache-control: [no-cache]
+      content-length: ['16']
+      content-type: [application/json; charset=utf-8]
+      date: ['Sat, 27 Aug 2016 05:41:13 GMT']
+      expires: ['-1']
+      pragma: [no-cache]
+      server-perf: ['[2ba7c7e8-497a-44ad-83b9-ea47d63190fc][ AuthTime::953.670025894493::PostAuthTime::232.216513031708
+          ][S-HdfsMkdirs :: 00:00:033 ms]%0a[MKDIRS :: 00:00:033 ms]%0a']
+      status: ['0x0']
+      strict-transport-security: [max-age=15724800; includeSubDomains]
+      x-content-type-options: [nosniff]
+      x-ms-request-id: [2ba7c7e8-497a-44ad-83b9-ea47d63190fc]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.10.0]
+    method: PUT
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/deep/file?overwrite=True&OP=CREATE
+  response:
+    body: {string: !!python/unicode ''}
+    headers:
+      cache-control: [no-cache]
+      content-length: ['0']
+      contentlength: ['0']
+      date: ['Sat, 27 Aug 2016 05:41:13 GMT']
+      expires: ['-1']
+      location: ['https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/deep/file?overwrite=True&OP=CREATE&write=true']
+      pragma: [no-cache]
+      server-perf: ['[707daf35-1add-4cba-900a-fede2da83883][ AuthTime::966.072012778323::PostAuthTime::206.129575103653
+          ][S-HdfsGetFileStatusV2 :: 00:00:005 ms]%0a[CREATE :: 00:00:005 ms]%0a']
+      status: ['0x8309000A']
+      strict-transport-security: [max-age=15724800; includeSubDomains]
+      x-content-type-options: [nosniff]
+      x-ms-request-id: [707daf35-1add-4cba-900a-fede2da83883]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 307, message: Temporary Redirect}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.10.0]
+    method: PUT
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/deep?permission=660&OP=SETPERMISSION
+  response:
+    body: {string: !!python/unicode ''}
+    headers:
+      cache-control: [no-cache]
+      content-length: ['0']
+      date: ['Sat, 27 Aug 2016 05:41:13 GMT']
+      expires: ['-1']
+      pragma: [no-cache]
+      server-perf: ['[c4de7006-eb17-4bd4-abfc-db1baba7ab85][ AuthTime::924.16066454037::PostAuthTime::235.637448478364
+          ][S-HdfsSetPermission :: 00:00:020 ms]%0a[SETPERMISSION :: 00:00:021 ms]%0a']
+      status: ['0x0']
+      strict-transport-security: [max-age=15724800; includeSubDomains]
+      x-content-type-options: [nosniff]
+      x-ms-request-id: [c4de7006-eb17-4bd4-abfc-db1baba7ab85]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.10.0]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/deep?OP=LISTSTATUS
+  response:
+    body: {string: !!python/unicode '{"RemoteException":{"exception":"AccessControlException","message":"ListStatus
+        failed with error 0x83090aa2 (Either the resource does not exist or the current
+        user is not authorized to perform the requested operation). [1b9ff5fa-0613-48fc-8ef9-27a3019a9ee8][2016-08-26T22:41:16.0552709-07:00]","javaClassName":"org.apache.hadoop.security.AccessControlException"}}'}
+    headers:
+      cache-control: [no-cache]
+      content-length: ['363']
+      content-type: [application/json; charset=utf-8]
+      date: ['Sat, 27 Aug 2016 05:41:16 GMT']
+      expires: ['-1']
+      pragma: [no-cache]
+      server-perf: ['[1b9ff5fa-0613-48fc-8ef9-27a3019a9ee8][ AuthTime::907.482539941848::PostAuthTime::236.0652036041
+          ][S-HdfsListStatus :: 00:00:005 ms]%0a[S-HdfsListStatus :: 00:00:006 ms]%0a[S-HdfsListStatus
+          :: 00:00:006 ms]%0a[S-HdfsListStatus :: 00:00:006 ms]%0a[S-HdfsListStatus
+          :: 00:00:006 ms]%0a[LISTSTATUS :: 00:01:268 ms]%0a']
+      status: ['0x83090AA2']
+      strict-transport-security: [max-age=15724800; includeSubDomains]
+      x-content-type-options: [nosniff]
+      x-ms-request-id: [1b9ff5fa-0613-48fc-8ef9-27a3019a9ee8]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 403, message: Forbidden}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.10.0]
+    method: PUT
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/deep?permission=770&OP=SETPERMISSION
+  response:
+    body: {string: !!python/unicode ''}
+    headers:
+      cache-control: [no-cache]
+      content-length: ['0']
+      date: ['Sat, 27 Aug 2016 05:41:16 GMT']
+      expires: ['-1']
+      pragma: [no-cache]
+      server-perf: ['[482301f9-3e0d-4158-82a8-5d4c5d7000fd][ AuthTime::1091.80250049715::PostAuthTime::235.210096072633
+          ][S-HdfsSetPermission :: 00:00:028 ms]%0a[SETPERMISSION :: 00:00:028 ms]%0a']
+      status: ['0x0']
+      strict-transport-security: [max-age=15724800; includeSubDomains]
+      x-content-type-options: [nosniff]
+      x-ms-request-id: [482301f9-3e0d-4158-82a8-5d4c5d7000fd]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
 version: 1
