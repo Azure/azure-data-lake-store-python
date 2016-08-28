@@ -16,6 +16,7 @@ import tempfile
 import pytest
 import vcr
 
+from adlfs.core import AzureDLPath
 from tests import fake_settings, settings
 
 
@@ -65,7 +66,7 @@ my_vcr = vcr.VCR(
 
 def working_dir():
     if not hasattr(working_dir, "path"):
-        working_dir.path = os.path.join('azure_test_dir', '')
+        working_dir.path = AzureDLPath('azure_test_dir')
     return working_dir.path
 
 
@@ -122,3 +123,7 @@ def md5sum(fname, chunksize=4096):
         for chunk in iter(lambda: f.read(chunksize), b''):
             hashobj.update(chunk)
     return hashobj.hexdigest()
+
+
+def posix(*args):
+    return AzureDLPath(*args).as_posix()

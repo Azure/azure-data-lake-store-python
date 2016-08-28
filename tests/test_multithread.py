@@ -14,8 +14,9 @@ import signal
 import tempfile
 import threading
 
+from adlfs.core import AzureDLPath
 from adlfs.multithread import ADLDownloader, ADLUploader
-from tests.testing import azure, azure_teardown, md5sum, my_vcr, working_dir
+from tests.testing import azure, azure_teardown, md5sum, my_vcr, posix, working_dir
 
 test_dir = working_dir()
 
@@ -42,10 +43,10 @@ def linecount(infile):
 
 @contextmanager
 def setup_tree(azure):
-    for directory in ['', 'data/a/', 'data/b/']:
-        azure.mkdir(test_dir + directory)
+    for directory in ['', 'data/a', 'data/b']:
+        azure.mkdir(test_dir / directory)
         for filename in ['x.csv', 'y.csv', 'z.txt']:
-            with azure.open(test_dir + directory + filename, 'wb') as f:
+            with azure.open(test_dir / directory / filename, 'wb') as f:
                 f.write(b'123456')
     try:
         yield
@@ -74,7 +75,7 @@ def create_remote_csv(fs, name, columns, colwidth, lines):
 @my_vcr.use_cassette
 def test_download_single_file(tempdir, azure):
     with azure_teardown(azure):
-        name = os.path.join(test_dir, 'remote.csv')
+        name = posix(test_dir, 'remote.csv')
         lines = 100
         size, checksum = create_remote_csv(azure, name, 10, 5, lines)
         fname = os.path.join(tempdir, 'local.csv')
@@ -97,7 +98,7 @@ def test_download_single_file(tempdir, azure):
 @my_vcr.use_cassette
 def test_download_single_to_dir(tempdir, azure):
     with azure_teardown(azure):
-        name = os.path.join(test_dir, 'remote.csv')
+        name = posix(test_dir, 'remote.csv')
         lines = 100
         size, checksum = create_remote_csv(azure, name, 10, 5, lines)
         fname = os.path.join(tempdir, 'remote.csv')
@@ -122,23 +123,32 @@ def test_download_many(tempdir, azure):
 @my_vcr.use_cassette
 def test_download_glob(tempdir, azure):
     with setup_tree(azure):
-        down = ADLDownloader(azure, test_dir + 'data/a/*.csv', tempdir, run=False)
+        remote_path = test_dir / 'data' / 'a' / '*.csv'
+        down = ADLDownloader(azure, remote_path, tempdir, run=False)
         assert len(down.rfiles) == 2
 
         lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
         assert lfiles == ['x.csv', 'y.csv']
 
-        down = ADLDownloader(azure, test_dir + 'data/*/*.csv', tempdir, run=False)
+        remote_path = test_dir / 'data' / '*' / '*.csv'
+        down = ADLDownloader(azure, remote_path, tempdir, run=False)
         assert len(down.rfiles) == 4
 
         lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
-        assert lfiles == ['a/x.csv', 'a/y.csv', 'b/x.csv', 'b/y.csv']
+        assert lfiles == [
+            os.path.join('a', 'x.csv'),
+            os.path.join('a', 'y.csv'),
+            os.path.join('b', 'x.csv'),
+            os.path.join('b', 'y.csv')]
 
-        down = ADLDownloader(azure, test_dir + 'data/*/z.txt', tempdir, run=False)
+        remote_path = test_dir / 'data' / '*' / 'z.txt'
+        down = ADLDownloader(azure, remote_path, tempdir, run=False)
         assert len(down.rfiles) == 2
 
         lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
-        assert lfiles == ['a/z.txt', 'b/z.txt']
+        assert lfiles == [
+            os.path.join('a', 'z.txt'),
+            os.path.join('b', 'z.txt')]
 
 
 @my_vcr.use_cassette
@@ -195,16 +205,16 @@ def test_upload_one(local_files, azure):
         bigfile, littlefile, a, b, c = local_files
 
         # single chunk
-        up = ADLUploader(azure, test_dir+'littlefile', littlefile, nthreads=1)
-        assert azure.info(test_dir+'littlefile')['length'] == 10
+        up = ADLUploader(azure, test_dir / 'littlefile', littlefile, nthreads=1)
+        assert azure.info(test_dir / 'littlefile')['length'] == 10
 
         # multiple chunks, one thread
         size = 10000
-        up = ADLUploader(azure, test_dir+'bigfile', bigfile, nthreads=1,
+        up = ADLUploader(azure, test_dir / 'bigfile', bigfile, nthreads=1,
                             chunksize=size//5)
-        assert azure.info(test_dir+'bigfile')['length'] == size
+        assert azure.info(test_dir / 'bigfile')['length'] == size
 
-        azure.rm(test_dir+'bigfile')
+        azure.rm(test_dir / 'bigfile')
 
 
 @my_vcr.use_cassette
@@ -215,39 +225,49 @@ def test_upload_many(local_files, azure):
 
         # single thread
         up = ADLUploader(azure, test_dir, root, nthreads=1)
-        assert azure.info(test_dir+'littlefile')['length'] == 10
-        assert azure.cat(test_dir+'/nested1/nested2/a') == b'0123456789'
+        assert azure.info(test_dir / 'littlefile')['length'] == 10
+        assert azure.cat(test_dir / 'nested1/nested2/a') == b'0123456789'
         assert len(azure.du(test_dir, deep=True)) == 5
         assert azure.du(test_dir, deep=True, total=True) == 10000 + 40
 
 
 @my_vcr.use_cassette
 def test_upload_glob(tempdir, azure):
-    for directory in ['data/a/', 'data/b/']:
-        d = os.path.join(tempdir, directory)
+    for directory in ['a', 'b']:
+        d = os.path.join(tempdir, 'data', directory)
         os.makedirs(d)
         for data in ['x.csv', 'y.csv', 'z.txt']:
-            with open(d + '/' + data, 'wb') as f:
+            with open(os.path.join(d, data), 'wb') as f:
                 f.write(b'0123456789')
 
     with azure_teardown(azure):
-        up = ADLUploader(azure, test_dir, tempdir + '/data/a/*.csv', run=False)
+        local_path = os.path.join(tempdir, 'data', 'a', '*.csv')
+        up = ADLUploader(azure, test_dir, local_path, run=False)
         assert len(up.lfiles) == 2
 
-        rfiles = [os.path.relpath(f, test_dir) for f in up.rfiles]
+        rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
+                  for f in up.rfiles]
         assert rfiles == ['x.csv', 'y.csv']
 
-        up = ADLUploader(azure, test_dir, tempdir + '/data/*/*.csv', run=False)
+        local_path = os.path.join(tempdir, 'data', '*', '*.csv')
+        up = ADLUploader(azure, test_dir, local_path, run=False)
         assert len(up.lfiles) == 4
 
-        rfiles = [os.path.relpath(f, test_dir) for f in up.rfiles]
-        assert rfiles == ['a/x.csv', 'a/y.csv', 'b/x.csv', 'b/y.csv']
+        rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
+                  for f in up.rfiles]
+        assert rfiles == [
+            posix('a', 'x.csv'),
+            posix('a', 'y.csv'),
+            posix('b', 'x.csv'),
+            posix('b', 'y.csv')]
 
-        up = ADLUploader(azure, test_dir, tempdir + '/data/*/z.txt', run=False)
+        local_path = os.path.join(tempdir, 'data', '*', 'z.txt')
+        up = ADLUploader(azure, test_dir, local_path, run=False)
         assert len(up.lfiles) == 2
 
-        rfiles = [os.path.relpath(f, test_dir) for f in up.rfiles]
-        assert rfiles == ['a/z.txt', 'b/z.txt']
+        rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
+                  for f in up.rfiles]
+        assert rfiles == [posix('a', 'z.txt'), posix('b', 'z.txt')]
 
 
 def test_save_up(local_files, azure):
