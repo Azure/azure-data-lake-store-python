@@ -152,8 +152,7 @@ def test_glob_walk(azure):
         assert set(azure.glob(test_dir + 'c/*')) == {test_dir + 'c/x1',
                                                 test_dir + 'c/x2'}
         assert (set(azure.glob(test_dir + 'c')) ==
-                set(azure.glob(test_dir + 'c/')) ==
-                set(azure.glob(test_dir + 'c/*')))
+                set(azure.glob(test_dir + 'c/')))
 
         assert set(azure.glob(test_dir + 'a')) == {test_dir + 'a'}
         assert set(azure.glob(test_dir + 'a1')) == {test_dir + 'a1'}

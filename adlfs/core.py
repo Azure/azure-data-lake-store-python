@@ -174,13 +174,9 @@ class AzureDLFileSystem(object):
         path = AzureDLPath(path).trim()
         prefix = path.globless_prefix
         allfiles = self.walk(prefix)
-        pattern = re.compile("^" + path.as_posix()
-                                       .replace('*', '[^/]*')
-                                       .replace('?', '.') + "$")
-        out = [f for f in allfiles if re.match(pattern, f)]
-        if not out and prefix == path:
-            out = self.ls(path)
-        return out
+        if prefix == path:
+            return allfiles
+        return [f for f in allfiles if AzureDLPath(f).match(path.as_posix())]
 
     def du(self, path, total=False, deep=False):
         """ Bytes in keys at path """
