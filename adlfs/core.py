@@ -19,7 +19,6 @@ import io
 import itertools
 import logging
 import os
-import pathlib
 import re
 import sys
 import time
@@ -27,6 +26,11 @@ import time
 # local imports
 from .lib import DatalakeRESTInterface, auth, refresh_token
 from .utils import FileNotFoundError, PY2, ensure_writable, read_block, logger
+
+if sys.version_info >= (3, 4):
+    import pathlib
+else:
+    import pathlib2 as pathlib
 
 
 class AzureDLFileSystem(object):
