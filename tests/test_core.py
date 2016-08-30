@@ -7,6 +7,7 @@
 # --------------------------------------------------------------------------
 
 import io
+import sys
 
 import pytest
 
@@ -583,3 +584,44 @@ def test_chmod(azure):
             azure.ls(test_dir / 'deep')
 
         azure.chmod(test_dir / 'deep', '770')
+
+
+@pytest.mark.skipif(sys.platform != 'win32', reason="requires windows")
+def test_backslash():
+    from adlfs.core import AzureDLPath
+
+    posix_abspath = '/foo/bar'
+    posix_relpath = 'foo/bar'
+
+    win_abspath = AzureDLPath('\\foo\\bar')
+    win_relpath = AzureDLPath('foo\\bar')
+
+    assert posix(win_abspath) == posix_abspath
+    assert posix(win_abspath.trim()) == posix_relpath
+
+    assert 'foo' in win_abspath
+    assert 'foo' in win_relpath
+
+    assert posix(AzureDLPath('\\*').globless_prefix) == '/'
+    assert posix(AzureDLPath('\\foo\\*').globless_prefix) == '/foo'
+    assert posix(AzureDLPath('\\foo\\b*').globless_prefix) == '/foo'
+
+
+def test_forward_slash():
+    from adlfs.core import AzureDLPath
+
+    posix_abspath = '/foo/bar'
+    posix_relpath = 'foo/bar'
+
+    abspath = AzureDLPath('/foo/bar')
+    relpath = AzureDLPath('foo/bar')
+
+    assert posix(abspath) == posix_abspath
+    assert posix(abspath.trim()) == posix_relpath
+
+    assert 'foo' in abspath
+    assert 'foo' in relpath
+
+    assert posix(AzureDLPath('/*').globless_prefix) == '/'
+    assert posix(AzureDLPath('/foo/*').globless_prefix) == '/foo'
+    assert posix(AzureDLPath('/foo/b*').globless_prefix) == '/foo'
