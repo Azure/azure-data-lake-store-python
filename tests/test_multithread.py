@@ -6,6 +6,7 @@
 # license information.
 # --------------------------------------------------------------------------
 
+from contextlib import contextmanager
 import os
 import pytest
 import shutil
@@ -14,10 +15,9 @@ import tempfile
 import threading
 
 from adlfs.multithread import ADLDownloader, ADLUploader
+from tests.testing import azure, azure_teardown, md5sum, my_vcr, working_dir
 
-from tests.testing import md5sum, my_vcr, open_azure
-
-test_dir = 'azure_test_dir/'
+test_dir = working_dir()
 
 
 @pytest.yield_fixture()
@@ -40,15 +40,45 @@ def linecount(infile):
 # rather than rely on file already in place.
 
 
-@my_vcr.use_cassette
-def test_download_single_file(tempdir):
-    name = 'gdelt20150827.csv'
-    checksum = 'ce58e380a5783120e31b3934bab1b04b'
-    fname = os.path.join(tempdir, 'agelt.csv')
-    size = 81840585
-    lines = 217017
+@contextmanager
+def setup_tree(azure):
+    for directory in ['', 'data/a/', 'data/b/']:
+        azure.mkdir(test_dir + directory)
+        for filename in ['x.csv', 'y.csv', 'z.txt']:
+            with azure.open(test_dir + directory + filename, 'wb') as f:
+                f.write(b'123456')
+    try:
+        yield
+    finally:
+        for path in azure.ls(test_dir):
+            if azure.exists(path):
+                azure.rm(path, recursive=True)
 
-    with open_azure() as azure:
+
+def create_remote_csv(fs, name, columns, colwidth, lines):
+    from hashlib import md5
+    from itertools import cycle, islice
+    hashobj = md5()
+    haystack = '0123456789ABCDEF'
+    row = ','.join([ch * colwidth for ch in islice(cycle(haystack), columns)]) + '\n'
+    row = row.encode('utf-8')
+    fsize = 0
+    with fs.open(name, 'wb') as f:
+        for _ in range(0, lines):
+            hashobj.update(row)
+            f.write(row)
+            fsize += len(row)
+    return fsize, hashobj.hexdigest()
+
+
+@my_vcr.use_cassette
+def test_download_single_file(tempdir, azure):
+    with azure_teardown(azure):
+        name = os.path.join(test_dir, 'remote.csv')
+        lines = 100
+        size, checksum = create_remote_csv(azure, name, 10, 5, lines)
+        fname = os.path.join(tempdir, 'local.csv')
+
         # single chunk
         down = ADLDownloader(azure, name, fname, 1, size + 10)
         assert md5sum(fname) == checksum
@@ -57,7 +87,7 @@ def test_download_single_file(tempdir):
         os.remove(fname)
 
         # multiple chunks, one thread
-        down = ADLDownloader(azure, name, fname, 1, 2**24)
+        down = ADLDownloader(azure, name, fname, 1, size // 5)
         assert md5sum(fname) == checksum
         assert os.stat(fname).st_size == size
         assert linecount(fname) == lines
@@ -65,14 +95,13 @@ def test_download_single_file(tempdir):
 
 
 @my_vcr.use_cassette
-def test_download_single_to_dir(tempdir):
-    name = 'gdelt20150827.csv'
-    checksum = 'ce58e380a5783120e31b3934bab1b04b'
-    fname = os.path.join(tempdir, name)
-    size = 81840585
-    lines = 217017
+def test_download_single_to_dir(tempdir, azure):
+    with azure_teardown(azure):
+        name = os.path.join(test_dir, 'remote.csv')
+        lines = 100
+        size, checksum = create_remote_csv(azure, name, 10, 5, lines)
+        fname = os.path.join(tempdir, 'remote.csv')
 
-    with open_azure() as azure:
         down = ADLDownloader(azure, name, tempdir, 1, 2**24)
         assert md5sum(fname) == checksum
         assert os.stat(fname).st_size == size
@@ -81,9 +110,9 @@ def test_download_single_to_dir(tempdir):
 
 
 @my_vcr.use_cassette
-def test_download_many(tempdir):
-    with open_azure() as azure:
-        down = ADLDownloader(azure, '', tempdir, 1, 2**24)
+def test_download_many(tempdir, azure):
+    with setup_tree(azure):
+        down = ADLDownloader(azure, test_dir, tempdir, 1, 2**24)
         nfiles = 0
         for dirpath, dirnames, filenames in os.walk(tempdir):
             nfiles += len(filenames)
@@ -91,13 +120,8 @@ def test_download_many(tempdir):
 
 
 @my_vcr.use_cassette
-def test_download_glob(tempdir):
-    with open_azure() as azure:
-        for directory in ['data/a/', 'data/b/']:
-            azure.mkdir(test_dir + directory)
-            for f in ['x.csv', 'y.csv', 'z.txt']:
-                azure.touch(test_dir + directory + f)
-
+def test_download_glob(tempdir, azure):
+    with setup_tree(azure):
         down = ADLDownloader(azure, test_dir + 'data/a/*.csv', tempdir, run=False)
         assert len(down.rfiles) == 2
 
@@ -118,9 +142,9 @@ def test_download_glob(tempdir):
 
 
 @my_vcr.use_cassette
-def test_save_down(tempdir):
-    with open_azure(directory=None) as azure:
-        down = ADLDownloader(azure, '', tempdir, 1, 2**24, run=False)
+def test_save_down(tempdir, azure):
+    with setup_tree(azure):
+        down = ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
         down.save()
 
         alldownloads = ADLDownloader.load()
@@ -131,11 +155,10 @@ def test_save_down(tempdir):
         assert down.hash not in alldownloads
 
 
-@pytest.mark.skip(reason="first assert fails during VCR playback")
-@my_vcr.use_cassette
-def test_interrupt_down(tempdir):
-    with open_azure() as azure:
-        down = ADLDownloader(azure, '', tempdir, 1, 2**24, run=False)
+@pytest.mark.skipif(True, reason="first assert fails during VCR playback")
+def test_interrupt_down(tempdir, azure):
+    with setup_tree(azure):
+        down = ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
 
         def interrupt():
             os.kill(os.getpid(), signal.SIGINT)
@@ -154,7 +177,7 @@ def local_files(tempdir):
     filenames = [os.path.join(tempdir, f) for f in ['bigfile', 'littlefile']]
     with open(filenames[0], 'wb') as f:
         for char in b"0 1 2 3 4 5 6 7 8 9".split():
-            f.write(char * 1000000)
+            f.write(char * 1000)
     with open(filenames[1], 'wb') as f:
         f.write(b'0123456789')
     nestpath = os.path.join(tempdir, 'nested1', 'nested2')
@@ -167,47 +190,47 @@ def local_files(tempdir):
 
 
 @my_vcr.use_cassette
-def test_upload_one(local_files):
-    bigfile, littlefile, a, b, c = local_files
+def test_upload_one(local_files, azure):
+    with azure_teardown(azure):
+        bigfile, littlefile, a, b, c = local_files
 
-    with open_azure() as azure:
         # single chunk
         up = ADLUploader(azure, test_dir+'littlefile', littlefile, nthreads=1)
         assert azure.info(test_dir+'littlefile')['length'] == 10
 
         # multiple chunks, one thread
-        size = 10000000
+        size = 10000
         up = ADLUploader(azure, test_dir+'bigfile', bigfile, nthreads=1,
-                         chunksize=size//5)
+                            chunksize=size//5)
         assert azure.info(test_dir+'bigfile')['length'] == size
 
         azure.rm(test_dir+'bigfile')
 
 
 @my_vcr.use_cassette
-def test_upload_many(local_files):
-    bigfile, littlefile, a, b, c = local_files
-    root = os.path.dirname(bigfile)
+def test_upload_many(local_files, azure):
+    with azure_teardown(azure):
+        bigfile, littlefile, a, b, c = local_files
+        root = os.path.dirname(bigfile)
 
-    with open_azure() as azure:
         # single thread
         up = ADLUploader(azure, test_dir, root, nthreads=1)
         assert azure.info(test_dir+'littlefile')['length'] == 10
         assert azure.cat(test_dir+'/nested1/nested2/a') == b'0123456789'
         assert len(azure.du(test_dir, deep=True)) == 5
-        assert azure.du(test_dir, deep=True, total=True) == 10000000 + 40
+        assert azure.du(test_dir, deep=True, total=True) == 10000 + 40
 
 
 @my_vcr.use_cassette
-def test_upload_glob(tempdir):
-    with open_azure(directory=None) as azure:
-        for directory in ['data/a/', 'data/b/']:
-            d = os.path.join(tempdir, directory)
-            os.makedirs(d)
-            for data in ['x.csv', 'y.csv', 'z.txt']:
-                with open(d + '/' + data, 'wb') as f:
-                    f.write(b'0123456789')
+def test_upload_glob(tempdir, azure):
+    for directory in ['data/a/', 'data/b/']:
+        d = os.path.join(tempdir, directory)
+        os.makedirs(d)
+        for data in ['x.csv', 'y.csv', 'z.txt']:
+            with open(d + '/' + data, 'wb') as f:
+                f.write(b'0123456789')
 
+    with azure_teardown(azure):
         up = ADLUploader(azure, test_dir, tempdir + '/data/a/*.csv', run=False)
         assert len(up.lfiles) == 2
 
@@ -227,29 +250,27 @@ def test_upload_glob(tempdir):
         assert rfiles == ['a/z.txt', 'b/z.txt']
 
 
-def test_save_up(local_files):
+def test_save_up(local_files, azure):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
 
-    with open_azure(directory=None) as azure:
-        up = ADLUploader(azure, '', root, 1, 1000000, run=False)
-        up.save()
+    up = ADLUploader(azure, '', root, 1, 1000000, run=False)
+    up.save()
 
-        alluploads = ADLUploader.load()
-        assert up.hash in alluploads
+    alluploads = ADLUploader.load()
+    assert up.hash in alluploads
 
-        up.save(keep=False)
-        alluploads = ADLUploader.load()
-        assert up.hash not in alluploads
+    up.save(keep=False)
+    alluploads = ADLUploader.load()
+    assert up.hash not in alluploads
 
 
-@pytest.mark.skip(reason="first assert fails during VCR playback")
-@my_vcr.use_cassette
-def test_interrupt_up(local_files):
+@pytest.mark.skipif(True, reason="first assert fails during VCR playback")
+def test_interrupt_up(local_files, azure):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)
 
-    with open_azure() as azure:
+    with azure_teardown(azure):
         up = ADLUploader(azure, test_dir, root, 1, 1000000, run=False)
 
         def interrupt():

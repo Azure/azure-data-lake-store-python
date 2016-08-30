@@ -1,7 +1,8 @@
 adlfs
 ====
 
-|Build Status| |Doc Status|
+.. image:: https://travis-ci.org/Azure/azure-data-lake-store-python.svg?branch=dev
+    :target: https://travis-ci.org/Azure/azure-data-lake-store-python
 
 NOTE: This management package is currently under active development
 and should not be consumed until the first version is published.

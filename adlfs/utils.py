@@ -49,6 +49,15 @@ def ensure_writable(b):
     return b
 
 
+def write_stdout(data):
+    """ Write bytes or strings to standard output
+    """
+    try:
+        sys.stdout.buffer.write(data)
+    except AttributeError:
+        sys.stdout.write(data.decode('ascii', 'replace'))
+
+
 def read_block(f, offset, length, delimiter=None):
     """ Read a block of bytes from a file
 

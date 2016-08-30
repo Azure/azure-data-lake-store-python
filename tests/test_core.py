@@ -6,15 +6,13 @@
 # license information.
 # --------------------------------------------------------------------------
 
-from __future__ import unicode_literals
-
 import io
 
 import pytest
 
-from tests.testing import my_vcr, open_azure, tmpfile
+from tests.testing import azure, azure_teardown, my_vcr, tmpfile, working_dir
 
-test_dir = 'azure_test_dir/'
+test_dir = working_dir()
 
 a = test_dir + 'a'
 b = test_dir + 'b'
@@ -23,8 +21,8 @@ d = test_dir + 'd'
 
 
 @my_vcr.use_cassette
-def test_simple():
-    with open_azure() as azure:
+def test_simple(azure):
+    with azure_teardown(azure):
         data = b'a' * (2**16)
 
         with azure.open(a, 'wb') as f:
@@ -38,15 +36,14 @@ def test_simple():
 
 
 @my_vcr.use_cassette
-def test_idempotent_connect():
-    with open_azure() as azure:
-        azure.connect()
-        azure.connect()
+def test_idempotent_connect(azure):
+    azure.connect()
+    azure.connect()
 
 
 @my_vcr.use_cassette
-def test_ls_touch():
-    with open_azure() as azure:
+def test_ls_touch(azure):
+    with azure_teardown(azure):
         assert not azure.ls(test_dir)
         azure.touch(a)
         azure.touch(b)
@@ -57,8 +54,8 @@ def test_ls_touch():
 
 
 @my_vcr.use_cassette
-def test_rm():
-    with open_azure() as azure:
+def test_rm(azure):
+    with azure_teardown(azure):
         assert not azure.exists(a)
         azure.touch(a)
         assert azure.exists(a)
@@ -67,17 +64,16 @@ def test_rm():
 
 
 @my_vcr.use_cassette
-def test_pickle():
-    with open_azure() as azure:
-        import pickle
-        azure2 = pickle.loads(pickle.dumps(azure))
+def test_pickle(azure):
+    import pickle
+    azure2 = pickle.loads(pickle.dumps(azure))
 
-        assert azure2.token == azure.token
+    assert azure2.token == azure.token
 
 
 @my_vcr.use_cassette
-def test_seek():
-    with open_azure() as azure:
+def test_seek(azure):
+    with azure_teardown(azure):
         with azure.open(a, 'wb') as f:
             f.write(b'123')
 
@@ -107,42 +103,40 @@ def test_seek():
 
 
 @my_vcr.use_cassette
-def test_bad_open():
-    with open_azure() as azure:
-        with pytest.raises(IOError):
-            azure.open('')
+def test_bad_open(azure):
+    with pytest.raises(IOError):
+        azure.open('')
 
 
 @my_vcr.use_cassette
-def test_errors():
-    with open_azure() as azure:
-        with pytest.raises((IOError, OSError)):
-            azure.open(test_dir + 'shfoshf', 'rb')
+def test_errors(azure):
+    with pytest.raises((IOError, OSError)):
+        azure.open(test_dir + 'shfoshf', 'rb')
 
-        # This is totally OK: directory is silently created
-        # Will need extend invalidate_cache
-        # with pytest.raises((IOError, OSError)):
-        #     azure.touch(test_dir + 'shfoshf/x')
+    # This is totally OK: directory is silently created
+    # Will need extend invalidate_cache
+    # with pytest.raises((IOError, OSError)):
+    #     azure.touch(test_dir + 'shfoshf/x')
 
-        with pytest.raises((IOError, OSError)):
-            azure.rm(test_dir + 'shfoshf/xxx')
+    with pytest.raises((IOError, OSError)):
+        azure.rm(test_dir + 'shfoshf/xxx')
 
-        with pytest.raises((IOError, OSError)):
-            azure.mv(test_dir + 'shfoshf/x', test_dir + 'shfoshxbf/y')
+    with pytest.raises((IOError, OSError)):
+        azure.mv(test_dir + 'shfoshf/x', test_dir + 'shfoshxbf/y')
 
-        # with pytest.raises(IOError):
-        #    azure.chown('/unknown', 'someone', 'group')
+    # with pytest.raises(IOError):
+    #    azure.chown('/unknown', 'someone', 'group')
 
-        # with pytest.raises(IOError):
-        #     azure.chmod('/unknonwn', 'rb')
+    # with pytest.raises(IOError):
+    #     azure.chmod('/unknonwn', 'rb')
 
-        with pytest.raises(IOError):
-            azure.rm(test_dir + '/unknown')
+    with pytest.raises(IOError):
+        azure.rm(test_dir + '/unknown')
 
 
 @my_vcr.use_cassette
-def test_glob_walk():
-    with open_azure() as azure:
+def test_glob_walk(azure):
+    with azure_teardown(azure):
         azure.mkdir(test_dir + 'c/')
         azure.mkdir(test_dir + 'c/d/')
         filenames = ['a', 'a1', 'a2', 'a3', 'b1', 'c/x1', 'c/x2', 'c/d/x3']
@@ -187,8 +181,8 @@ def test_glob_walk():
 
 
 @my_vcr.use_cassette
-def test_info():
-    with open_azure() as azure:
+def test_info(azure):
+    with azure_teardown(azure):
         with azure.open(a, 'wb') as f:
             f.write(b'a' * 5)
 
@@ -201,8 +195,8 @@ def test_info():
 
 
 @my_vcr.use_cassette
-def test_df():
-    with open_azure() as azure:
+def test_df(azure):
+    with azure_teardown(azure):
         with azure.open(a, 'wb') as f:
             f.write(b'a' * 10)
         with azure.open(b, 'wb') as f:
@@ -214,8 +208,8 @@ def test_df():
 
 
 @my_vcr.use_cassette
-def test_move():
-    with open_azure() as azure:
+def test_move(azure):
+    with azure_teardown(azure):
         azure.touch(a)
         assert azure.exists(a)
         assert not azure.exists(b)
@@ -226,8 +220,8 @@ def test_move():
 
 @my_vcr.use_cassette
 @pytest.mark.xfail(reason='copy not implemented on ADL')
-def test_copy():
-    with open_azure() as azure:
+def test_copy(azure):
+    with azure_teardown(azure):
         azure.touch(a)
         assert azure.exists(a)
         assert not azure.exists(b)
@@ -237,8 +231,8 @@ def test_copy():
 
 
 @my_vcr.use_cassette
-def test_exists():
-    with open_azure() as azure:
+def test_exists(azure):
+    with azure_teardown(azure):
         assert not azure.exists(a)
         azure.touch(a)
         assert azure.exists(a)
@@ -247,8 +241,8 @@ def test_exists():
 
 
 @my_vcr.use_cassette
-def test_cat():
-    with open_azure() as azure:
+def test_cat(azure):
+    with azure_teardown(azure):
         with azure.open(a, 'wb') as f:
             f.write(b'0123456789')
         assert azure.cat(a) == b'0123456789'
@@ -257,8 +251,8 @@ def test_cat():
 
 
 @my_vcr.use_cassette
-def test_full_read():
-    with open_azure() as azure:
+def test_full_read(azure):
+    with azure_teardown(azure):
         with azure.open(a, 'wb') as f:
             f.write(b'0123456789')
 
@@ -280,8 +274,8 @@ def test_full_read():
 
 
 @my_vcr.use_cassette
-def test_tail_head():
-    with open_azure() as azure:
+def test_tail_head(azure):
+    with azure_teardown(azure):
         with azure.open(a, 'wb') as f:
             f.write(b'0123456789')
 
@@ -291,12 +285,12 @@ def test_tail_head():
 
 
 @my_vcr.use_cassette
-def test_read_delimited_block():
-    with open_azure() as azure:
-        fn = '/tmp/test/a'
-        delimiter = b'\n'
-        data = delimiter.join([b'123', b'456', b'789'])
+def test_read_delimited_block(azure):
+    fn = '/tmp/test/a'
+    delimiter = b'\n'
+    data = delimiter.join([b'123', b'456', b'789'])
 
+    with azure_teardown(azure):
         with azure.open(fn, 'wb') as f:
             f.write(data)
 
@@ -318,8 +312,8 @@ def test_read_delimited_block():
 
 
 @my_vcr.use_cassette
-def test_readline():
-    with open_azure() as azure:
+def test_readline(azure):
+    with azure_teardown(azure):
         with azure.open(a, 'wb') as f:
             f.write(b'\n'.join([b'123', b'456', b'789']))
 
@@ -331,15 +325,15 @@ def test_readline():
 
 
 @my_vcr.use_cassette
-def test_touch_exists():
-    with open_azure() as azure:
+def test_touch_exists(azure):
+    with azure_teardown(azure):
         azure.touch(a)
         assert azure.exists(a)
 
 
 @my_vcr.use_cassette
-def test_write_in_read_mode():
-    with open_azure() as azure:
+def test_write_in_read_mode(azure):
+    with azure_teardown(azure):
         azure.touch(a)
 
         with azure.open(a, 'rb') as f:
@@ -348,8 +342,8 @@ def test_write_in_read_mode():
 
 
 @my_vcr.use_cassette
-def test_readlines():
-    with open_azure() as azure:
+def test_readlines(azure):
+    with azure_teardown(azure):
         with azure.open(a, 'wb') as f:
             f.write(b'123\n456')
 
@@ -373,9 +367,9 @@ def test_readlines():
 
 
 @my_vcr.use_cassette
-def test_put():
-    with open_azure() as azure:
-        data = b'1234567890' * 100
+def test_put(azure):
+    data = b'1234567890' * 100
+    with azure_teardown(azure):
         with tmpfile() as fn:
             with open(fn, 'wb') as f:
                 f.write(data)
@@ -386,9 +380,9 @@ def test_put():
 
 
 @my_vcr.use_cassette
-def test_get():
-    with open_azure() as azure:
-        data = b'1234567890'
+def test_get(azure):
+    data = b'1234567890'
+    with azure_teardown(azure):
         with tmpfile() as fn:
             with azure.open(a, 'wb') as f:
                 f.write(data)
@@ -404,8 +398,8 @@ def test_get():
 
 
 @my_vcr.use_cassette
-def test_du():
-    with open_azure() as azure:
+def test_du(azure):
+    with azure_teardown(azure):
         with azure.open(a, 'wb') as f:
             f.write(b'123')
         with azure.open(b, 'wb') as f:
@@ -416,18 +410,17 @@ def test_du():
 
 
 @my_vcr.use_cassette
-def test_text_bytes():
-    with open_azure() as azure:
-        with pytest.raises(NotImplementedError):
-            azure.open(a, 'wt')
+def test_text_bytes(azure):
+    with pytest.raises(NotImplementedError):
+        azure.open(a, 'wt')
 
-        with pytest.raises(NotImplementedError):
-            azure.open(a, 'rt')
+    with pytest.raises(NotImplementedError):
+        azure.open(a, 'rt')
 
 
 @my_vcr.use_cassette
-def test_append():
-    with open_azure() as azure:
+def test_append(azure):
+    with azure_teardown(azure):
         with azure.open(a, mode='ab') as f:
             f.write(b'123')
         with azure.open(a, mode='ab') as f:
@@ -443,8 +436,8 @@ def test_append():
 
 
 @my_vcr.use_cassette
-def test_write_empty():
-    with open_azure() as azure:
+def test_write_empty(azure):
+    with azure_teardown(azure):
         with azure.open(a, mode='wb') as f:
             f.write(b'')
 
@@ -453,8 +446,8 @@ def test_write_empty():
 
 
 @my_vcr.use_cassette
-def test_write_blocks():
-    with open_azure() as azure:
+def test_write_blocks(azure):
+    with azure_teardown(azure):
         with azure.open(a, mode='wb', blocksize=5) as f:
             f.write(b'000')
             assert f.buffer.tell() == 3
@@ -466,10 +459,10 @@ def test_write_blocks():
 
 
 @my_vcr.use_cassette
-def test_gzip():
-    with open_azure() as azure:
-        import gzip
-        data = b'name,amount\nAlice,100\nBob,200'
+def test_gzip(azure):
+    import gzip
+    data = b'name,amount\nAlice,100\nBob,200'
+    with azure_teardown(azure):
         with azure.open(a, mode='wb') as f:
             with gzip.GzipFile(fileobj=f) as g:
                 g.write(b'name,amount\nAlice,100\nBob,200')
@@ -482,8 +475,8 @@ def test_gzip():
 
 
 @my_vcr.use_cassette
-def test_fooable():
-    with open_azure() as azure:
+def test_fooable(azure):
+    with azure_teardown(azure):
         azure.touch(a)
 
         with azure.open(a, mode='rb') as f:
@@ -498,8 +491,8 @@ def test_fooable():
 
 
 @my_vcr.use_cassette
-def test_closed():
-    with open_azure() as azure:
+def test_closed(azure):
+    with azure_teardown(azure):
         azure.touch(a)
 
         f = azure.open(a, mode='rb')
@@ -509,8 +502,8 @@ def test_closed():
 
 
 @my_vcr.use_cassette
-def test_TextIOWrapper():
-    with open_azure() as azure:
+def test_TextIOWrapper(azure):
+    with azure_teardown(azure):
         with azure.open(a, mode='wb') as f:
             f.write(b'1,2\n3,4\n5,6')
 
@@ -522,11 +515,11 @@ def test_TextIOWrapper():
 
 
 @my_vcr.use_cassette
-def test_array():
-    with open_azure() as azure:
-        from array import array
-        data = array('B', [65] * 1000)
+def test_array(azure):
+    from array import array
+    data = array('B', [65] * 1000)
 
+    with azure_teardown(azure):
         with azure.open(a, 'wb') as f:
             f.write(data)
 
@@ -549,20 +542,20 @@ def write_delimited_data(azure, delimiter):
 
 
 @my_vcr.use_cassette
-def test_delimiters_newline():
-    with open_azure() as azure:
+def test_delimiters_newline(azure):
+    with azure_teardown(azure):
         write_delimited_data(azure, b'\n')
 
 
 @my_vcr.use_cassette
-def test_delimiters_dash():
-    with open_azure() as azure:
+def test_delimiters_dash(azure):
+    with azure_teardown(azure):
         write_delimited_data(azure, b'--')
 
 
 @my_vcr.use_cassette
-def test_chmod():
-    with open_azure() as azure:
+def test_chmod(azure):
+    with azure_teardown(azure):
         azure.touch(a)
 
         assert azure.info(a)['permission'] == '770'

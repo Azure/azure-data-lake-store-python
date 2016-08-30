@@ -27,6 +27,7 @@ import sys
 from adlfs.core import AzureDLFileSystem
 from adlfs.lib import auth
 from adlfs.multithread import ADLDownloader, ADLUploader
+from adlfs.utils import write_stdout
 
 
 class AzureDataLakeFSCommand(cmd.Cmd, object):
@@ -56,7 +57,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         args = parser.parse_args(line.split())
 
         for f in args.files:
-            print(self._fs.cat(f))
+            write_stdout(self._fs.cat(f))
 
     def help_cat(self):
         print("cat file ...\n")
@@ -193,7 +194,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         args = parser.parse_args(line.split())
 
         for f in args.files:
-            print(self._fs.head(f, size=args.bytes))
+            write_stdout(self._fs.head(f, size=args.bytes))
 
     def help_head(self):
         print("head [-c bytes | --bytes bytes] file ...\n")
@@ -339,7 +340,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         args = parser.parse_args(line.split())
 
         for f in args.files:
-            print(self._fs.tail(f, size=args.bytes))
+            write_stdout(self._fs.tail(f, size=args.bytes))
 
     def help_tail(self):
         print("tail [-c bytes | --bytes bytes] file ...\n")
