@@ -143,6 +143,7 @@ class ADLDownloader:
                 logger.debug('File downloaded (%s -> %s)' % key)
                 self.progress.pop(key)
                 self.nfiles -= 1
+        self.save()
 
     def _monitor(self):
         """ Wait for download to happen
@@ -355,6 +356,7 @@ class ADLUploader:
                     self.progress.pop(key)
                     self.nfiles -= 1
                     self.nchunks -= len(dic['waiting'])
+        self.save()
 
     def _monitor(self):
         """ Wait for upload to happen
@@ -382,6 +384,16 @@ class ADLUploader:
                     self.rpath, self.nchunks, self.nchunks_orig)
 
     __repr__ = __str__
+
+    def __getstate__(self):
+        dic2 = self.__dict__.copy()
+        del dic2['pool']
+        dic2['progress'] = self.progress.copy()
+        for k, v in list(dic2['progress'].items()):
+            v = v.copy()
+            v['futures'] = []
+            dic2['progress'][k]= v
+        return dic2
 
     def save(self, keep=True):
         """ Persist this upload, if it is incomplete, otherwise discard.
@@ -415,19 +427,24 @@ def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES,
     """
     with adlfs.open(rfile, 'wb', delimiter=delimiter) as fout:
         end = offset + size
+        miniblock = min(size, 4*2**20)
         with open(lfile, 'rb') as fin:
             tries = 0
-            try:
-                for o in range(offset, end, 4*2**20):
-                    fout.write(read_block(fin, o, 4*2**20, delimiter))
-            except Exception as e:
-                # TODO : only some exceptions should be retriable
-                logger.debug('Upload failed %s, byte offset %s; %s, %s', lfile,
-                             offset, e, e.args)
-                tries += 1
-                if tries >= retries:
-                    logger.debug('Aborting %s, byte offset %s', lfile, offset)
-                    raise
+            while True:
+                try:
+                    if offset==0:
+                        raise RuntimeError
+                    for o in range(offset, end, miniblock):
+                        fout.write(read_block(fin, o, miniblock, delimiter))
+                    break
+                except Exception as e:
+                    # TODO : only some exceptions should be retriable
+                    logger.debug('Upload failed %s, byte offset %s; %s, %s', lfile,
+                                 offset, e, e.args)
+                    tries += 1
+                    if tries >= retries:
+                        logger.debug('Aborting %s, byte offset %s', lfile, offset)
+                        raise
     logger.debug('Uploaded from %s, byte offset %s', lfile, offset)
     return True
 
