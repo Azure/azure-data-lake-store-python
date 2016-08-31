@@ -432,8 +432,6 @@ def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES,
             tries = 0
             while True:
                 try:
-                    if offset==0:
-                        raise RuntimeError
                     for o in range(offset, end, miniblock):
                         fout.write(read_block(fin, o, miniblock, delimiter))
                     break
