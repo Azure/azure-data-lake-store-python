@@ -645,9 +645,11 @@ class AzureDLFile(object):
                 self.buffer = io.BytesIO(data)
                 self.buffer.seek(0, 2)
             if not self.delimiter or force:
-                out = self.azure.azure.call('APPEND', path=self.path,
-                                            data=data)
-                logger.debug('Wrote %d bytes to %s' % (len(data), self))
+                offsets = range(0, len(data), self.blocksize)
+                for o in offsets:
+                    out = self.azure.azure.call('APPEND', path=self.path,
+                                                data=data[o:o+self.blocksize])
+                    logger.debug('Wrote %d bytes to %s' % (len(data), self))
                 self.buffer = io.BytesIO()
             return out
 
