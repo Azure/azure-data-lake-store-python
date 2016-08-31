@@ -251,7 +251,7 @@ class ADLUploader:
     """
     temp_upload_path = '/tmp/'
 
-    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**26,
+    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=256*2**20,
                  run=True, delimiter=None):
         self.adl = adlfs
         self.rpath = rpath
@@ -336,9 +336,15 @@ class ADLUploader:
             for offset, future in zip(list(dic['waiting']),
                                       list(dic['futures'])):
                 if future.done() and not future.cancelled():
-                    dic['waiting'].remove(offset)
-                    dic['futures'].remove(future)
-                    self.nchunks -= 1
+                    success = False
+                    try:
+                        success = future.result()
+                    except:
+                        pass
+                    if success:
+                        dic['waiting'].remove(offset)
+                        dic['futures'].remove(future)
+                        self.nchunks -= 1
             if not dic['waiting'] or dic['final']:
                 if dic['final'] is None:
                     logger.debug('Finalizing (%s -> %s)' % (key[1], key[0]))
@@ -408,10 +414,12 @@ def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES,
     Internal function used by `upload`.
     """
     with adlfs.open(rfile, 'wb', delimiter=delimiter) as fout:
+        end = offset + size
         with open(lfile, 'rb') as fin:
             tries = 0
             try:
-                fout.write(read_block(fin, offset, size, delimiter))
+                for o in range(offset, end, 4*2**20):
+                    fout.write(read_block(fin, o, 4*2**20, delimiter))
             except Exception as e:
                 # TODO : only some exceptions should be retriable
                 logger.debug('Upload failed %s, byte offset %s; %s, %s', lfile,
@@ -421,5 +429,6 @@ def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES,
                     logger.debug('Aborting %s, byte offset %s', lfile, offset)
                     raise
     logger.debug('Uploaded from %s, byte offset %s', lfile, offset)
+    return True
 
 
