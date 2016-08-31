@@ -171,6 +171,16 @@ class ADLDownloader:
 
     __repr__ = __str__
 
+    def __getstate__(self):
+        dic2 = self.__dict__.copy()
+        dic2.pop('pool', None)
+        dic2['progress'] = self.progress.copy()
+        for k, v in list(dic2['progress'].items()):
+            v = v.copy()
+            v['futures'] = []
+            dic2['progress'][k]= v
+        return dic2
+
     def save(self, keep=True):
         """ Persist this download, if it is incomplete, otherwise discard.
 
@@ -387,7 +397,7 @@ class ADLUploader:
 
     def __getstate__(self):
         dic2 = self.__dict__.copy()
-        del dic2['pool']
+        dic2.pop('pool', None)
         dic2['progress'] = self.progress.copy()
         for k, v in list(dic2['progress'].items()):
             v = v.copy()
