@@ -16,7 +16,6 @@ which is compatible with the built-in File.
 
 # standard imports
 import io
-import itertools
 import logging
 import os
 import re
@@ -737,11 +736,12 @@ class AzureDLPath(type(pathlib.PurePath())):
     @property
     def globless_prefix(self):
         """ Return shortest path prefix without glob quantifiers. """
-        def no_quantifier(s):
-            quantifiers = ['*', '?']
-            return all(q not in s for q in quantifiers)
-
-        return pathlib.PurePath(*itertools.takewhile(no_quantifier, self.parts))
+        parts = []
+        for part in self.parts:
+            if any(q in part for q in ['*', '?']):
+                break
+            parts.append(part)
+        return pathlib.PurePath(*parts)
 
     def startswith(self, prefix, *args, **kwargs):
         """ Return whether string starts with the prefix.
