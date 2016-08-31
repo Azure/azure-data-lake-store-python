@@ -9,7 +9,7 @@ interactions:
     method: GET
     uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir?OP=LISTSTATUS
   response:
-    body: {string: !!python/unicode '{"FileStatuses":{"FileStatus":[]}}'}
+    body: {string: '{"FileStatuses":{"FileStatus":[]}}'}
     headers:
       cache-control: [no-cache]
       content-length: ['34']
@@ -35,7 +35,7 @@ interactions:
     method: GET
     uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/?OP=LISTSTATUS
   response:
-    body: {string: !!python/unicode '{"FileStatuses":{"FileStatus":[{"length":0,"pathSuffix":"a","type":"DIRECTORY","blockSize":0,"accessTime":1471639845701,"modificationTime":1471639848993,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"azure_test_dir","type":"DIRECTORY","blockSize":0,"accessTime":1471661723297,"modificationTime":1471769722026,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"azure_testdir","type":"DIRECTORY","blockSize":0,"accessTime":1470153480383,"modificationTime":1470156248128,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":81840585,"pathSuffix":"gdelt20150827.csv","type":"FILE","blockSize":268435456,"accessTime":1469485983963,"modificationTime":1469485984240,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":35,"pathSuffix":"test.csv","type":"FILE","blockSize":268435456,"accessTime":1469226766337,"modificationTime":1469226766897,"replication":1,"permission":"555","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"tmp","type":"DIRECTORY","blockSize":0,"accessTime":1470230538260,"modificationTime":1471769713400,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
+    body: {string: '{"FileStatuses":{"FileStatus":[{"length":0,"pathSuffix":"a","type":"DIRECTORY","blockSize":0,"accessTime":1471639845701,"modificationTime":1471639848993,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"azure_test_dir","type":"DIRECTORY","blockSize":0,"accessTime":1471661723297,"modificationTime":1471769722026,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"azure_testdir","type":"DIRECTORY","blockSize":0,"accessTime":1470153480383,"modificationTime":1470156248128,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":81840585,"pathSuffix":"gdelt20150827.csv","type":"FILE","blockSize":268435456,"accessTime":1469485983963,"modificationTime":1469485984240,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":35,"pathSuffix":"test.csv","type":"FILE","blockSize":268435456,"accessTime":1469226766337,"modificationTime":1469226766897,"replication":1,"permission":"555","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"tmp","type":"DIRECTORY","blockSize":0,"accessTime":1470230538260,"modificationTime":1471769713400,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
     headers:
       cache-control: [no-cache]
       content-length: ['1609']
@@ -49,6 +49,58 @@ interactions:
       strict-transport-security: [max-age=15724800; includeSubDomains]
       x-content-type-options: [nosniff]
       x-ms-request-id: [5145cf5b-6b38-4b2e-8cb6-8f4034f7377e]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.11.1]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir?OP=LISTSTATUS
+  response:
+    body: {string: '{"FileStatuses":{"FileStatus":[]}}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['34']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Wed, 31 Aug 2016 23:10:31 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[be0146d0-c4dc-44d7-a415-d2020f556cf8][ AuthTime::0::PostAuthTime::0
+          ][S-HdfsListStatus :: 00:00:005 ms]%0a[LISTSTATUS :: 00:00:006 ms]%0a']
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [be0146d0-c4dc-44d7-a415-d2020f556cf8]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.11.1]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/?OP=LISTSTATUS
+  response:
+    body: {string: '{"FileStatuses":{"FileStatus":[{"length":0,"pathSuffix":"a","type":"DIRECTORY","blockSize":0,"accessTime":1471639845701,"modificationTime":1471639848993,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"azure_test_dir","type":"DIRECTORY","blockSize":0,"accessTime":1471873455266,"modificationTime":1472685032020,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"azure_testdir","type":"DIRECTORY","blockSize":0,"accessTime":1470153480383,"modificationTime":1470156248128,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"begoldsm","type":"DIRECTORY","blockSize":0,"accessTime":1472597222084,"modificationTime":1472599773049,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":81840585,"pathSuffix":"gdelt20150827.csv","type":"FILE","blockSize":268435456,"accessTime":1469485983963,"modificationTime":1469485984240,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"joseph","type":"DIRECTORY","blockSize":0,"accessTime":1472608724061,"modificationTime":1472660753594,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":35,"pathSuffix":"test.csv","type":"FILE","blockSize":268435456,"accessTime":1469226766337,"modificationTime":1469226766897,"replication":1,"permission":"555","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"tmp","type":"DIRECTORY","blockSize":0,"accessTime":1472663977899,"modificationTime":1472685022486,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['2125']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Wed, 31 Aug 2016 23:10:32 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[4f769007-cb62-422f-952f-dfb2ce7ceb82][ AuthTime::0::PostAuthTime::0
+          ][S-HdfsListStatus :: 00:00:052 ms]%0a[LISTSTATUS :: 00:00:052 ms]%0a']
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [4f769007-cb62-422f-952f-dfb2ce7ceb82]
       x-ms-webhdfs-version: [16.07.07.01]
     status: {code: 200, message: OK}
 version: 1
