@@ -144,6 +144,7 @@ class ADLDownloader:
                 logger.debug('File downloaded (%s -> %s)' % key)
                 self.progress.pop(key)
                 self.nfiles -= 1
+        self.save()
 
     def _monitor(self):
         """ Wait for download to happen
@@ -170,6 +171,16 @@ class ADLDownloader:
             self.rpath, self.lpath, self.nchunks, self.nchunks_orig)
 
     __repr__ = __str__
+
+    def __getstate__(self):
+        dic2 = self.__dict__.copy()
+        dic2.pop('pool', None)
+        dic2['progress'] = self.progress.copy()
+        for k, v in list(dic2['progress'].items()):
+            v = v.copy()
+            v['futures'] = []
+            dic2['progress'][k]= v
+        return dic2
 
     def save(self, keep=True):
         """ Persist this download, if it is incomplete, otherwise discard.
@@ -252,7 +263,7 @@ class ADLUploader:
     """
     temp_upload_path = '/tmp/'
 
-    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**26,
+    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=256*2**20,
                  run=True, delimiter=None):
         self.adl = adlfs
         self.rpath = AzureDLPath(rpath)
@@ -337,9 +348,15 @@ class ADLUploader:
             for offset, future in zip(list(dic['waiting']),
                                       list(dic['futures'])):
                 if future.done() and not future.cancelled():
-                    dic['waiting'].remove(offset)
-                    dic['futures'].remove(future)
-                    self.nchunks -= 1
+                    success = False
+                    try:
+                        success = future.result()
+                    except:
+                        pass
+                    if success:
+                        dic['waiting'].remove(offset)
+                        dic['futures'].remove(future)
+                        self.nchunks -= 1
             if not dic['waiting'] or dic['final']:
                 if dic['final'] is None:
                     logger.debug('Finalizing (%s -> %s)' % (key[1], key[0]))
@@ -350,6 +367,7 @@ class ADLUploader:
                     self.progress.pop(key)
                     self.nfiles -= 1
                     self.nchunks -= len(dic['waiting'])
+        self.save()
 
     def _monitor(self):
         """ Wait for upload to happen
@@ -377,6 +395,17 @@ class ADLUploader:
                     self.rpath, self.nchunks, self.nchunks_orig)
 
     __repr__ = __str__
+
+    def __getstate__(self):
+        dic2 = self.__dict__.copy()
+        dic2.pop('pool', None)
+        dic2['progress'] = self.progress.copy()
+        for k, v in list(dic2['progress'].items()):
+            v = v.copy()
+            v['futures'] = []
+            v['final'] = None
+            dic2['progress'][k]= v
+        return dic2
 
     def save(self, keep=True):
         """ Persist this upload, if it is incomplete, otherwise discard.
@@ -409,18 +438,24 @@ def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES,
     Internal function used by `upload`.
     """
     with adlfs.open(rfile, 'wb', delimiter=delimiter) as fout:
+        end = offset + size
+        miniblock = min(size, 4*2**20)
         with open(lfile, 'rb') as fin:
             tries = 0
-            try:
-                fout.write(read_block(fin, offset, size, delimiter))
-            except Exception as e:
-                # TODO : only some exceptions should be retriable
-                logger.debug('Upload failed %s, byte offset %s; %s, %s', lfile,
-                             offset, e, e.args)
-                tries += 1
-                if tries >= retries:
-                    logger.debug('Aborting %s, byte offset %s', lfile, offset)
-                    raise
+            while True:
+                try:
+                    for o in range(offset, end, miniblock):
+                        fout.write(read_block(fin, o, miniblock, delimiter))
+                    break
+                except Exception as e:
+                    # TODO : only some exceptions should be retriable
+                    logger.debug('Upload failed %s, byte offset %s; %s, %s', lfile,
+                                 offset, e, e.args)
+                    tries += 1
+                    if tries >= retries:
+                        logger.debug('Aborting %s, byte offset %s', lfile, offset)
+                        raise
     logger.debug('Uploaded from %s, byte offset %s', lfile, offset)
+    return True
 
 
