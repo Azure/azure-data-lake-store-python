@@ -1405,4 +1405,139 @@ interactions:
       x-ms-request-id: [30c6abf5-cdcb-4edc-a1ff-5efff9787f7c]
       x-ms-webhdfs-version: [16.07.07.01]
     status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.10.0]
+    method: PUT
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir?OP=MKDIRS
+  response:
+    body: {string: !!python/unicode '{"boolean":true}'}
+    headers:
+      cache-control: [no-cache]
+      content-length: ['16']
+      content-type: [application/json; charset=utf-8]
+      date: ['Sat, 27 Aug 2016 05:58:56 GMT']
+      expires: ['-1']
+      pragma: [no-cache]
+      server-perf: ['[59907083-445b-49dd-9858-eced51d42bbf][ AuthTime::1040.05627936117::PostAuthTime::224.091073349199
+          ][S-HdfsMkdirs :: 00:00:004 ms]%0a[MKDIRS :: 00:00:004 ms]%0a']
+      status: ['0x83090180']
+      strict-transport-security: [max-age=15724800; includeSubDomains]
+      x-content-type-options: [nosniff]
+      x-ms-request-id: [59907083-445b-49dd-9858-eced51d42bbf]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.10.0]
+    method: PUT
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/data/a?OP=MKDIRS
+  response:
+    body: {string: !!python/unicode '{"boolean":true}'}
+    headers:
+      cache-control: [no-cache]
+      content-length: ['16']
+      content-type: [application/json; charset=utf-8]
+      date: ['Sat, 27 Aug 2016 05:58:57 GMT']
+      expires: ['-1']
+      pragma: [no-cache]
+      server-perf: ['[8e0a7f65-90b4-4082-a3bd-922e46df6bd9][ AuthTime::1030.64655323567::PostAuthTime::212.116469047674
+          ][S-HdfsMkdirs :: 00:00:004 ms]%0a[MKDIRS :: 00:00:006 ms]%0a']
+      status: ['0x83090180']
+      strict-transport-security: [max-age=15724800; includeSubDomains]
+      x-content-type-options: [nosniff]
+      x-ms-request-id: [8e0a7f65-90b4-4082-a3bd-922e46df6bd9]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.10.0]
+    method: PUT
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/data/b?OP=MKDIRS
+  response:
+    body: {string: !!python/unicode '{"boolean":true}'}
+    headers:
+      cache-control: [no-cache]
+      content-length: ['16']
+      content-type: [application/json; charset=utf-8]
+      date: ['Sat, 27 Aug 2016 05:58:57 GMT']
+      expires: ['-1']
+      pragma: [no-cache]
+      server-perf: ['[88d92b5d-0d59-41c3-9937-af542ad419e1][ AuthTime::1020.38198037924::PostAuthTime::239.486131187081
+          ][S-HdfsMkdirs :: 00:00:005 ms]%0a[MKDIRS :: 00:00:019 ms]%0a']
+      status: ['0x83090180']
+      strict-transport-security: [max-age=15724800; includeSubDomains]
+      x-content-type-options: [nosniff]
+      x-ms-request-id: [88d92b5d-0d59-41c3-9937-af542ad419e1]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.10.0]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/data/*?OP=LISTSTATUS
+  response:
+    body: {string: !!python/unicode '{"RemoteException":{"exception":"FileNotFoundException","message":"Folder
+        does not exist: //azure_test_dir/data/* [13df3f62-2e58-4c85-ac8e-45a91cfb7739][2016-08-26T23:02:55.3712826-07:00]","javaClassName":"java.io.FileNotFoundException"}}'}
+    headers:
+      cache-control: [no-cache]
+      content-length: ['238']
+      content-type: [application/json; charset=utf-8]
+      date: ['Sat, 27 Aug 2016 06:02:54 GMT']
+      expires: ['-1']
+      pragma: [no-cache]
+      server-perf: ['[13df3f62-2e58-4c85-ac8e-45a91cfb7739][ AuthTime::1003.27797342981::PostAuthTime::215.96563366669
+          ][S-HdfsListStatus :: 00:00:006 ms]%0a[LISTSTATUS :: 00:00:010 ms]%0a']
+      status: ['0x8309000A']
+      strict-transport-security: [max-age=15724800; includeSubDomains]
+      x-content-type-options: [nosniff]
+      x-ms-request-id: [13df3f62-2e58-4c85-ac8e-45a91cfb7739]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 404, message: Not Found}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.10.0]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/data/*/z.txt?OP=LISTSTATUS
+  response:
+    body: {string: !!python/unicode '{"RemoteException":{"exception":"FileNotFoundException","message":"Folder
+        does not exist: //azure_test_dir/data/*/z.txt [953d73f5-3efd-493a-ac41-e5dc95a125d0][2016-08-26T23:23:02.7047422-07:00]","javaClassName":"java.io.FileNotFoundException"}}'}
+    headers:
+      cache-control: [no-cache]
+      content-length: ['244']
+      content-type: [application/json; charset=utf-8]
+      date: ['Sat, 27 Aug 2016 06:23:02 GMT']
+      expires: ['-1']
+      pragma: [no-cache]
+      server-perf: ['[953d73f5-3efd-493a-ac41-e5dc95a125d0][ AuthTime::905.343493821897::PostAuthTime::245.901043432967
+          ][S-HdfsListStatus :: 00:00:005 ms]%0a[LISTSTATUS :: 00:00:006 ms]%0a']
+      status: ['0x8309000A']
+      strict-transport-security: [max-age=15724800; includeSubDomains]
+      x-content-type-options: [nosniff]
+      x-ms-request-id: [953d73f5-3efd-493a-ac41-e5dc95a125d0]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 404, message: Not Found}
 version: 1
