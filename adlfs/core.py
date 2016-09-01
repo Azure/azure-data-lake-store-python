@@ -470,7 +470,7 @@ class AzureDLFile(object):
                 self.loc = self.info()['length']
         if mode == 'rb':
             self.size = self.info()['length']
-        elif delimiter:
+        else:
             self.blocksize = min(2**22, blocksize)
 
     def info(self):
@@ -649,10 +649,11 @@ class AzureDLFile(object):
             if not self.delimiter or force:
                 offsets = range(0, len(data), self.blocksize)
                 for o in offsets:
+                    d2 = data[o:o+self.blocksize]
                     out = self.azure.azure.call('APPEND',
                                                 path=self.path.as_posix(),
-                                                data=data[o:o+self.blocksize])
-                    logger.debug('Wrote %d bytes to %s' % (len(data), self))
+                                                data=d2)
+                    logger.debug('Wrote %d bytes to %s' % (len(d2), self))
                 self.buffer = io.BytesIO()
             return out
 
@@ -734,6 +735,12 @@ class AzureDLPath(type(pathlib.PurePath())):
     def __contains__(self, s):
         """ Return whether string is contained in path. """
         return s in self.as_posix()
+
+    def __getstate__(self):
+        return self.as_posix()
+    
+    def __setstate__(self, state):
+        self.__init__(state)
 
     @property
     def globless_prefix(self):
