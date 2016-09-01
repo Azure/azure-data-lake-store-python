@@ -86,7 +86,7 @@ def auth_client_secret(tenant_id, client_id, client_secret):
     #   #how-do-i-authenticate-using-azure-active-directory/
     r = requests.post("https://login.microsoftonline.com/%s/oauth2/token" %
                       tenant_id,
-                      params={'grant_type': 'client_credentials',
+                      data={'grant_type': 'client_credentials',
                               'resource': 'https://management.core.windows.net/',
                               'client_id': client_id,
                               'client_secret': client_secret})

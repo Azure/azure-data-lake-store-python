@@ -441,20 +441,20 @@ def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES,
         end = offset + size
         miniblock = min(size, 4*2**20)
         with open(lfile, 'rb') as fin:
-            tries = 0
-            while True:
-                try:
-                    for o in range(offset, end, miniblock):
+            for o in range(offset, end, miniblock):
+                tries = 0
+                while True:
+                    try:
                         fout.write(read_block(fin, o, miniblock, delimiter))
-                    break
-                except Exception as e:
-                    # TODO : only some exceptions should be retriable
-                    logger.debug('Upload failed %s, byte offset %s; %s, %s', lfile,
-                                 offset, e, e.args)
-                    tries += 1
-                    if tries >= retries:
-                        logger.debug('Aborting %s, byte offset %s', lfile, offset)
-                        raise
+                        break
+                    except Exception as e:
+                        # TODO : only some exceptions should be retriable
+                        logger.debug('Upload failed %s, byte offset %s; %s, %s', lfile,
+                                     o, e, e.args)
+                        tries += 1
+                        if tries >= retries:
+                            logger.debug('Aborting %s, byte offset %s', lfile, offset)
+                            raise
     logger.debug('Uploaded from %s, byte offset %s', lfile, offset)
     return True
 
