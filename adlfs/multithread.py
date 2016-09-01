@@ -402,6 +402,7 @@ class ADLUploader:
         for k, v in list(dic2['progress'].items()):
             v = v.copy()
             v['futures'] = []
+            v['final'] = None
             dic2['progress'][k]= v
         return dic2
 
