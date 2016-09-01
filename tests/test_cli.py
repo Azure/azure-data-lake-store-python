@@ -24,7 +24,7 @@ def client(azure):
 
 @contextmanager
 def setup_dir(azure):
-    d = os.path.join(working_dir(), 'foo')
+    d = str(working_dir() / 'foo')
     azure.mkdir(d)
     try:
         yield d
@@ -34,7 +34,7 @@ def setup_dir(azure):
 
 @contextmanager
 def setup_file(azure):
-    tmp = os.path.join(working_dir(), 'foo', 'bar')
+    tmp = str(working_dir() / 'foo' / 'bar')
     with azure.open(tmp, 'wb') as f:
         f.write('123456'.encode())
     try:

@@ -7,17 +7,18 @@
 # --------------------------------------------------------------------------
 
 import io
+import sys
 
 import pytest
 
-from tests.testing import azure, azure_teardown, my_vcr, tmpfile, working_dir
+from tests.testing import azure, azure_teardown, my_vcr, posix, tmpfile, working_dir
 
 test_dir = working_dir()
 
-a = test_dir + 'a'
-b = test_dir + 'b'
-c = test_dir + 'c'
-d = test_dir + 'd'
+a = posix(test_dir / 'a')
+b = posix(test_dir / 'b')
+c = posix(test_dir / 'c')
+d = posix(test_dir / 'd')
 
 
 @my_vcr.use_cassette
@@ -111,73 +112,78 @@ def test_bad_open(azure):
 @my_vcr.use_cassette
 def test_errors(azure):
     with pytest.raises((IOError, OSError)):
-        azure.open(test_dir + 'shfoshf', 'rb')
+        azure.open(test_dir / 'shfoshf', 'rb')
 
     # This is totally OK: directory is silently created
     # Will need extend invalidate_cache
     # with pytest.raises((IOError, OSError)):
-    #     azure.touch(test_dir + 'shfoshf/x')
+    #     azure.touch(test_dir / 'shfoshf' / 'x')
 
     with pytest.raises((IOError, OSError)):
-        azure.rm(test_dir + 'shfoshf/xxx')
+        azure.rm(test_dir / 'shfoshf' / 'xxx')
 
     with pytest.raises((IOError, OSError)):
-        azure.mv(test_dir + 'shfoshf/x', test_dir + 'shfoshxbf/y')
+        azure.mv(test_dir / 'shfoshf' / 'x', test_dir / 'shfoshxbf' / 'y')
 
     # with pytest.raises(IOError):
-    #    azure.chown('/unknown', 'someone', 'group')
+    #    azure.chown('unknown', 'someone', 'group')
 
     # with pytest.raises(IOError):
-    #     azure.chmod('/unknonwn', 'rb')
+    #     azure.chmod('unknonwn', 'rb')
 
     with pytest.raises(IOError):
-        azure.rm(test_dir + '/unknown')
+        azure.rm(test_dir / 'unknown')
 
 
 @my_vcr.use_cassette
 def test_glob_walk(azure):
     with azure_teardown(azure):
-        azure.mkdir(test_dir + 'c/')
-        azure.mkdir(test_dir + 'c/d/')
+        azure.mkdir(test_dir / 'c')
+        azure.mkdir(test_dir / 'c' / 'd')
         filenames = ['a', 'a1', 'a2', 'a3', 'b1', 'c/x1', 'c/x2', 'c/d/x3']
-        filenames = [test_dir + s for s in filenames]
+        filenames = [test_dir / s for s in filenames]
         for fn in filenames:
             azure.touch(fn)
 
-        assert set(azure.glob(test_dir + 'a*')) == {test_dir + 'a',
-                                                    test_dir + 'a1',
-                                                    test_dir + 'a2',
-                                                    test_dir + 'a3'}
+        assert set(azure.glob(test_dir / 'a*')) == {
+            posix(test_dir / 'a'),
+            posix(test_dir / 'a1'),
+            posix(test_dir / 'a2'),
+            posix(test_dir / 'a3')}
 
-        assert set(azure.glob(test_dir + 'c/*')) == {test_dir + 'c/x1',
-                                                test_dir + 'c/x2'}
-        assert (set(azure.glob(test_dir + 'c')) ==
-                set(azure.glob(test_dir + 'c/')) ==
-                set(azure.glob(test_dir + 'c/*')))
+        assert set(azure.glob(test_dir / 'c' / '*')) == {
+            posix(test_dir / 'c' / 'x1'),
+            posix(test_dir / 'c' / 'x2')}
 
-        assert set(azure.glob(test_dir + 'a')) == {test_dir + 'a'}
-        assert set(azure.glob(test_dir + 'a1')) == {test_dir + 'a1'}
+        assert (set(azure.glob(test_dir / 'c')) ==
+                set(azure.glob(test_dir / 'c' / '')))
 
-        assert set(azure.glob(test_dir + '*')) == {test_dir + 'a',
-                                                test_dir + 'a1',
-                                                test_dir + 'a2',
-                                                test_dir + 'a3',
-                                                test_dir + 'b1'}
+        assert set(azure.glob(test_dir / 'a')) == {posix(test_dir / 'a')}
+        assert set(azure.glob(test_dir / 'a1')) == {posix(test_dir / 'a1')}
 
-        assert set(azure.walk(test_dir)) == {test_dir + 'a',
-                                            test_dir + 'a1',
-                                            test_dir + 'a2',
-                                            test_dir + 'a3',
-                                            test_dir + 'b1',
-                                            test_dir + 'c/x1',
-                                            test_dir + 'c/x2',
-                                            test_dir + 'c/d/x3'}
+        assert set(azure.glob(test_dir / '*')) == {
+            posix(test_dir / 'a'),
+            posix(test_dir / 'a1'),
+            posix(test_dir / 'a2'),
+            posix(test_dir / 'a3'),
+            posix(test_dir / 'b1')}
 
-        assert set(azure.walk(test_dir + 'c/')) == {test_dir + 'c/x1',
-                                                    test_dir + 'c/x2',
-                                                    test_dir + 'c/d/x3'}
+        assert set(azure.walk(test_dir)) == {
+            posix(test_dir / 'a'),
+            posix(test_dir / 'a1'),
+            posix(test_dir / 'a2'),
+            posix(test_dir / 'a3'),
+            posix(test_dir / 'b1'),
+            posix(test_dir / 'c' / 'x1'),
+            posix(test_dir / 'c' / 'x2'),
+            posix(test_dir / 'c' / 'd' / 'x3')}
 
-        assert set(azure.walk(test_dir + 'c/')) == set(azure.walk(test_dir + 'c'))
+        assert set(azure.walk(test_dir / 'c')) == {
+            posix(test_dir / 'c' / 'x1'),
+            posix(test_dir / 'c' / 'x2'),
+            posix(test_dir / 'c' / 'd' / 'x3')}
+
+        assert set(azure.walk(test_dir / 'c')) == set(azure.walk(test_dir / 'c'))
 
 
 @my_vcr.use_cassette
@@ -570,11 +576,52 @@ def test_chmod(azure):
         azure.chmod(a, '0770')
         azure.rm(a)
 
-        azure.mkdir(test_dir+'/deep')
-        azure.touch(test_dir+'/deep/file')
-        azure.chmod(test_dir+'/deep', '660')
+        azure.mkdir(test_dir / 'deep')
+        azure.touch(test_dir / 'deep' / 'file')
+        azure.chmod(test_dir / 'deep', '660')
 
         with pytest.raises((OSError, IOError)):
-            azure.ls(test_dir+'/deep')
+            azure.ls(test_dir / 'deep')
 
-        azure.chmod(test_dir+'/deep', '770')
+        azure.chmod(test_dir / 'deep', '770')
+
+
+@pytest.mark.skipif(sys.platform != 'win32', reason="requires windows")
+def test_backslash():
+    from adlfs.core import AzureDLPath
+
+    posix_abspath = '/foo/bar'
+    posix_relpath = 'foo/bar'
+
+    win_abspath = AzureDLPath('\\foo\\bar')
+    win_relpath = AzureDLPath('foo\\bar')
+
+    assert posix(win_abspath) == posix_abspath
+    assert posix(win_abspath.trim()) == posix_relpath
+
+    assert 'foo' in win_abspath
+    assert 'foo' in win_relpath
+
+    assert posix(AzureDLPath('\\*').globless_prefix) == '/'
+    assert posix(AzureDLPath('\\foo\\*').globless_prefix) == '/foo'
+    assert posix(AzureDLPath('\\foo\\b*').globless_prefix) == '/foo'
+
+
+def test_forward_slash():
+    from adlfs.core import AzureDLPath
+
+    posix_abspath = '/foo/bar'
+    posix_relpath = 'foo/bar'
+
+    abspath = AzureDLPath('/foo/bar')
+    relpath = AzureDLPath('foo/bar')
+
+    assert posix(abspath) == posix_abspath
+    assert posix(abspath.trim()) == posix_relpath
+
+    assert 'foo' in abspath
+    assert 'foo' in relpath
+
+    assert posix(AzureDLPath('/*').globless_prefix) == '/'
+    assert posix(AzureDLPath('/foo/*').globless_prefix) == '/foo'
+    assert posix(AzureDLPath('/foo/b*').globless_prefix) == '/foo'

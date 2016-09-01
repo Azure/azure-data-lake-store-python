@@ -2,8 +2,8 @@ adlfs
 ====
 
 A pure-python interface to the Azure Data-lake Storage system, providing
-pythonic file-system and file objects, high-performance up- and down-loader
-and CLI commands.
+pythonic file-system and file objects, seamless transition between Windows and
+POSIX remote paths, high-performance up- and down-loader and CLI commands.
 
 This software is under active development and not yet recommended for general
 use.
@@ -79,6 +79,32 @@ python files. The recommended way to use this is with a context manager
 
     with adl.open('newfile', 'rb') as f:
         df = pd.read_csv(f) # read into pandas.
+
+To seamlessly handle remote path representations across all supported platforms,
+the main API will take in numerous path types: string, Path/PurePath, and
+AzureDLPath. On Windows in particular, you can pass in paths separated by either
+forward slashes or backslashes.
+
+.. code-block:: python
+
+    import pathlib  # only >= Python 3.4
+    from pathlib2 import pathlib  # only <= Python 3.3
+
+    from adlfs.core import AzureDLPath
+
+    # possible remote paths to use on API
+    p1 = '\\foo\\bar'
+    p2 = '/foo/bar'
+    p3 = pathlib.PurePath('\\foo\\bar')
+    p4 = pathlib.PureWindowsPath('\\foo\\bar')
+    p5 = pathlib.PurePath('/foo/bar')
+    p6 = AzureDLPath('\\foo\\bar')
+    p7 = AzureDLPath('/foo/bar')
+
+    # p1, p3, and p6 only work on Windows
+    for p in [p1, p2, p3, p4, p5, p6, p7]:
+      with adl.open(p, 'rb') as f:
+          print(f.readlines())
 
 Performant up-/down-loading
 ---------------------------

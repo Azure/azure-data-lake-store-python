@@ -22,6 +22,7 @@ import pickle
 import time
 import uuid
 
+from .core import AzureDLPath
 from .utils import commonprefix, datadir, logger, read_block, tokenize
 
 MAXRETRIES = 5
@@ -265,7 +266,7 @@ class ADLUploader:
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=256*2**20,
                  run=True, delimiter=None):
         self.adl = adlfs
-        self.rpath = rpath
+        self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
         self.nthreads = nthreads
         self.delimiter = delimiter
@@ -289,12 +290,12 @@ class ADLUploader:
             lfiles = glob.glob(self.lpath)
         if len(lfiles) > 1:
             prefix = commonprefix(lfiles)
-            rfiles = [os.path.join(self.rpath, os.path.relpath(f, prefix))
+            rfiles = [self.rpath / AzureDLPath(f).relative_to(prefix)
                       for f in lfiles]
         elif lfiles:
             if (self.adl.exists(self.rpath) and
                         self.adl.info(self.rpath)['type'] == "DIRECTORY"):
-                rfiles = [os.path.join(self.rpath, os.path.basename(lfiles[0]))]
+                rfiles = [self.rpath / AzureDLPath(lfiles[0]).name]
             else:
                 rfiles = [self.rpath]
         else:
