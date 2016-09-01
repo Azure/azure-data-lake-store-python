@@ -201,7 +201,13 @@ def test_upload_one(local_files, azure):
         # multiple chunks, one thread
         size = 10000
         up = ADLUploader(azure, test_dir+'bigfile', bigfile, nthreads=1,
-                            chunksize=size//5)
+                         chunksize=size//5, run=False)
+        dic = list(up.progress.values())[0]
+        dic['uuid'] = 'test'
+        dic['files'] = [up.temp_upload_path+"test_%i" % i for i
+                        in dic['waiting']]
+        up.run()
+
         assert azure.info(test_dir+'bigfile')['length'] == size
 
         azure.rm(test_dir+'bigfile')
