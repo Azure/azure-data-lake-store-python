@@ -10,3 +10,9 @@ __version__ = "0.0.1"
 
 from .core import AzureDLFileSystem
 from .multithread import ADLDownloader
+
+# Set default logging handler
+import logging
+from logging import NullHandler
+
+logging.getLogger(__name__).addHandler(NullHandler())

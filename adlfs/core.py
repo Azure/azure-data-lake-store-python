@@ -24,12 +24,14 @@ import time
 
 # local imports
 from .lib import DatalakeRESTInterface, auth, refresh_token
-from .utils import FileNotFoundError, PY2, ensure_writable, read_block, logger
+from .utils import FileNotFoundError, PY2, ensure_writable, read_block
 
 if sys.version_info >= (3, 4):
     import pathlib
 else:
     import pathlib2 as pathlib
+
+logger = logging.getLogger(__name__)
 
 
 class AzureDLFileSystem(object):

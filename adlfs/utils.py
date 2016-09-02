@@ -8,7 +8,6 @@
 
 import array
 from hashlib import md5
-import logging
 import os
 import platform
 import sys
@@ -21,14 +20,6 @@ try:
 except NameError:
     class FileNotFoundError(IOError):
         pass
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - ADLFS - %(levelname)s'
-                              ' - %(message)s')
-ch.setFormatter(formatter)
-logger.handlers = [ch]
 
 WIN = platform.platform() == 'Windows'
 

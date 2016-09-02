@@ -15,6 +15,7 @@ and authentication code.
 
 # standard imports
 import json
+import logging
 import requests
 import requests.exceptions
 import time
@@ -24,6 +25,8 @@ import adal
 import azure
 
 client_id = "1950a258-227b-4e31-a9cf-717495945fc2"
+
+logger = logging.getLogger(__name__)
 
 
 class DatalakeRESTException(IOError):
@@ -207,7 +210,6 @@ class DatalakeRESTInterface:
         params.update(kwargs)
         func = getattr(requests, method)
         url = self.url + path
-        # logger.debug('Call: (%s, %s, %s)' % (method, url, params))
         try:
             r = func(url, params=params, headers=self.head, data=data)
         except requests.exceptions.RequestException as e:
