@@ -27,6 +27,7 @@ def test_simple(azure):
         data = b'a' * (2**16)
 
         with azure.open(a, 'wb') as f:
+            assert f.blocksize == 4*2**20
             l = f.write(data)
             assert l == len(data)
 
