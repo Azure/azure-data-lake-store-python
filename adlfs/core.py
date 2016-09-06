@@ -461,13 +461,10 @@ class AzureDLFile(object):
         self.trim = True
         self.buffer = io.BytesIO()
         self.blocksize = blocksize
-        if mode == 'wb':
-            self.azure.azure.call('CREATE', path.as_posix(), overwrite=True)
-        if mode == 'ab':
-            if not self.azure.exists(path):
-                self.azure.azure.call('CREATE', path.as_posix())
-            else:
-                self.loc = self.info()['length']
+        self.first_write = True
+        if mode == 'ab' and self.azure.exists(path):
+            self.loc = self.info()['length']
+            self.first_write = False
         if mode == 'rb':
             self.size = self.info()['length']
         else:
@@ -627,7 +624,11 @@ class AzureDLFile(object):
         """
         if self.mode in {'wb', 'ab'} and not self.closed:
             if self.buffer.tell() == 0:
-                # no data in the buffer to write
+                if force and self.first_write:
+                    self.azure.azure.call('CREATE',
+                                          path=self.path.as_posix(),
+                                          overwrite='true')
+                    self.first_write = False
                 return
             self.buffer.seek(0)
             data = self.buffer.read()
@@ -639,9 +640,16 @@ class AzureDLFile(object):
                         limit = self.blocksize
                     else:
                         limit = place + len(self.delimiter)
-                    out = self.azure.azure.call('APPEND',
-                                                path=self.path.as_posix(),
-                                                data=data[:limit])
+                    if self.first_write:
+                        out = self.azure.azure.call('CREATE',
+                                                    path=self.path.as_posix(),
+                                                    data=data[:limit],
+                                                    overwrite='true')
+                        self.first_write = False
+                    else:
+                        out = self.azure.azure.call('APPEND',
+                                                    path=self.path.as_posix(),
+                                                    data=data[:limit])
                     logger.debug('Wrote %d bytes to %s' % (limit, self))
                     data = data[limit:]
                 self.buffer = io.BytesIO(data)
@@ -650,9 +658,16 @@ class AzureDLFile(object):
                 offsets = range(0, len(data), self.blocksize)
                 for o in offsets:
                     d2 = data[o:o+self.blocksize]
-                    out = self.azure.azure.call('APPEND',
-                                                path=self.path.as_posix(),
-                                                data=d2)
+                    if self.first_write:
+                        out = self.azure.azure.call('CREATE',
+                                                    path=self.path.as_posix(),
+                                                    data=d2,
+                                                    overwrite='true')
+                        self.first_write = False
+                    else:
+                        out = self.azure.azure.call('APPEND',
+                                                    path=self.path.as_posix(),
+                                                    data=d2)
                     logger.debug('Wrote %d bytes to %s' % (len(d2), self))
                 self.buffer = io.BytesIO()
             return out
@@ -738,7 +753,7 @@ class AzureDLPath(type(pathlib.PurePath())):
 
     def __getstate__(self):
         return self.as_posix()
-    
+
     def __setstate__(self, state):
         self.__init__(state)
 

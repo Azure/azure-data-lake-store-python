@@ -80,4 +80,166 @@ interactions:
       x-ms-request-id: [def3650d-ffe1-47f5-b5e8-dbbe8fe67ef6]
       x-ms-webhdfs-version: [16.07.07.01]
     status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.11.1]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir?OP=LISTSTATUS
+  response:
+    body: {string: '{"FileStatuses":{"FileStatus":[]}}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['34']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Tue, 06 Sep 2016 13:35:52 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[eb5ffa72-cbec-492d-ab59-b99b3a8daf44][ AuthTime::0::PostAuthTime::0
+          ][S-HdfsListStatus :: 00:00:006 ms]%0a[LISTSTATUS :: 00:00:007 ms]%0a']
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [eb5ffa72-cbec-492d-ab59-b99b3a8daf44]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.11.1]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/shfoshf?OP=LISTSTATUS
+  response:
+    body: {string: '{"RemoteException":{"exception":"FileNotFoundException","message":"Folder
+        does not exist: //azure_test_dir/shfoshf [f7e70ec4-516a-43d2-9f42-79007ce9d480][2016-09-06T06:35:52.3743144-07:00]","javaClassName":"java.io.FileNotFoundException"}}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['239']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Tue, 06 Sep 2016 13:35:51 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[f7e70ec4-516a-43d2-9f42-79007ce9d480][ AuthTime::0::PostAuthTime::0
+          ][S-HdfsListStatus :: 00:00:006 ms]%0a[LISTSTATUS :: 00:00:013 ms]%0a']
+      Status: ['0x8309000A']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [f7e70ec4-516a-43d2-9f42-79007ce9d480]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 404, message: Not Found}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.11.1]
+    method: PUT
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/shfoshf/x?OP=RENAME&destination=azure_test_dir%2Fshfoshxbf%2Fy
+  response:
+    body: {string: '{"boolean":false}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['17']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Tue, 06 Sep 2016 13:35:52 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[f509b456-9d28-4316-9d68-87fc2506b054][ AuthTime::0::PostAuthTime::0
+          ][S-HdfsGetFileStatusV2 :: 00:00:005 ms]%0a[S-FsRename :: 00:00:004 ms]%0a[RENAME
+          :: 00:00:015 ms]%0a']
+      Status: ['0x8309000A']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [f509b456-9d28-4316-9d68-87fc2506b054]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.11.1]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir?OP=LISTSTATUS
+  response:
+    body: {string: '{"FileStatuses":{"FileStatus":[]}}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['34']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Tue, 06 Sep 2016 13:40:11 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[c2a39aa6-8ded-441c-9ff6-4c81b2244449][ AuthTime::0::PostAuthTime::0
+          ][S-HdfsListStatus :: 00:00:006 ms]%0a[LISTSTATUS :: 00:00:006 ms]%0a']
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [c2a39aa6-8ded-441c-9ff6-4c81b2244449]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.11.1]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/shfoshf?OP=LISTSTATUS
+  response:
+    body: {string: '{"RemoteException":{"exception":"FileNotFoundException","message":"Folder
+        does not exist: //azure_test_dir/shfoshf [d7b0b127-e09f-466d-ae0b-7b78df18e3c6][2016-09-06T06:40:11.7476295-07:00]","javaClassName":"java.io.FileNotFoundException"}}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['239']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Tue, 06 Sep 2016 13:40:11 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[d7b0b127-e09f-466d-ae0b-7b78df18e3c6][ AuthTime::0::PostAuthTime::0
+          ][S-HdfsListStatus :: 00:00:009 ms]%0a[LISTSTATUS :: 00:00:022 ms]%0a']
+      Status: ['0x8309000A']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [d7b0b127-e09f-466d-ae0b-7b78df18e3c6]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 404, message: Not Found}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.11.1]
+    method: PUT
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/shfoshf/x?destination=azure_test_dir%2Fshfoshxbf%2Fy&OP=RENAME
+  response:
+    body: {string: '{"boolean":false}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['17']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Tue, 06 Sep 2016 13:40:11 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[948f5514-fb5c-47ff-8878-37f7929513ac][ AuthTime::0::PostAuthTime::0
+          ][S-HdfsGetFileStatusV2 :: 00:00:006 ms]%0a[S-FsRename :: 00:00:004 ms]%0a[RENAME
+          :: 00:00:020 ms]%0a']
+      Status: ['0x8309000A']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [948f5514-fb5c-47ff-8878-37f7929513ac]
+      x-ms-webhdfs-version: [16.07.07.01]
+    status: {code: 200, message: OK}
 version: 1
