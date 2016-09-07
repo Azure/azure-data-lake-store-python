@@ -16,6 +16,7 @@ Only implements upload and download of (massive) files and directory trees.
 """
 from concurrent.futures import ThreadPoolExecutor, wait
 import glob
+import logging
 import multiprocessing
 import os
 import pickle
@@ -23,9 +24,11 @@ import time
 import uuid
 
 from .core import AzureDLPath
-from .utils import commonprefix, datadir, logger, read_block, tokenize
+from .utils import commonprefix, datadir, read_block, tokenize
 
 MAXRETRIES = 5
+
+logger = logging.getLogger(__name__)
 
 
 class ADLDownloader:

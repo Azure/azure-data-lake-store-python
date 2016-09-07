@@ -362,7 +362,36 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         return True
 
 
+def setup_logging(default_level='WARNING'):
+    """ Setup logging configuration
+
+    The logging configuration can be overridden with one environment variable:
+
+    ADLFS_LOG_LEVEL (defines logging level)
+    """
+    import logging
+    import os
+    import sys
+
+    log_level = os.environ.get('ADLFS_LOG_LEVEL', default_level)
+
+    levels = dict(
+        CRITICAL=logging.CRITICAL,
+        ERROR=logging.ERROR,
+        WARNING=logging.WARNING,
+        INFO=logging.INFO,
+        DEBUG=logging.DEBUG)
+
+    if log_level in levels:
+        log_level = levels[log_level]
+    else:
+        sys.exit("invalid ADLFS_LOG_LEVEL '{0}'".format(log_level))
+
+    logging.basicConfig(level=log_level)
+
+
 if __name__ == '__main__':
+    setup_logging()
     fs = AzureDLFileSystem()
     if len(sys.argv) > 1:
         AzureDataLakeFSCommand(fs).onecmd(' '.join(sys.argv[1:]))
