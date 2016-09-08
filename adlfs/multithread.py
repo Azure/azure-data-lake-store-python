@@ -51,7 +51,7 @@ class ADLDownloader:
         directory to write within. Will create directories as required.
     nthreads: int [None]
         Number of threads to use. If None, uses the number of cores.
-    chunksize: int [2**26]
+    chunksize: int [2**22]
         Number of bytes in each chunk for splitting big files. Files smaller
         than this number will always be downloaded in a single thread.
     run: bool (True)
@@ -61,7 +61,7 @@ class ADLDownloader:
     -------
     downloader object
     """
-    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**26,
+    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**22,
                  run=True):
         self.adl = adlfs
         self.rpath = rpath
