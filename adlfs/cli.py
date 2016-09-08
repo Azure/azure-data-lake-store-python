@@ -179,13 +179,23 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser = argparse.ArgumentParser(prog="get", add_help=False)
         parser.add_argument('remote_path', type=str)
         parser.add_argument('local_path', type=str, nargs='?', default='.')
+        parser.add_argument('-b', '--chunksize', type=int, default=2**26)
+        parser.add_argument('-c', '--threads', type=int, default=None)
         args = parser.parse_args(line.split())
 
-        ADLDownloader(self._fs, args.remote_path, args.local_path)
+        ADLDownloader(self._fs, args.remote_path, args.local_path,
+                      nthreads=args.threads, chunksize=args.chunksize)
 
     def help_get(self):
-        print("get remote-file [local-file]\n")
-        print("Retrieve the remote file and store it locally")
+        print("get [option]... remote-path [local-path]\n")
+        print("Retrieve the remote path and store it locally\n")
+        print("Options:")
+        print("    -b <int>")
+        print("    --chunksize <int>")
+        print("        Set size of chunk to retrieve atomically, in bytes.\n")
+        print("    -c <int>")
+        print("    --threads <int>")
+        print("        Set number of multiple requests to perform at a time.")
 
     def do_head(self, line):
         parser = argparse.ArgumentParser(prog="head", add_help=False)
@@ -293,13 +303,23 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser = argparse.ArgumentParser(prog="put", add_help=False)
         parser.add_argument('local_path', type=str)
         parser.add_argument('remote_path', type=str, nargs='?', default='.')
+        parser.add_argument('-b', '--chunksize', type=int, default=2**26)
+        parser.add_argument('-c', '--threads', type=int, default=None)
         args = parser.parse_args(line.split())
 
-        ADLUploader(self._fs, args.remote_path, args.local_path)
+        ADLUploader(self._fs, args.remote_path, args.local_path,
+                    nthreads=args.threads, chunksize=args.chunksize)
 
     def help_put(self):
-        print("put local-file [remote-file]\n")
-        print("Store a local file on the remote machine")
+        print("put [option]... local-path [remote-path]\n")
+        print("Store a local file on the remote machine\n")
+        print("Options:")
+        print("    -b <int>")
+        print("    --chunksize <int>")
+        print("        Set size of chunk to store atomically, in bytes.\n")
+        print("    -c <int>")
+        print("    --threads <int>")
+        print("        Set number of multiple requests to perform at a time.")
 
     def do_quit(self, line):
         return True
