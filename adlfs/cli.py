@@ -179,7 +179,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser = argparse.ArgumentParser(prog="get", add_help=False)
         parser.add_argument('remote_path', type=str)
         parser.add_argument('local_path', type=str, nargs='?', default='.')
-        parser.add_argument('-b', '--chunksize', type=int, default=2**26)
+        parser.add_argument('-b', '--chunksize', type=int, default=2**22)
         parser.add_argument('-c', '--threads', type=int, default=None)
         args = parser.parse_args(line.split())
 
@@ -303,7 +303,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser = argparse.ArgumentParser(prog="put", add_help=False)
         parser.add_argument('local_path', type=str)
         parser.add_argument('remote_path', type=str, nargs='?', default='.')
-        parser.add_argument('-b', '--chunksize', type=int, default=2**26)
+        parser.add_argument('-b', '--chunksize', type=int, default=2**22)
         parser.add_argument('-c', '--threads', type=int, default=None)
         args = parser.parse_args(line.split())
 
