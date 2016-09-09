@@ -44,16 +44,6 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
     def get_names(self):
         return [n for n in dir(self.__class__) if n not in self._hidden_methods]
 
-    def cmdloop(self):
-        try:
-            cmd.Cmd.cmdloop(self)
-        except KeyboardInterrupt as e:
-            print('^C')
-            self.cmdloop()
-        except:
-            print(sys.exc_info()[1])
-            self.cmdloop()
-
     def do_close(self, line):
         return True
 
@@ -424,9 +414,6 @@ if __name__ == '__main__':
     setup_logging()
     fs = AzureDLFileSystem()
     if len(sys.argv) > 1:
-        try:
-            AzureDataLakeFSCommand(fs).onecmd(' '.join(sys.argv[1:]))
-        except:
-            print(sys.exc_info()[1])
+        AzureDataLakeFSCommand(fs).onecmd(' '.join(sys.argv[1:]))
     else:
         AzureDataLakeFSCommand(fs).cmdloop()
