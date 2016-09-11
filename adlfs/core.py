@@ -311,16 +311,27 @@ class AzureDLFileSystem(object):
         self.invalidate_cache(path1)
         self.invalidate_cache(path2)
 
-    def concat(self, outfile, filelist):
-        """ Concatenate a list of files into one new file"""
+    def concat(self, outfile, filelist, delete_source=False):
+        """ Concatenate a list of files into one new file
+
+        Parameters
+        ----------
+
+        outfile : path
+            The file which will be concatenated to. If it already exists,
+            the extra pieces will be appended.
+        filelist : list of paths
+            Existing aslfs files to concatenate, in order
+        delete_source : bool (False)
+            If True, assume that the paths to concatenate exist alone in a
+            directory, and delete that whole directory when done.
+        """
         outfile = AzureDLPath(outfile).trim()
         filelist = ','.join(AzureDLPath(f).as_posix() for f in filelist)
-        #self.azure.call('CONCAT', outfile.as_posix(),
-        #                sources=','.join(filelist))
-        #self.invalidate_cache(outfile)
-        #return
+        delete = 'true' if delete_source else 'false'
         self.azure.call('MSCONCAT', outfile.as_posix(),
-                        data='sources='+filelist, deleteSourceDirectory='true')
+                        data='sources='+filelist,
+                        deleteSourceDirectory=delete)
         self.invalidate_cache(outfile)
 
     merge = concat
