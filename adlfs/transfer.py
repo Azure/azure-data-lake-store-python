@@ -14,6 +14,7 @@ is used to its maximum throughput.
 
 Only implements upload and download of (massive) files and directory trees.
 """
+from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import multiprocessing
@@ -50,7 +51,8 @@ class DisjointState(object):
         return self._objects[obj]
 
     def __setitem__(self, obj, state):
-        self._states[self._objects[obj]].discard(obj)
+        if obj in self._objects:
+            self._states[self._objects[obj]].discard(obj)
         self._states[state].add(obj)
         self._objects[obj] = state
 
@@ -100,7 +102,7 @@ class ADLTransferClient(object):
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._files = {}
-        self._states = DisjointState(
+        self._fstates = DisjointState(
             'pending', 'transferring', 'merging', 'finished', 'cancelled',
             'errored')
 
@@ -109,19 +111,19 @@ class ADLTransferClient(object):
         All submitted files start in the `pending` state until `run()` is
         called.
         """
-        self._states[(src, dst)] = 'pending'
+        self._fstates[(src, dst)] = 'pending'
         self._files[(src, dst)] = dict(
             nbytes=nbytes,
             start=None,
             stop=None,
-            states=DisjointState('running', 'finished', 'cancelled', 'errored'),
             chunks={},
+            cstates=DisjointState('running', 'finished', 'cancelled', 'errored'),
             merge=None)
 
     def _scatter(self, src, dst, transfer):
         """ Split a given file into chunks """
         dic = self._files[(src, dst)]
-        self._states[(src, dst)] = 'transferring'
+        self._fstates[(src, dst)] = 'transferring'
         for offset in list(range(0, dic['nbytes'], self._chunksize)):
             if self._transfer_path:
                 name = os.path.join(
@@ -129,7 +131,7 @@ class ADLTransferClient(object):
                     uuid.uuid1().hex[:10] + "_%i" % offset)
             else:
                 name = dst
-            dic['states'][name] = 'running'
+            dic['cstates'][name] = 'running'
             dic['chunks'][name] = dict(
                 future=self._pool.submit(transfer, self._adlfs, src, dst,
                                          offset, self._chunksize),
@@ -138,41 +140,53 @@ class ADLTransferClient(object):
 
     @property
     def progress(self):
-        # aka get_state?
-        # return dict of files, their chunks and status
-        """
-        client parameters
-        client files
-            file parameter
-            file chunks
-                chunk parameters
-        """
-        pass
+        Chunk = namedtuple('Chunk', 'name state offset retries')
+        File = namedtuple('File', 'src dst state nbytes start stop chunks')
+        files = []
+        for key in self._files:
+            src, dst = key
+            chunks = []
+            for name in self._files[key]['chunks']:
+                chunks.append(Chunk(
+                    name=name,
+                    state=self._files[key]['cstates'][name],
+                    offset=self._files[key]['chunks'][name]['offset'],
+                    retries=self._files[key]['chunks'][name]['retries']))
+            files.append(File(
+                src=src,
+                dst=dst,
+                state=self._fstates[key],
+                nbytes=self._files[key]['nbytes'],
+                start=self._files[key]['start'],
+                stop=self._files[key]['stop'],
+                chunks=chunks))
+        return files
 
     def _update(self):
-        for (src, dst), dic in self._files:
-            if self._states[(src, dst)] == 'transferring':
+        for (src, dst), dic in self._files.items():
+            if self._fstates[(src, dst)] == 'transferring':
                 for name in list(dic['chunks']):
                     future = dic['chunks'][name]['future']
                     if future.done() and not future.cancelled():
-                        dic['states'][name] = 'finished'
+                        dic['cstates'][name] = 'finished'
                     # if cancelled, retry if possible and decrement retries
                     # elif if exception, add to errored set
                     # else, add to cancelled set
-                if dic['states'].contains_all('finished'):
+                if dic['cstates'].contains_all('finished'):
                     # merge if possible
                     if self._merge:
-                        self._states[(src, dst)] = 'merging'
+                        self._fstates[(src, dst)] = 'merging'
                         chunks = [os.path.join(self._transfer_path, name) for name in list(dic['chunks'])]
                         dic['merge'] = self._pool.submit(self._merge, dst, chunks)
                     else:
-                        self._states[(src, dst)] = 'finished'
-            elif self._states[(src, dst)] == 'merging':
+                        dic['stop'] = time.time()
+                        self._fstates[(src, dst)] = 'finished'
+            elif self._fstates[(src, dst)] == 'merging':
                 future = dic['merge']
                 if future.done() and not future.cancelled():
                     logger.debug('File downloaded (%s -> %s)' % (src, dst))
                     dic['stop'] = time.time()
-                    self._states[(src, dst)] = 'finished'
+                    self._fstates[(src, dst)] = 'finished'
                 # if cancelled, retry if possible and decrement retries
                 # elif if exception, add to errored set
                 # else, add to cancelled set
@@ -182,9 +196,10 @@ class ADLTransferClient(object):
         self._merge = merge
         self._nthreads = nthreads or self._nthreads
         for src, dst in self._files:
-            self._states[(src, dst)] = 'transferring'
+            self._files[(src, dst)]['start'] = time.time()
+            self._fstates[(src, dst)] = 'transferring'
             if before_scatter:
-                before_scatter(self.adlfs, src, dst)
+                before_scatter(self._adlfs, src, dst)
             self._scatter(src, dst, transfer)
         if monitor:
             self.monitor()
@@ -197,11 +212,11 @@ class ADLTransferClient(object):
     def _wait(self, poll=0.1, timeout=0):
         # loop until all files are transferred or timeout expires
         start = time.time()
-        while not self._states.contains_all('finished'):
+        while not self._fstates.contains_all('finished'):
             if timeout > 0 and time.time() - start > timeout:
                 break
             time.sleep(poll)
-            self.update()
+            self._update()
 
     def _shutdown(self, wait=True):
         self._pool.shutdown(wait)
@@ -226,15 +241,7 @@ class ADLTransferClient(object):
         self.save()
 
     def __getstate__(self):
-        dic2 = self.__dict__.copy()
-        dic2.pop('pool', None)
-        dic2['progress'] = self.progress.copy()
-        for k, v in list(dic2['progress'].items()):
-            v = v.copy()
-            v['futures'] = []
-            v['final'] = None
-            dic2['progress'][k] = v
-        return dic2
+        return self.progress
 
     @staticmethod
     def load(filename):
@@ -246,7 +253,7 @@ class ADLTransferClient(object):
     def save(self, keep=True):
         if self._persist_path:
             all_downloads = self.load(self._persist_path)
-            if self.nchunks and keep:
+            if not self._fstates.contains_all('finished') and keep:
                 all_downloads[self._name] = self
             else:
                 all_downloads.pop(self._name, None)

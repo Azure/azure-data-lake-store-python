@@ -75,9 +75,9 @@ class ADLDownloader(ADLTransferClient):
         """ Create set of parameters to loop over
         """
         if "*" not in self.rpath:
-            rfiles = self._adlfs.walk(self.rpath)
+            rfiles = self.client._adlfs.walk(self.rpath)
         else:
-            rfiles = self._adlfs.glob(self.rpath)
+            rfiles = self.client._adlfs.glob(self.rpath)
         if len(rfiles) > 1:
             prefix = commonprefix(rfiles)
             lfiles = [os.path.join(self.lpath, os.path.relpath(f, prefix))
@@ -93,8 +93,8 @@ class ADLDownloader(ADLTransferClient):
         self.lfiles = lfiles
 
         for lfile, rfile in zip(lfiles, rfiles):
-            fsize = self._adlfs.info(rfile)['length']
-            self.submit(rfile, lfile, fsize)
+            fsize = self.client._adlfs.info(rfile)['length']
+            self.client.submit(rfile, lfile, fsize)
 
     def run(self, nthreads=None, monitor=True):
         """ Populate transfer queue and execute downloads
@@ -125,8 +125,11 @@ class ADLDownloader(ADLTransferClient):
             before_scatter=touch)
 
     def __str__(self):
+        progress = self.client.progress
+        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
+        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
         return "<ADL Download: %s -> %s (%s of %s chunks remain)>" % (
-            self.rpath, self.lpath, self.nchunks, self.nchunks_orig)
+            self.rpath, self.lpath, nchunks, nchunks_orig)
 
     __repr__ = __str__
 
@@ -221,8 +224,8 @@ class ADLUploader(ADLTransferClient):
             rfiles = [self.rpath / AzureDLPath(f).relative_to(prefix)
                       for f in lfiles]
         elif lfiles:
-            if (self._adlfs.exists(self.rpath) and
-                        self._adlfs.info(self.rpath)['type'] == "DIRECTORY"):
+            if (self.client._adlfs.exists(self.rpath) and
+                        self.client._adlfs.info(self.rpath)['type'] == "DIRECTORY"):
                 rfiles = [self.rpath / AzureDLPath(lfiles[0]).name]
             else:
                 rfiles = [self.rpath]
@@ -238,13 +241,16 @@ class ADLUploader(ADLTransferClient):
     def run(self, nthreads=None, monitor=True):
         self.client.run(
             put_chunk,
-            merge=self._adlfs.concat,
+            merge=self.client._adlfs.concat,
             nthreads=nthreads,
             monitor=monitor)
 
     def __str__(self):
-        return "<ADL Upload: %s -> %s (%s of %s chunks remain)>" % (self.lpath,
-                    self.rpath, self.nchunks, self.nchunks_orig)
+        progress = self.client.progress
+        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
+        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
+        return "<ADL Upload: %s -> %s (%s of %s chunks remain)>" % (
+            self.lpath, self.rpath, nchunks, nchunks_orig)
 
     __repr__ = __str__
 
