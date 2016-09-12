@@ -321,7 +321,7 @@ class AzureDLFileSystem(object):
             The file which will be concatenated to. If it already exists,
             the extra pieces will be appended.
         filelist : list of paths
-            Existing aslfs files to concatenate, in order
+            Existing adl files to concatenate, in order
         delete_source : bool (False)
             If True, assume that the paths to concatenate exist alone in a
             directory, and delete that whole directory when done.
