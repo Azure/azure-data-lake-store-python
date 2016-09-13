@@ -206,7 +206,9 @@ def test_upload_one(local_files, azure):
         bigfile, littlefile, a, b, c = local_files
 
         # transfer client w/ deterministic temporary directory
-        client = ADLTransferClient(azure, 'foo', tmp_unique=False)
+        from adlfs.multithread import put_chunk
+        client = ADLTransferClient(azure, 'foo', transfer=put_chunk,
+                                   tmp_unique=False)
 
         # single chunk
         up = ADLUploader(azure, test_dir / 'littlefile', littlefile, nthreads=1)

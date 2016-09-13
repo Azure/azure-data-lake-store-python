@@ -73,15 +73,17 @@ class DisjointState(object):
 
 
 class ADLTransferClient(object):
-    def __init__(self, adlfs, name, nthreads=None, chunksize=2**26,
-                 tmp_path='/tmp', tmp_prefix='part_', tmp_unique=True,
-                 persist_path=None, delimiter=None):
+    def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
+                 chunksize=2**26, tmp_path='/tmp', tmp_prefix='part_',
+                 tmp_unique=True, persist_path=None, delimiter=None):
         """
         Parameters
         ----------
         adlfs: ADL filesystem instance
         name: str
             Unique ID used for persistence.
+        transfer: callable
+        merge: callable [None]
         nthreads: int [None]
             Number of threads to use. If None, uses the number of cores.
         chunksize: int [2**26]
@@ -107,6 +109,8 @@ class ADLTransferClient(object):
         """
         self._adlfs = adlfs
         self._name = name
+        self._transfer = transfer
+        self._merge = merge
         self._nthreads = nthreads or multiprocessing.cpu_count()
         self._chunksize = chunksize
         self._chunkretries = 5
@@ -138,8 +142,9 @@ class ADLTransferClient(object):
         """ Split a given file into chunks """
         dic = self._files[(src, dst)]
         self._fstates[(src, dst)] = 'transferring'
-        for offset in list(range(0, dic['nbytes'], self._chunksize)):
-            if self._tmp_path:
+        offsets = list(range(0, dic['nbytes'], self._chunksize))
+        for offset in offsets:
+            if self._tmp_path and len(offsets) > 1:
                 subdir = uuid.uuid1().hex[:10] if self._tmp_unique else ''
                 prefix = self._tmp_prefix or ''
                 name = os.path.join(
@@ -193,10 +198,10 @@ class ADLTransferClient(object):
                         dic['cstates'][name] = 'finished'
                 if dic['cstates'].contains_all('finished'):
                     logger.debug("Chunks transferred")
-                    if self._merge:
+                    chunks = list(dic['chunks'])
+                    if self._merge and len(chunks) > 1:
                         logger.debug("Merging file: %s", self._fstates[(src, dst)])
                         self._fstates[(src, dst)] = 'merging'
-                        chunks = list(dic['chunks'])
                         dic['merge'] = self._pool.submit(self._merge, dst, chunks)
                     else:
                         dic['stop'] = time.time()
@@ -220,15 +225,14 @@ class ADLTransferClient(object):
                     self._fstates[(src, dst)] = 'finished'
         self.save()
 
-    def run(self, transfer, merge=None, nthreads=None, monitor=True, before_scatter=None):
-        self._merge = merge
+    def run(self, nthreads=None, monitor=True, before_scatter=None):
         self._nthreads = nthreads or self._nthreads
         for src, dst in self._files:
             self._files[(src, dst)]['start'] = time.time()
             self._fstates[(src, dst)] = 'transferring'
             if before_scatter:
                 before_scatter(self._adlfs, src, dst)
-            self._scatter(src, dst, transfer)
+            self._scatter(src, dst, self._transfer)
         if monitor:
             self.monitor()
 

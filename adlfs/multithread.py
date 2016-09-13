@@ -69,6 +69,7 @@ class ADLDownloader(object):
             self.client = ADLTransferClient(
                 adlfs,
                 name=tokenize(adlfs, rpath, lpath, chunksize),
+                transfer=get_chunk,
                 nthreads=nthreads,
                 chunksize=chunksize,
                 tmp_path=None,
@@ -126,11 +127,7 @@ class ADLDownloader(object):
             with open(dst, 'wb'):
                 pass
 
-        self.client.run(
-            get_chunk,
-            nthreads=nthreads,
-            monitor=monitor,
-            before_scatter=touch)
+        self.client.run(nthreads, monitor, before_scatter=touch)
 
     @staticmethod
     def load():
@@ -216,6 +213,8 @@ class ADLUploader(object):
             self.client = ADLTransferClient(
                 adlfs,
                 name=tokenize(adlfs, rpath, lpath, chunksize),
+                transfer=put_chunk,
+                merge=adlfs.concat,
                 nthreads=nthreads,
                 chunksize=chunksize,
                 persist_path=os.path.join(datadir, 'uploads'),
@@ -258,11 +257,7 @@ class ADLUploader(object):
             self.client.submit(lfile, rfile, fsize)
 
     def run(self, nthreads=None, monitor=True):
-        self.client.run(
-            put_chunk,
-            merge=self.client._adlfs.concat,
-            nthreads=nthreads,
-            monitor=monitor)
+        self.client.run(nthreads, monitor)
 
     @staticmethod
     def load():
