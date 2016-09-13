@@ -186,6 +186,12 @@ class ADLTransferClient(object):
                 chunks=chunks))
         return files
 
+    def _status(self, src, dst, nbytes, start, stop):
+        elapsed = stop - start
+        rate = nbytes / elapsed / 1024 / 1024
+        logger.info("Transferred %s -> %s in %f seconds at %f MB/s",
+                    src, dst, elapsed, rate)
+
     def _update(self):
         for (src, dst), dic in self._files.items():
             if self._fstates[(src, dst)] == 'transferring':
@@ -209,6 +215,7 @@ class ADLTransferClient(object):
                     else:
                         dic['stop'] = time.time()
                         self._fstates[(src, dst)] = 'finished'
+                        self._status(src, dst, dic['nbytes'], dic['start'], dic['stop'])
                 elif dic['cstates'].contains_none('running'):
                     logger.debug("Transfer failed: %s", dic['cstates'])
                     self._fstates[(src, dst)] = 'errored'
@@ -223,9 +230,9 @@ class ADLTransferClient(object):
                 elif future.exception():
                     self._fstates[(src, dst)] = 'errored'
                 else:
-                    logger.debug('File downloaded (%s -> %s)' % (src, dst))
                     dic['stop'] = time.time()
                     self._fstates[(src, dst)] = 'finished'
+                    self._status(src, dst, dic['nbytes'], dic['start'], dic['stop'])
         self.save()
 
     def run(self, nthreads=None, monitor=True, before_scatter=None):
