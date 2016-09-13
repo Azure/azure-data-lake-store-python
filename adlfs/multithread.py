@@ -50,22 +50,29 @@ class ADLDownloader(object):
     chunksize: int [2**22]
         Number of bytes in each chunk for splitting big files. Files smaller
         than this number will always be downloaded in a single thread.
-    run: bool (True)
+    client: ADLTransferClient [None]
+        Set an instance of ADLTransferClient when finer-grained control over
+        transfer parameters is needed. Ignores `nthreads` and `chunksize` set
+        by constructor.
+    run: bool [True]
         Whether to begin executing immediately.
 
-    Returns
-    -------
-    downloader object
+    See Also
+    --------
+    adlfs.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**22,
-                 run=True):
-        self.client = ADLTransferClient(
-            adlfs,
-            name=tokenize(adlfs, rpath, lpath, chunksize),
-            nthreads=nthreads,
-            chunksize=chunksize,
-            tmp_path=None,
-            persist_path=os.path.join(datadir, 'downloads'))
+                 client=None, run=True):
+        if client:
+            self.client = client
+        else:
+            self.client = ADLTransferClient(
+                adlfs,
+                name=tokenize(adlfs, rpath, lpath, chunksize),
+                nthreads=nthreads,
+                chunksize=chunksize,
+                tmp_path=None,
+                persist_path=os.path.join(datadir, 'downloads'))
         self.rpath = rpath
         self.lpath = lpath
         self._setup()
@@ -102,9 +109,9 @@ class ADLDownloader(object):
 
         Parameters
         ----------
-        nthreads: int (None)
+        nthreads: int [None]
             Override default nthreads, if given
-        monitor: bool (True)
+        monitor: bool [True]
             To watch and wait (block) until completion. If False, `update()`
             should be called manually, otherwise process runs as "fire and
             forget".
@@ -187,25 +194,32 @@ class ADLUploader(object):
     chunksize: int [2**26]
         Number of bytes in each chunk for splitting big files. Files smaller
         than this number will always be sent in a single thread.
-    run: bool (True)
+    client: ADLTransferClient [None]
+        Set an instance of ADLTransferClient when finer-grained control over
+        transfer parameters is needed. Ignores `nthreads`, `chunksize`, and
+        `delimiter` set by constructor.
+    run: bool [True]
         Whether to begin executing immediately.
     delimiter: byte(s) or None
         If set, will write blocks using delimiters in the backend, as well as
         split files for uploading on that delimiter.
 
-    Returns
-    -------
-    uploader object
+    See Also
+    --------
+    adlfs.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=256*2**20,
-                 run=True, delimiter=None):
-        self.client = ADLTransferClient(
-            adlfs,
-            name=tokenize(adlfs, rpath, lpath, chunksize),
-            nthreads=nthreads,
-            chunksize=chunksize,
-            persist_path=os.path.join(datadir, 'uploads'),
-            delimiter=delimiter)
+                 client=None, run=True, delimiter=None):
+        if client:
+            self.client = client
+        else:
+            self.client = ADLTransferClient(
+                adlfs,
+                name=tokenize(adlfs, rpath, lpath, chunksize),
+                nthreads=nthreads,
+                chunksize=chunksize,
+                persist_path=os.path.join(datadir, 'uploads'),
+                delimiter=delimiter)
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
         self._setup()

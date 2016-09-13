@@ -17,6 +17,7 @@ import threading
 from adlfs.core import AzureDLPath
 from adlfs.multithread import ADLDownloader, ADLUploader
 from tests.testing import azure, azure_teardown, md5sum, my_vcr, posix, working_dir
+from adlfs.transfer import ADLTransferClient
 
 test_dir = working_dir()
 
@@ -204,6 +205,9 @@ def test_upload_one(local_files, azure):
     with azure_teardown(azure):
         bigfile, littlefile, a, b, c = local_files
 
+        # transfer client w/ deterministic temporary directory
+        client = ADLTransferClient(azure, 'foo', tmp_unique=False)
+
         # single chunk
         up = ADLUploader(azure, test_dir / 'littlefile', littlefile, nthreads=1)
         assert azure.info(test_dir / 'littlefile')['length'] == 10
@@ -211,7 +215,7 @@ def test_upload_one(local_files, azure):
         # multiple chunks, one thread
         size = 10000
         up = ADLUploader(azure, test_dir / 'bigfile', bigfile, nthreads=1,
-                         chunksize=size//5, run=False, tmp_unique=False)
+                         chunksize=size//5, client=client, run=False)
         up.run()
 
         assert azure.info(test_dir / 'bigfile')['length'] == size

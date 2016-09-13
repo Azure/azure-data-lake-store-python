@@ -196,7 +196,7 @@ class ADLTransferClient(object):
                     if self._merge:
                         logger.debug("Merging file: %s", self._fstates[(src, dst)])
                         self._fstates[(src, dst)] = 'merging'
-                        chunks = [os.path.join(self._transfer_path, name) for name in list(dic['chunks'])]
+                        chunks = list(dic['chunks'])
                         dic['merge'] = self._pool.submit(self._merge, dst, chunks)
                     else:
                         dic['stop'] = time.time()
