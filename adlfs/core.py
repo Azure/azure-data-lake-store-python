@@ -311,11 +311,27 @@ class AzureDLFileSystem(object):
         self.invalidate_cache(path1)
         self.invalidate_cache(path2)
 
-    def concat(self, outfile, filelist):
-        """ Concatenate a list of files into one new file"""
+    def concat(self, outfile, filelist, delete_source=False):
+        """ Concatenate a list of files into one new file
+
+        Parameters
+        ----------
+
+        outfile : path
+            The file which will be concatenated to. If it already exists,
+            the extra pieces will be appended.
+        filelist : list of paths
+            Existing adl files to concatenate, in order
+        delete_source : bool (False)
+            If True, assume that the paths to concatenate exist alone in a
+            directory, and delete that whole directory when done.
+        """
         outfile = AzureDLPath(outfile).trim()
-        self.azure.call('CONCAT', outfile.as_posix(),
-                        sources=','.join(filelist))
+        filelist = ','.join(AzureDLPath(f).as_posix() for f in filelist)
+        delete = 'true' if delete_source else 'false'
+        self.azure.call('MSCONCAT', outfile.as_posix(),
+                        data='sources='+filelist,
+                        deleteSourceDirectory=delete)
         self.invalidate_cache(outfile)
 
     merge = concat
@@ -629,7 +645,8 @@ class AzureDLFile(object):
                 if force and self.first_write:
                     self.azure.azure.call('CREATE',
                                           path=self.path.as_posix(),
-                                          overwrite='true')
+                                          overwrite='true',
+                                          write='true')
                     self.first_write = False
                 return
             self.buffer.seek(0)
@@ -646,12 +663,14 @@ class AzureDLFile(object):
                         out = self.azure.azure.call('CREATE',
                                                     path=self.path.as_posix(),
                                                     data=data[:limit],
-                                                    overwrite='true')
+                                                    overwrite='true',
+                                                    write='true')
                         self.first_write = False
                     else:
                         out = self.azure.azure.call('APPEND',
                                                     path=self.path.as_posix(),
-                                                    data=data[:limit])
+                                                    data=data[:limit],
+                                                    append='true')
                     logger.debug('Wrote %d bytes to %s' % (limit, self))
                     data = data[limit:]
                 self.buffer = io.BytesIO(data)
@@ -664,12 +683,14 @@ class AzureDLFile(object):
                         out = self.azure.azure.call('CREATE',
                                                     path=self.path.as_posix(),
                                                     data=d2,
-                                                    overwrite='true')
+                                                    overwrite='true',
+                                                    write='true')
                         self.first_write = False
                     else:
                         out = self.azure.azure.call('APPEND',
                                                     path=self.path.as_posix(),
-                                                    data=d2)
+                                                    data=d2,
+                                                    append='true')
                     logger.debug('Wrote %d bytes to %s' % (len(d2), self))
                 self.buffer = io.BytesIO()
             return out
@@ -719,7 +740,8 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
         return b''
     for i in range(max_attempts):
         try:
-            resp = rest.call('OPEN', path, offset=start, length=end-start)
+            resp = rest.call('OPEN', path, offset=start, length=end-start,
+                             read='true')
             return resp
         except Exception as e:
             logger.debug('Exception %e on ADL download, retrying', e,

@@ -161,16 +161,17 @@ class DatalakeRESTInterface:
 
     ends = {
         # OP: (HTTP method, required fields, allowed fields)
-        'APPEND': ('post', set(), set()),
+        'APPEND': ('post', set(), {'append'}),
         'CHECKACCESS': ('get', set(), {'fsaction'}),
         'CONCAT': ('post', {'sources'}, {'sources'}),
-        'CREATE': ('put', set(), {'overwrite'}),
+        'MSCONCAT': ('post', set(), {'deleteSourceDirectory'}),
+        'CREATE': ('put', set(), {'overwrite', 'write'}),
         'DELETE': ('delete', set(), {'recursive'}),
         'GETCONTENTSUMMARY': ('get', set(), set()),
         'GETFILESTATUS': ('get', set(), set()),
         'LISTSTATUS': ('get', set(), set()),
         'MKDIRS': ('put', set(), set()),
-        'OPEN': ('get', set(), {'offset', 'length'}),
+        'OPEN': ('get', set(), {'offset', 'length', 'read'}),
         'RENAME': ('put', {'destination'}, {'destination'}),
         'TRUNCATE': ('post', {'newlength'}, {'newlength'}),
         'SETOWNER': ('put', set(), {'owner', 'group'}),

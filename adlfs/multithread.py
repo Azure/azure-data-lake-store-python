@@ -311,7 +311,7 @@ class ADLUploader:
             fsize = os.stat(lfile).st_size
             offsets = list(range(0, fsize, self.chunksize))
             unique = uuid.uuid1().hex[:10]
-            parts = [self.temp_upload_path+unique+"_%i" % i for i in offsets]
+            parts = [self.temp_upload_path+unique+"/part_%i" % i for i in offsets]
             self.progress[(rfile, lfile)] = {'waiting': offsets, 'uuid': unique,
                                              'files': parts, 'final': None,
                                              'futures': []}
@@ -327,7 +327,7 @@ class ADLUploader:
         for (rfile, lfile), dic in self.progress.items():
             unique = dic['uuid']
             if len(dic['waiting']) > 1:
-                parts = [self.temp_upload_path+unique+"_%i" % i for i
+                parts = [self.temp_upload_path+unique+"/part_%i" % i for i
                          in dic['waiting']]
                 futures = [self.pool.submit(put_chunk, self.adl, part, lfile, o,
                                             self.chunksize, MAXRETRIES,
@@ -343,7 +343,7 @@ class ADLUploader:
     def _finalize(self, rfile, lfile):
         dic = self.progress[(rfile, lfile)]
         parts = dic['files']
-        dic['final'] = self.pool.submit(self.adl.concat, rfile, parts)
+        dic['final'] = self.pool.submit(self.adl.concat, rfile, parts, True)
 
     def _check(self):
         for key in list(self.progress):
