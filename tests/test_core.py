@@ -105,6 +105,24 @@ def test_seek(azure):
 
 
 @my_vcr.use_cassette
+def test_concat(azure):
+    with azure.open(a, 'wb') as f:
+        f.write(b'hello ')
+    with azure.open(b, 'wb') as f:
+        f.write(b'world')
+    try:
+        azure.rm(c)
+    except:
+        pass
+    azure.concat(c, [a, b])
+
+    out = azure.cat(c)
+    azure.rm(c)
+
+    assert out == b'hello world'
+
+
+@my_vcr.use_cassette
 def test_bad_open(azure):
     with pytest.raises(IOError):
         azure.open('')
