@@ -83,7 +83,10 @@ class ADLTransferClient(object):
         name: str
             Unique ID used for persistence.
         transfer: callable
+            Function or callable object invoked when transferring chunks.
         merge: callable [None]
+            Function or callable object invoked when merging chunks. If None,
+            then merging is skipped.
         nthreads: int [None]
             Number of threads to use. If None, uses the number of cores.
         chunksize: int [2**26]
