@@ -74,7 +74,8 @@ class DisjointState(object):
 
 class ADLTransferClient(object):
     def __init__(self, adlfs, name, nthreads=None, chunksize=2**26,
-                 transfer_path=None, persist_path=None, delimiter=None):
+                 tmp_path='/tmp', tmp_prefix='part_', tmp_unique=True,
+                 persist_path=None, delimiter=None):
         """
         Parameters
         ----------
@@ -86,10 +87,17 @@ class ADLTransferClient(object):
         chunksize: int [2**26]
             Number of bytes in each chunk for splitting big files. Files smaller
             than this number will always be transferred in a single thread.
-        transfer_path: str [None]
-            Path used for storing transferred chunks until chunks are gathered
-            into a single file. If None, then each chunk will be written into
-            the same file.
+        tmp_path: str ['/tmp']
+            Path used for temporarily storing transferred chunks until chunks
+            are gathered into a single file. If None, then each chunk will be
+            written into the same file.
+        tmp_prefix: str ['part_']
+            If given and not None, this is used to provide a prefix to the
+            temporary chunk.
+        tmp_unique: bool [True]
+            If True, then a unique ID will be generated to create a subdirectory
+            containing the temporary chunks. Otherwise, all temporary chunks
+            will be placed in `tmp_path`.
         persist_path: str [None]
             Path used for persisting a client's state. If None, then `save()`
             and `load()` will be empty operations.
@@ -102,7 +110,9 @@ class ADLTransferClient(object):
         self._nthreads = nthreads or multiprocessing.cpu_count()
         self._chunksize = chunksize
         self._chunkretries = 5
-        self._transfer_path = transfer_path
+        self._tmp_path = tmp_path
+        self._tmp_prefix = tmp_prefix
+        self._tmp_unique = tmp_unique
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._files = {}
@@ -129,10 +139,13 @@ class ADLTransferClient(object):
         dic = self._files[(src, dst)]
         self._fstates[(src, dst)] = 'transferring'
         for offset in list(range(0, dic['nbytes'], self._chunksize)):
-            if self._transfer_path:
+            if self._tmp_path:
+                subdir = uuid.uuid1().hex[:10] if self._tmp_unique else ''
+                prefix = self._tmp_prefix or ''
                 name = os.path.join(
-                    self._transfer_path,
-                    uuid.uuid1().hex[:10] + "_%i" % offset)
+                    self._tmp_path,
+                    subdir,
+                    prefix + str(offset))
             else:
                 name = dst
             logger.debug("Submitting chunk '%s' for transfer", name)

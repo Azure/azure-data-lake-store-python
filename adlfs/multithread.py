@@ -64,6 +64,7 @@ class ADLDownloader(object):
             name=tokenize(adlfs, rpath, lpath, chunksize),
             nthreads=nthreads,
             chunksize=chunksize,
+            tmp_path=None,
             persist_path=os.path.join(datadir, 'downloads'))
         self.rpath = rpath
         self.lpath = lpath
@@ -196,8 +197,6 @@ class ADLUploader(object):
     -------
     uploader object
     """
-    temp_upload_path = '/tmp/'
-
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=256*2**20,
                  run=True, delimiter=None):
         self.client = ADLTransferClient(
@@ -205,7 +204,6 @@ class ADLUploader(object):
             name=tokenize(adlfs, rpath, lpath, chunksize),
             nthreads=nthreads,
             chunksize=chunksize,
-            transfer_path=self.temp_upload_path,
             persist_path=os.path.join(datadir, 'uploads'),
             delimiter=delimiter)
         self.rpath = AzureDLPath(rpath)
