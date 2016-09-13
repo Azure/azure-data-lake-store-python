@@ -23,9 +23,10 @@ import pickle
 import time
 import uuid
 
-MAXRETRIES = 5
-
 logger = logging.getLogger(__name__)
+
+File = namedtuple('File', 'src dst state nbytes start stop chunks')
+Chunk = namedtuple('Chunk', 'name state offset retries')
 
 
 class DisjointState(object):
@@ -59,6 +60,9 @@ class DisjointState(object):
     def contains_all(self, state):
         objs = self._states[state]
         return len(objs) > 0 and len(self.objects) - len(objs) == 0
+
+    def contains_none(self, *states):
+        return all([len(self._states[state]) == 0 for state in states])
 
     def __str__(self):
         status = " ".join(
@@ -131,17 +135,16 @@ class ADLTransferClient(object):
                     uuid.uuid1().hex[:10] + "_%i" % offset)
             else:
                 name = dst
+            logger.debug("Submitting chunk '%s' for transfer", name)
             dic['cstates'][name] = 'running'
             dic['chunks'][name] = dict(
-                future=self._pool.submit(transfer, self._adlfs, src, dst,
+                future=self._pool.submit(transfer, self._adlfs, src, name,
                                          offset, self._chunksize),
                 retries=self._chunkretries,
                 offset=offset)
 
     @property
     def progress(self):
-        Chunk = namedtuple('Chunk', 'name state offset retries')
-        File = namedtuple('File', 'src dst state nbytes start stop chunks')
         files = []
         for key in self._files:
             src, dst = key
@@ -167,29 +170,41 @@ class ADLTransferClient(object):
             if self._fstates[(src, dst)] == 'transferring':
                 for name in list(dic['chunks']):
                     future = dic['chunks'][name]['future']
-                    if future.done() and not future.cancelled():
+                    if not future.done():
+                        continue
+                    if future.cancelled():
+                        dic['cstates'][name] = 'cancelled'
+                    elif future.exception():
+                        dic['cstates'][name] = 'errored'
+                    else:
                         dic['cstates'][name] = 'finished'
-                    # if cancelled, retry if possible and decrement retries
-                    # elif if exception, add to errored set
-                    # else, add to cancelled set
                 if dic['cstates'].contains_all('finished'):
-                    # merge if possible
+                    logger.debug("Chunks transferred")
                     if self._merge:
+                        logger.debug("Merging file: %s", self._fstates[(src, dst)])
                         self._fstates[(src, dst)] = 'merging'
                         chunks = [os.path.join(self._transfer_path, name) for name in list(dic['chunks'])]
                         dic['merge'] = self._pool.submit(self._merge, dst, chunks)
                     else:
                         dic['stop'] = time.time()
                         self._fstates[(src, dst)] = 'finished'
+                elif dic['cstates'].contains_none('running'):
+                    logger.debug("Transfer failed: %s", dic['cstates'])
+                    self._fstates[(src, dst)] = 'errored'
+                else:
+                    logger.debug("Transferring chunks: %s", dic['cstates'])
             elif self._fstates[(src, dst)] == 'merging':
                 future = dic['merge']
-                if future.done() and not future.cancelled():
+                if not future.done():
+                    continue
+                if future.cancelled():
+                    self._fstates[(src, dst)] = 'cancelled'
+                elif future.exception():
+                    self._fstates[(src, dst)] = 'errored'
+                else:
                     logger.debug('File downloaded (%s -> %s)' % (src, dst))
                     dic['stop'] = time.time()
                     self._fstates[(src, dst)] = 'finished'
-                # if cancelled, retry if possible and decrement retries
-                # elif if exception, add to errored set
-                # else, add to cancelled set
         self.save()
 
     def run(self, transfer, merge=None, nthreads=None, monitor=True, before_scatter=None):
@@ -212,14 +227,11 @@ class ADLTransferClient(object):
     def _wait(self, poll=0.1, timeout=0):
         # loop until all files are transferred or timeout expires
         start = time.time()
-        while not self._fstates.contains_all('finished'):
+        while not self._fstates.contains_none('pending', 'transferring', 'merging'):
             if timeout > 0 and time.time() - start > timeout:
                 break
             time.sleep(poll)
             self._update()
-
-    def _shutdown(self, wait=True):
-        self._pool.shutdown(wait)
 
     def _clear(self):
         for dic in self._files.values():
@@ -235,7 +247,7 @@ class ADLTransferClient(object):
         except KeyboardInterrupt:
             logger.warning("%s suspended and persisted", self)
             self._cancel()
-            self._shutdown(wait=True)
+            self._pool.shutdown(wait=True)
             self._update()
         self._clear()
         self.save()

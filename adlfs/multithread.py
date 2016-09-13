@@ -27,7 +27,7 @@ MAXRETRIES = 5
 logger = logging.getLogger(__name__)
 
 
-class ADLDownloader(ADLTransferClient):
+class ADLDownloader(object):
     """ Download remote file(s) using chunks and threads
 
     Launches multiple threads for efficient downloading, with `chunksize`
@@ -124,6 +124,13 @@ class ADLDownloader(ADLTransferClient):
             monitor=monitor,
             before_scatter=touch)
 
+    @staticmethod
+    def load():
+        self.client.load()
+
+    def save(self, keep=True):
+        self.client.save(keep)
+
     def __str__(self):
         progress = self.client.progress
         nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
@@ -134,13 +141,13 @@ class ADLDownloader(ADLTransferClient):
     __repr__ = __str__
 
 
-def get_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES):
+def get_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES):
     """ Download a piece of a remote file and write locally
 
     Internal function used by `download`.
     """
-    with adlfs.open(rfile, 'rb', blocksize=0) as fin:
-        with open(lfile, 'rb+') as fout:
+    with adlfs.open(src, 'rb', blocksize=0) as fin:
+        with open(dst, 'rb+') as fout:
             tries = 0
             try:
                 fout.seek(offset)
@@ -148,16 +155,16 @@ def get_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES):
                 fout.write(fin.read(size))
             except Exception as e:
                 # TODO : only some exceptions should be retriable
-                logger.debug('Download failed %s, byte offset %s; %s, %s', lfile,
+                logger.debug('Download failed %s, byte offset %s; %s, %s', dst,
                              offset, e, e.args)
                 tries += 1
                 if tries >= retries:
-                    logger.debug('Aborting %s, byte offset %s', lfile, offset)
+                    logger.debug('Aborting %s, byte offset %s', dst, offset)
                     raise
-    logger.debug('Downloaded to %s, byte offset %s', lfile, offset)
+    logger.debug('Downloaded to %s, byte offset %s', dst, offset)
 
 
-class ADLUploader(ADLTransferClient):
+class ADLUploader(object):
     """ Upload local file(s) using chunks and threads
 
     Launches multiple threads for efficient uploading, with `chunksize`
@@ -245,6 +252,13 @@ class ADLUploader(ADLTransferClient):
             nthreads=nthreads,
             monitor=monitor)
 
+    @staticmethod
+    def load():
+        self.client.load()
+
+    def save(self, keep=True):
+        self.client.save(keep)
+
     def __str__(self):
         progress = self.client.progress
         nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
@@ -255,16 +269,16 @@ class ADLUploader(ADLTransferClient):
     __repr__ = __str__
 
 
-def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES,
+def put_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
               delimiter=None):
     """ Upload a piece of a local file
 
     Internal function used by `upload`.
     """
-    with adlfs.open(rfile, 'wb', delimiter=delimiter) as fout:
+    with adlfs.open(dst, 'wb', delimiter=delimiter) as fout:
         end = offset + size
         miniblock = min(size, 4*2**20)
-        with open(lfile, 'rb') as fin:
+        with open(src, 'rb') as fin:
             for o in range(offset, end, miniblock):
                 tries = 0
                 while True:
@@ -273,11 +287,11 @@ def put_chunk(adlfs, rfile, lfile, offset, size, retries=MAXRETRIES,
                         break
                     except Exception as e:
                         # TODO : only some exceptions should be retriable
-                        logger.debug('Upload failed %s, byte offset %s; %s, %s', lfile,
+                        logger.debug('Upload failed %s, byte offset %s; %s, %s', src,
                                      o, e, e.args)
                         tries += 1
                         if tries >= retries:
-                            logger.debug('Aborting %s, byte offset %s', lfile, offset)
+                            logger.debug('Aborting %s, byte offset %s', src, offset)
                             raise
-    logger.debug('Uploaded from %s, byte offset %s', lfile, offset)
+    logger.debug('Uploaded from %s, byte offset %s', src, offset)
     return True
