@@ -80,6 +80,10 @@ class ADLDownloader(object):
         if run:
             self.run()
 
+    @property
+    def hash(self):
+        return self.client._name
+
     def _setup(self):
         """ Create set of parameters to loop over
         """
@@ -131,7 +135,7 @@ class ADLDownloader(object):
 
     @staticmethod
     def load():
-        self.client.load()
+        return ADLTransferClient.load(os.path.join(datadir, 'downloads'))
 
     def save(self, keep=True):
         self.client.save(keep)
@@ -228,6 +232,10 @@ class ADLUploader(object):
         if run:
             self.run()
 
+    @property
+    def hash(self):
+        return self.client._name
+
     def _setup(self):
         """ Create set of parameters to loop over
         """
@@ -264,7 +272,7 @@ class ADLUploader(object):
 
     @staticmethod
     def load():
-        self.client.load()
+        return ADLTransferClient.load(os.path.join(datadir, 'uploads'))
 
     def save(self, keep=True):
         self.client.save(keep)

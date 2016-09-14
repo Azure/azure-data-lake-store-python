@@ -292,7 +292,7 @@ class ADLTransferClient(object):
         self.save()
 
     def __getstate__(self):
-        return self.progress
+        return {'files': self.progress.copy()}
 
     @staticmethod
     def load(filename):
