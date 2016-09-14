@@ -33,6 +33,8 @@ Chunk = namedtuple('Chunk', 'name state offset retries')
 class DisjointState(object):
     """
     Collection of disjoint sets containing state about objects.
+
+    Internal class used by `ADLTransferClient`.
     """
     def __init__(self, *states):
         self._states = {state: set() for state in states}
@@ -74,43 +76,75 @@ class DisjointState(object):
 
 
 class ADLTransferClient(object):
+    """
+    Client for transferring data from/to Azure DataLake Store
+
+    Parameters
+    ----------
+    adlfs: ADL filesystem instance
+    name: str
+        Unique ID used for persistence.
+    transfer: callable
+        Function or callable object invoked when transferring chunks. See
+        ``Function Signatures``.
+    merge: callable [None]
+        Function or callable object invoked when merging chunks. If None,
+        then merging is skipped. See ``Function Signatures``.
+    nthreads: int [None]
+        Number of threads to use. If None, uses the number of cores.
+    chunksize: int [2**26]
+        Number of bytes in each chunk for splitting big files. Files smaller
+        than this number will always be transferred in a single thread.
+    tmp_path: str ['/tmp']
+        Path used for temporarily storing transferred chunks until chunks
+        are gathered into a single file. If None, then each chunk will be
+        written into the same file.
+    tmp_prefix: str ['part_']
+        If given and not None, this is used to provide a prefix to the
+        temporary chunk.
+    tmp_unique: bool [True]
+        If True, then a unique ID will be generated to create a subdirectory
+        containing the temporary chunks. Otherwise, all temporary chunks
+        will be placed in `tmp_path`.
+    persist_path: str [None]
+        Path used for persisting a client's state. If None, then `save()`
+        and `load()` will be empty operations.
+    delimiter: byte(s) or None
+        If set, will transfer blocks using delimiters, as well as split
+        files for transferring on that delimiter.
+
+    Function Signatures
+    -------------------
+
+    To perform the actual work needed by the client, the user must pass in two
+    callables, `transfer` and `merge`. If merge is not provided, then the
+    merge step will be skipped.
+
+    The `transfer` callable has the function signature,
+    `fn(adlfs, src, dst, offset, size, retries, shutdown_event)`. `adlfs` is
+    the ADL filesystem instance. `src` and `dst` refer to the source and
+    destination of the respective file transfer. `offset` is the location in
+    `src` to read `size` bytes from.
+
+    Both `retries` and `shutdown_event` are optional. In particular,
+    `shutdown_event` is a `threading.Event` that is passed to the callable.
+    The event will be set when a shutdown is requested. It is good practice
+    to listen for this.
+
+    The `merge` callable has the function signature,
+    `fn(outfile, files, delete_source)`. `outfile` is the result of merging
+    `files`. If True, `delete_source` will delete the whole directory
+    containing `files`.
+
+    See Also
+    --------
+    adlfs.multithread.ADLDownloader
+    adlfs.multithread.ADLUploader
+    """
+
     def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
                  chunksize=2**26, tmp_path='/tmp', tmp_prefix='part_',
                  tmp_unique=True, persist_path=None, delimiter=None):
-        """
-        Parameters
-        ----------
-        adlfs: ADL filesystem instance
-        name: str
-            Unique ID used for persistence.
-        transfer: callable
-            Function or callable object invoked when transferring chunks.
-        merge: callable [None]
-            Function or callable object invoked when merging chunks. If None,
-            then merging is skipped.
-        nthreads: int [None]
-            Number of threads to use. If None, uses the number of cores.
-        chunksize: int [2**26]
-            Number of bytes in each chunk for splitting big files. Files smaller
-            than this number will always be transferred in a single thread.
-        tmp_path: str ['/tmp']
-            Path used for temporarily storing transferred chunks until chunks
-            are gathered into a single file. If None, then each chunk will be
-            written into the same file.
-        tmp_prefix: str ['part_']
-            If given and not None, this is used to provide a prefix to the
-            temporary chunk.
-        tmp_unique: bool [True]
-            If True, then a unique ID will be generated to create a subdirectory
-            containing the temporary chunks. Otherwise, all temporary chunks
-            will be placed in `tmp_path`.
-        persist_path: str [None]
-            Path used for persisting a client's state. If None, then `save()`
-            and `load()` will be empty operations.
-        delimiter: byte(s) or None
-            If set, will transfer blocks using delimiters, as well as split
-            files for transferring on that delimiter.
-        """
         self._adlfs = adlfs
         self._name = name
         self._transfer = transfer
