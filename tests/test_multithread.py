@@ -10,9 +10,7 @@ from contextlib import contextmanager
 import os
 import pytest
 import shutil
-import signal
 import tempfile
-import threading
 
 from adlfs.core import AzureDLPath
 from adlfs.multithread import ADLDownloader, ADLUploader
@@ -166,23 +164,6 @@ def test_save_down(tempdir, azure):
         assert down.hash not in alldownloads
 
 
-@pytest.mark.skipif(True, reason="first assert fails during VCR playback")
-def test_interrupt_down(tempdir, azure):
-    with setup_tree(azure):
-        down = ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
-
-        def interrupt():
-            os.kill(os.getpid(), signal.SIGINT)
-
-        threading.Timer(1, interrupt).start()
-
-        down.run()
-        assert down.nchunks > 0
-
-        down.run()
-        assert down.nchunks == 0
-
-
 @pytest.yield_fixture()
 def local_files(tempdir):
     filenames = [os.path.join(tempdir, f) for f in ['bigfile', 'littlefile']]
@@ -291,23 +272,3 @@ def test_save_up(local_files, azure):
     up.save(keep=False)
     alluploads = ADLUploader.load()
     assert up.hash not in alluploads
-
-
-@pytest.mark.skipif(True, reason="first assert fails during VCR playback")
-def test_interrupt_up(local_files, azure):
-    bigfile, littlefile, a, b, c = local_files
-    root = os.path.dirname(bigfile)
-
-    with azure_teardown(azure):
-        up = ADLUploader(azure, test_dir, root, 1, 1000000, run=False)
-
-        def interrupt():
-            os.kill(os.getpid(), signal.SIGINT)
-
-        threading.Timer(1, interrupt).start()
-
-        up.run()
-        assert up.nchunks > 0
-
-        up.run()
-        assert up.nchunks == 0
