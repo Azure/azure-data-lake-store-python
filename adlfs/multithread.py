@@ -146,13 +146,16 @@ class ADLDownloader(object):
     __repr__ = __str__
 
 
-def get_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES):
+def get_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
+              shutdown_event=None):
     """ Download a piece of a remote file and write locally
 
     Internal function used by `download`.
     """
     with adlfs.open(src, 'rb', blocksize=0) as fin:
         with open(dst, 'rb+') as fout:
+            if shutdown_event and shutdown_event.is_set():
+                return
             tries = 0
             try:
                 fout.seek(offset)
@@ -277,7 +280,7 @@ class ADLUploader(object):
 
 
 def put_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
-              delimiter=None):
+              delimiter=None, shutdown_event=None):
     """ Upload a piece of a local file
 
     Internal function used by `upload`.
@@ -287,6 +290,8 @@ def put_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
         miniblock = min(size, 4*2**20)
         with open(src, 'rb') as fin:
             for o in range(offset, end, miniblock):
+                if shutdown_event and shutdown_event.is_set():
+                    return False
                 tries = 0
                 while True:
                     try:

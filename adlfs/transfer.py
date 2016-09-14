@@ -20,6 +20,7 @@ import logging
 import multiprocessing
 import os
 import pickle
+import threading
 import time
 import uuid
 
@@ -122,6 +123,7 @@ class ADLTransferClient(object):
         self._tmp_unique = tmp_unique
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
+        self._shutdown_event = threading.Event()
         self._files = {}
         self._fstates = DisjointState(
             'pending', 'transferring', 'merging', 'finished', 'cancelled',
@@ -141,6 +143,10 @@ class ADLTransferClient(object):
             cstates=DisjointState('running', 'finished', 'cancelled', 'errored'),
             merge=None)
 
+    def _submit(self, fn, *args, **kwargs):
+        kwargs['shutdown_event'] = self._shutdown_event
+        return self._pool.submit(fn, *args, **kwargs)
+
     def _scatter(self, src, dst, transfer):
         """ Split a given file into chunks """
         dic = self._files[(src, dst)]
@@ -159,8 +165,8 @@ class ADLTransferClient(object):
             logger.debug("Submitting chunk '%s' for transfer", name)
             dic['cstates'][name] = 'running'
             dic['chunks'][name] = dict(
-                future=self._pool.submit(transfer, self._adlfs, src, name,
-                                         offset, self._chunksize),
+                future=self._submit(transfer, self._adlfs, src, name, offset,
+                                    self._chunksize),
                 retries=self._chunkretries,
                 offset=offset)
 
@@ -211,7 +217,7 @@ class ADLTransferClient(object):
                     if self._merge and len(chunks) > 1:
                         logger.debug("Merging file: %s", self._fstates[(src, dst)])
                         self._fstates[(src, dst)] = 'merging'
-                        dic['merge'] = self._pool.submit(self._merge, dst, chunks)
+                        dic['merge'] = self._submit(self._merge, dst, chunks)
                     else:
                         dic['stop'] = time.time()
                         self._fstates[(src, dst)] = 'finished'
@@ -266,6 +272,12 @@ class ADLTransferClient(object):
                 dic['chunks'][name]['future'] = None
         self._pool = None
 
+    def shutdown(self):
+        self._shutdown_event.set()
+        self._cancel()
+        self._pool.shutdown(wait=True)
+        self._update()
+
     def monitor(self, poll=0.1, timeout=0):
         """ Wait for download to happen
         """
@@ -273,9 +285,7 @@ class ADLTransferClient(object):
             self._wait(poll, timeout)
         except KeyboardInterrupt:
             logger.warning("%s suspended and persisted", self)
-            self._cancel()
-            self._pool.shutdown(wait=True)
-            self._update()
+            self.shutdown()
         self._clear()
         self.save()
 
