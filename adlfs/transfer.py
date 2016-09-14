@@ -346,6 +346,7 @@ class ADLTransferClient(object):
                 cv = cv.copy()
                 cv['future'] = None
                 v['chunks'][ck] = cv
+            v['merge'] = None
             dic2['_files'][k] = v
         return dic2
 
