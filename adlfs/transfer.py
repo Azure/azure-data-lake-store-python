@@ -332,7 +332,19 @@ class ADLTransferClient(object):
         self.save()
 
     def __getstate__(self):
-        return {'files': list(self.progress)}
+        dic2 = self.__dict__.copy()
+        dic2.pop('_pool', None)
+        dic2.pop('_shutdown_event', None)
+        dic2['_files'] = self._files.copy()
+        for k, v in list(dic2['_files'].items()):
+            v = v.copy()
+            v['chunks'] = v['chunks'].copy()
+            for ck, cv in list(v['chunks'].items()):
+                cv = cv.copy()
+                cv['future'] = None
+                v['chunks'][ck] = cv
+            dic2['_files'][k] = v
+        return dic2
 
     @staticmethod
     def load(filename):
