@@ -162,7 +162,7 @@ class ADLTransferClient(object):
                     prefix + str(offset))
             else:
                 name = dst
-            logger.debug("Submitting chunk '%s' for transfer", name)
+            logger.debug("Submitted %s, byte offset %d", name, offset)
             dic['cstates'][name] = 'running'
             dic['chunks'][name] = dict(
                 future=self._submit(transfer, self._adlfs, src, name, offset,
@@ -256,9 +256,10 @@ class ADLTransferClient(object):
         for dic in self._files.values():
             for transfer in dic['chunks'].values():
                 transfer['future'].cancel()
+            if dic['merge']:
+                dic['merge'].cancel()
 
     def _wait(self, poll=0.1, timeout=0):
-        # loop until all files are transferred or timeout expires
         start = time.time()
         while not self._fstates.contains_none('pending', 'transferring', 'merging'):
             if timeout > 0 and time.time() - start > timeout:
@@ -270,6 +271,7 @@ class ADLTransferClient(object):
         for dic in self._files.values():
             for name in dic['chunks']:
                 dic['chunks'][name]['future'] = None
+            dic['merge'] = None
         self._pool = None
 
     def shutdown(self):
