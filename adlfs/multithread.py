@@ -221,7 +221,7 @@ class ADLUploader(object):
                 adlfs,
                 name=tokenize(adlfs, rpath, lpath, chunksize),
                 transfer=put_chunk,
-                merge=adlfs.concat,
+                merge=merge_chunks,
                 nthreads=nthreads,
                 chunksize=chunksize,
                 persist_path=os.path.join(datadir, 'uploads'),
@@ -315,3 +315,7 @@ def put_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
                             raise
     logger.debug('Uploaded from %s, byte offset %s', src, offset)
     return True
+
+
+def merge_chunks(adlfs, outfile, files, shutdown_event=None):
+    return adlfs.concat(outfile, files)

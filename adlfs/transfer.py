@@ -129,17 +129,18 @@ class ADLTransferClient(object):
     `fn(adlfs, src, dst, offset, size, retries, shutdown_event)`. `adlfs` is
     the ADL filesystem instance. `src` and `dst` refer to the source and
     destination of the respective file transfer. `offset` is the location in
-    `src` to read `size` bytes from.
+    `src` to read `size` bytes from. `retries` is the number of time an Azure
+    query will be tried.
 
-    Both `retries` and `shutdown_event` are optional. In particular,
+    The `merge` callable has the function signature,
+    `fn(adlfs, outfile, files, delete_source, shutdown_event)`. `adlfs` is
+    the ADL filesystem instance. `outfile` is the result of merging `files`. If
+    True, `delete_source` will delete the whole directory containing `files`.
+
+    For both callables, `shutdown_event` is optional. In particular,
     `shutdown_event` is a `threading.Event` that is passed to the callable.
     The event will be set when a shutdown is requested. It is good practice
     to listen for this.
-
-    The `merge` callable has the function signature,
-    `fn(outfile, files, delete_source)`. `outfile` is the result of merging
-    `files`. If True, `delete_source` will delete the whole directory
-    containing `files`.
 
     See Also
     --------
@@ -257,7 +258,7 @@ class ADLTransferClient(object):
                     if self._merge and len(chunks) > 1:
                         logger.debug("Merging file: %s", self._fstates[(src, dst)])
                         self._fstates[(src, dst)] = 'merging'
-                        dic['merge'] = self._submit(self._merge, dst, chunks)
+                        dic['merge'] = self._submit(self._merge, self._adlfs, dst, chunks)
                     else:
                         dic['stop'] = time.time()
                         self._fstates[(src, dst)] = 'finished'
