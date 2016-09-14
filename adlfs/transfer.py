@@ -337,7 +337,7 @@ class ADLTransferClient(object):
         dic2.pop('_merge', None)
         dic2.pop('_pool', None)
         dic2.pop('_shutdown_event', None)
-        dic2['_files'] = self._files.copy()
+        dic2['_files'] = dic2.get('_files', {}).copy()
         for k, v in list(dic2['_files'].items()):
             v = v.copy()
             v['chunks'] = v['chunks'].copy()
