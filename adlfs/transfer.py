@@ -24,6 +24,10 @@ import threading
 import time
 import uuid
 
+from adlfs.utils import clamp
+
+MAX_THREADS = 64
+
 logger = logging.getLogger(__name__)
 
 File = namedtuple('File', 'src dst state nbytes start stop chunks')
@@ -91,7 +95,8 @@ class ADLTransferClient(object):
         Function or callable object invoked when merging chunks. If None,
         then merging is skipped. See ``Function Signatures``.
     nthreads: int [None]
-        Number of threads to use. If None, uses the number of cores.
+        Number of threads to use (range is [1, MAX_THREADS]). If None, uses the
+        number of cores.
     chunksize: int [2**26]
         Number of bytes in each chunk for splitting big files. Files smaller
         than this number will always be transferred in a single thread.
@@ -149,7 +154,8 @@ class ADLTransferClient(object):
         self._name = name
         self._transfer = transfer
         self._merge = merge
-        self._nthreads = nthreads or multiprocessing.cpu_count()
+        self._nthreads = clamp(nthreads or multiprocessing.cpu_count(),
+                               1, MAX_THREADS)
         self._chunksize = chunksize
         self._chunkretries = 5
         self._tmp_path = tmp_path
