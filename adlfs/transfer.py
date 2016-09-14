@@ -333,6 +333,8 @@ class ADLTransferClient(object):
 
     def __getstate__(self):
         dic2 = self.__dict__.copy()
+        dic2.pop('_transfer', None)
+        dic2.pop('_merge', None)
         dic2.pop('_pool', None)
         dic2.pop('_shutdown_event', None)
         dic2['_files'] = self._files.copy()
