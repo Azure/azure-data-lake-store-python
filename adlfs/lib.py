@@ -16,6 +16,7 @@ and authentication code.
 # standard imports
 import json
 import logging
+import os
 import requests
 import requests.exceptions
 import time
@@ -32,8 +33,40 @@ logger = logging.getLogger(__name__)
 class DatalakeRESTException(IOError):
     pass
 
+default_tenant = os.environ.get('azure_tenant_id', "common")
+default_username = os.environ.get('azure_username', None)
+default_password = os.environ.get('azure_password', None)
+default_client = os.environ.get('azure_client_id', None)
+default_secret = os.environ.get('azure_client_secret', None)
+default_resource = "https://management.core.windows.net/"
+default_store = os.environ.get('azure_store_name', None)
+default_suffix = os.environ.get('azure_url_suffix', '')
 
-def auth(tenant_id, username, password):
+
+def refresh_token(token):
+    """ Refresh an expired authorization token
+
+    Parameters
+    ----------
+    token : dict
+        Produced by `auth()` or `refresh_token`.
+    """
+    if token.get('refresh', False) is False:
+        raise ValueError("Token cannot be aut-refreshed.")
+    context = adal.AuthenticationContext('https://login.microsoftonline.com/' +
+                                         token['tenant'])
+    out = context.acquire_token_with_refresh_token(token['refresh'],
+                                                   client_id=token['client'],
+                                                   resource=token['resource'])
+    out.update({'access': out['accessToken'], 'refresh': out['refreshToken'],
+                'time': time.time(), 'tenant': token['tenant'],
+                'resource': token['resource'], 'client': token['client']})
+    return out
+
+
+def auth(tenant_id=default_tenant, username=default_username,
+         password=default_password, client_id=default_client,
+         client_secret=default_secret, resource=default_resource, **kwargs):
     """ User/password authentication
 
     Parameters
@@ -45,55 +78,38 @@ def auth(tenant_id, username, password):
         active directory user
     password : str
         sign-in password
+    client_id : str
+        the service principal client
+    client_secret : str
+        the secret associated with the client_id
+    resource : str
+        resource for auth (e.g., https://management.core.windows.net/)
+    kwargs : key/values
+        Other parameters, see http://msrestazure.readthedocs.io/en/latest/msrestazure.html#module-msrestazure.azure_active_directory
+        Examples: auth_uri, token_uri, keyring
 
     Returns
     -------
-    dict containing authorization token
+    auth dict
     """
-    # https://github.com/AzureAD/azure-activedirectory-library-for-python/tree/master/sample
-    resource = "https://management.core.windows.net/"
     context = adal.AuthenticationContext('https://login.microsoftonline.com/' +
                                          tenant_id)
-    out = context.acquire_token_with_username_password(resource, username,
-                                                       password, client_id)
-    token = {'access': out['accessToken'], 'refresh': out['refreshToken'],
-             'time': time.time(), 'tenant': tenant_id}
-    return token
 
+    if tenant_id is None:
+        raise ValueError("tenant_id must be supplied for authentication")
 
-def refresh_token(token):
-    """ Refresh an expired authorization token
-
-    Parameters
-    ----------
-    token : dict
-        Produced by `auth()` or `refresh_token`.
-    """
-    tenant_id = token['tenant']
-    refresh = token['refresh']
-    out = requests.post("https://login.microsoftonline.com/%s/oauth2/token" %
-                        tenant_id,
-                        data=dict(grant_type='refresh_token',
-                                  resource='https://management.core.windows.net/',
-                                  client_id=client_id,
-                                  refresh_token=refresh))
-    out = out.json()
-    token = {'access': out['access_token'], 'refresh': out['refresh_token'],
-             'time': time.time(), 'tenant': tenant_id}
-    return token
-
-
-def auth_client_secret(tenant_id, client_id, client_secret):
-    # from https://azure.microsoft.com/en-gb/documentation/articles/
-    #   data-lake-store-get-started-rest-api/
-    #   #how-do-i-authenticate-using-azure-active-directory/
-    r = requests.post("https://login.microsoftonline.com/%s/oauth2/token" %
-                      tenant_id,
-                      data={'grant_type': 'client_credentials',
-                              'resource': 'https://management.core.windows.net/',
-                              'client_id': client_id,
-                              'client_secret': client_secret})
-    return r.status_code, r.json
+    if username and password:
+        out = context.acquire_token_with_username_password(resource, username,
+                                                           password, client_id)
+    elif client_id and client_secret:
+        out = context.acquire_token_with_client_credentials(resource, client_id,
+                                                            client_secret)
+    else:
+        raise ValueError("No authentication method found for credentials")
+    out.update({'access': out['accessToken'], 'resource': resource,
+                'refresh': out.get('refreshToken', False),
+                'time': time.time(), 'tenant': tenant_id, 'client': client_id})
+    return out
 
 
 class ManagementRESTInterface:
@@ -101,13 +117,14 @@ class ManagementRESTInterface:
     """
     ends = {}
 
-    def __init__(self, subscription_id, resource_group_name, token):
+    def __init__(self, subscription_id, resource_group_name, token=None,
+                 **kwargs):
         self.subscription_id = subscription_id
         self.resource_group_name = resource_group_name
-        self.token = token
+        self.token = token or auth(**kwargs)
         self.params = {'api-version': '2015-10-01-preview'}
         self.head = {
-            'Authorization': 'Bearer ' + token,
+            'Authorization': 'Bearer ' + token['access'],
             'Content-Type': 'application/json'
         }
         self.url = ('https://management.azure.com/subscriptions/%s/'
@@ -152,11 +169,14 @@ class DatalakeRESTInterface:
     Parameters
     ----------
     store_name: str
-    token: str
-        from `auth()` or `refresh_token()`, the 'access' field.
+    token: dict
+        from `auth()` or `refresh_token()` or other ADAL source
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
+    kwargs: optional arguments to auth
+        See ``auth()``. Includes, e.g., username, password, tenant; will pull
+        values from environment variables if not provided.
     """
 
     ends = {
@@ -178,10 +198,18 @@ class DatalakeRESTInterface:
         'SETPERMISSION': ('put', set(), {'permission'})
     }
 
-    def __init__(self, store_name, token, url_suffix=None):
+    def __init__(self, store_name=default_store, token=None,
+                 url_suffix=default_suffix, **kwargs):
         url_suffix = url_suffix or "azuredatalakestore.net"
-        self.head = {'Authorization': 'Bearer ' + token}
+        if token is None:
+            token = auth(**kwargs)
+        self.token = token
+        self.head = {'Authorization': 'Bearer ' + token['access']}
         self.url = 'https://%s.%s/webhdfs/v1/' % (store_name, url_suffix)
+
+    def _check_token(self):
+        if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
+            self.token = refresh_token(self.token)
 
     def call(self, op, path='', **kwargs):
         """ Execute a REST call
@@ -198,6 +226,7 @@ class DatalakeRESTInterface:
         """
         if op not in self.ends:
             raise ValueError("No such op: %s", op)
+        self._check_token()
         method, required, allowed = self.ends[op]
         data = kwargs.pop('data', b'')
         keys = set(kwargs)
