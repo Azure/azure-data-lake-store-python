@@ -7,13 +7,9 @@
 # --------------------------------------------------------------------------
 
 """
-High performance multi-threaded module to up/download
-
-Calls method in `core` with thread pool executor to ensure the network
-is used to its maximum throughput.
-
-Only implements upload and download of (massive) files and directory trees.
+Low-level classes for managing data transfer.
 """
+
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
 import logging
@@ -30,13 +26,41 @@ MAX_THREADS = 64
 
 logger = logging.getLogger(__name__)
 
-File = namedtuple('File', 'src dst state nbytes start stop chunks')
-Chunk = namedtuple('Chunk', 'name state offset retries')
 
-
-class DisjointState(object):
+class StateManager(object):
     """
-    Collection of disjoint sets containing state about objects.
+    Manages state for any hashable object.
+
+    When tracking multiple files and their chunks, each file/chunk can be in
+    any valid state for that particular type.
+
+    At the simplest level, we need to set and retrieve an object's current
+    state, while only allowing valid states to be used. In addition, we also
+    need to give statistics about a group of objects (are all objects in one
+    state? how many objects are in each available state?).
+
+    Parameters
+    ----------
+    states : list of valid states
+        Managed objects can only use these defined states.
+
+    Examples
+    --------
+    >>> StateManager('draft', 'review', 'complete')  # doctest: +SKIP
+    <StateManager: draft=0 review=0 complete=0>
+    >>> mgr = StateManager('off', 'on')
+    >>> mgr['foo'] = 'on'
+    >>> mgr['bar'] = 'off'
+    >>> mgr['quux'] = 'on'
+    >>> mgr  # doctest: +SKIP
+    <StateManager: off=1 on=2>
+    >>> mgr.contains_all('on')
+    False
+    >>> mgr['bar'] = 'on'
+    >>> mgr.contains_all('on')
+    True
+    >>> mgr.contains_none('off')
+    True
 
     Internal class used by `ADLTransferClient`.
     """
@@ -65,23 +89,34 @@ class DisjointState(object):
         self._objects[obj] = state
 
     def contains_all(self, state):
+        """ Return whether all managed objects are in the given state """
         objs = self._states[state]
         return len(objs) > 0 and len(self.objects) - len(objs) == 0
 
     def contains_none(self, *states):
+        """ Return whether no managed objects are in the given states """
         return all([len(self._states[state]) == 0 for state in states])
 
     def __str__(self):
         status = " ".join(
             ["%s=%d" % (s, len(self._states[s])) for s in self._states])
-        return "<DisjointState: " + status + ">"
+        return "<StateManager: " + status + ">"
 
     __repr__ = __str__
+
+
+# Named tuples used to serialize client progress
+File = namedtuple('File', 'src dst state nbytes start stop chunks')
+Chunk = namedtuple('Chunk', 'name state offset retries')
 
 
 class ADLTransferClient(object):
     """
     Client for transferring data from/to Azure DataLake Store
+
+    This is intended as the underlying class for `ADLDownloader` and
+    `ADLUploader`. If necessary, it can be used directly for additional
+    control.
 
     Parameters
     ----------
@@ -166,7 +201,7 @@ class ADLTransferClient(object):
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
         self._files = {}
-        self._fstates = DisjointState(
+        self._fstates = StateManager(
             'pending', 'transferring', 'merging', 'finished', 'cancelled',
             'errored')
 
@@ -181,7 +216,7 @@ class ADLTransferClient(object):
             start=None,
             stop=None,
             chunks={},
-            cstates=DisjointState('running', 'finished', 'cancelled', 'errored'),
+            cstates=StateManager('running', 'finished', 'cancelled', 'errored'),
             merge=None)
 
     def _submit(self, fn, *args, **kwargs):
@@ -213,6 +248,7 @@ class ADLTransferClient(object):
 
     @property
     def progress(self):
+        """ Return a summary of all transferred file/chunks """
         files = []
         for key in self._files:
             src, dst = key
@@ -322,8 +358,7 @@ class ADLTransferClient(object):
         self._update()
 
     def monitor(self, poll=0.1, timeout=0):
-        """ Wait for download to happen
-        """
+        """ Wait for download to happen """
         try:
             self._wait(poll, timeout)
         except KeyboardInterrupt:
