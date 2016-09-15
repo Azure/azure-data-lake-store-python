@@ -195,7 +195,7 @@ class ADLUploader(object):
         not supported.
     nthreads: int [None]
         Number of threads to use. If None, uses the number of cores.
-    chunksize: int [2**26]
+    chunksize: int [2**28]
         Number of bytes in each chunk for splitting big files. Files smaller
         than this number will always be sent in a single thread.
     client: ADLTransferClient [None]
@@ -212,7 +212,7 @@ class ADLUploader(object):
     --------
     adlfs.transfer.ADLTransferClient
     """
-    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=256*2**20,
+    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  client=None, run=True, delimiter=None):
         if client:
             self.client = client
@@ -295,7 +295,7 @@ def put_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
     """
     with adlfs.open(dst, 'wb', delimiter=delimiter) as fout:
         end = offset + size
-        miniblock = min(size, 4*2**20)
+        miniblock = min(size, 2**22) # 4MB block size
         with open(src, 'rb') as fin:
             for o in range(offset, end, miniblock):
                 if shutdown_event and shutdown_event.is_set():
