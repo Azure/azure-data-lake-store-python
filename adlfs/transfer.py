@@ -135,9 +135,6 @@ class ADLTransferClient(object):
         Path used for temporarily storing transferred chunks until chunks
         are gathered into a single file. If None, then each chunk will be
         written into the same file.
-    tmp_prefix: str ['part_']
-        If given and not None, this is used to provide a prefix to the
-        temporary chunk.
     tmp_unique: bool [True]
         If True, then a unique ID will be generated to create a subdirectory
         containing the temporary chunks. Otherwise, all temporary chunks
@@ -148,6 +145,17 @@ class ADLTransferClient(object):
     delimiter: byte(s) or None
         If set, will transfer blocks using delimiters, as well as split
         files for transferring on that delimiter.
+
+    Temporary Files
+    ---------------
+
+    When a merge step is available, the client will write chunks to temporary
+    files before merging. The exact temporary file is dependent upon on two
+    parameters (`tmp_path`, `tmp_unique`). Given those values, the full
+    temporary file can be accessed via the `temporary_path` property and looks
+    like this in pseudo-BNF form:
+
+    >>> # /{tmp_path}[/{unique_str}]/{basename}_{offset}
 
     Function Signatures
     -------------------
@@ -180,8 +188,8 @@ class ADLTransferClient(object):
     """
 
     def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
-                 chunksize=2**28, tmp_path='/tmp', tmp_prefix='part_',
-                 tmp_unique=True, persist_path=None, delimiter=None):
+                 chunksize=2**28, tmp_path='/tmp', tmp_unique=True,
+                 persist_path=None, delimiter=None):
         self._adlfs = adlfs
         self._name = name
         self._transfer = transfer
@@ -190,7 +198,6 @@ class ADLTransferClient(object):
         self._chunksize = chunksize
         self._chunkretries = 5
         self._tmp_path = tmp_path
-        self._tmp_prefix = tmp_prefix
         self._tmp_unique = tmp_unique
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
@@ -225,12 +232,9 @@ class ADLTransferClient(object):
         offsets = list(range(0, dic['nbytes'], self._chunksize))
         for offset in offsets:
             if self._tmp_path and len(offsets) > 1:
-                subdir = uuid.uuid1().hex[:10] if self._tmp_unique else ''
-                prefix = self._tmp_prefix or ''
                 name = os.path.join(
-                    self._tmp_path,
-                    subdir,
-                    prefix + str(offset))
+                    self.temporary_path,
+                    dst.name + '_' + str(offset))
             else:
                 name = dst
             logger.debug("Submitted %s, byte offset %d", name, offset)
@@ -240,6 +244,12 @@ class ADLTransferClient(object):
                                     self._chunksize),
                 retries=self._chunkretries,
                 offset=offset)
+
+    @property
+    def temporary_path(self):
+        """ Return temporary path used to store chunks before merging """
+        subdir = uuid.uuid1().hex[:10] if self._tmp_unique else ''
+        return os.path.join(self._tmp_path, subdir)
 
     @property
     def progress(self):
