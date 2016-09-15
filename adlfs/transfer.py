@@ -123,8 +123,10 @@ class ADLTransferClient(object):
         Function or callable object invoked when transferring chunks. See
         ``Function Signatures``.
     merge: callable [None]
-        Function or callable object invoked when merging chunks. If None,
-        then merging is skipped. See ``Function Signatures``.
+        Function or callable object invoked when merging chunks. For each file
+        containing only one chunk, no merge function will be called, even if
+        provided. If None, then merging is skipped. See
+        ``Function Signatures``.
     nthreads: int [None]
         Number of threads to use (minimum is 1). If None, uses the number of
         cores.
