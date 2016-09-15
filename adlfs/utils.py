@@ -166,3 +166,23 @@ def commonprefix(paths):
     ''
     """
     return os.path.dirname(os.path.commonprefix(paths))
+
+
+def clamp(n, smallest, largest):
+    """ Limit a value to a given range
+
+    This is equivalent to smallest <= n <= largest.
+
+    Examples
+    --------
+
+    >>> clamp(0, 1, 100)
+    1
+
+    >>> clamp(42, 2, 128)
+    42
+
+    >>> clamp(1024, 1, 32)
+    32
+    """
+    return max(smallest, min(n, largest))
