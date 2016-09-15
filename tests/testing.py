@@ -73,7 +73,7 @@ def working_dir():
 @pytest.yield_fixture()
 def azure():
     from adlfs import AzureDLFileSystem
-    fs = AzureDLFileSystem.current()
+    fs = AzureDLFileSystem(token=settings.TOKEN, store_name=settings.STORE_NAME)
 
     # Clear filesystem cache to ensure we capture all requests from a test
     fs.invalidate_cache()

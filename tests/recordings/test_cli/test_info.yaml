@@ -8,27 +8,27 @@ interactions:
       Content-Length: ['6']
       User-Agent: [python-requests/2.11.1]
     method: PUT
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/foo/bar?OP=CREATE&write=true&overwrite=true
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/foo/bar?OP=CREATE&overwrite=true&write=true
   response:
     body: {string: ''}
     headers:
       Cache-Control: [no-cache]
       Content-Length: ['0']
       ContentLength: ['0']
-      Date: ['Thu, 15 Sep 2016 21:35:43 GMT']
+      Date: ['Thu, 15 Sep 2016 22:01:08 GMT']
       Expires: ['-1']
-      Location: ['https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/foo/bar?OP=CREATE&write=true&overwrite=true']
+      Location: ['https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/foo/bar?OP=CREATE&overwrite=true&write=true']
       Pragma: [no-cache]
-      Server-Perf: ['[64652597-9405-43a1-a659-7b7cfce9f8b2][ AuthTime::0::PostAuthTime::0
-          ][S-HdfsGetFileStatusV2 :: 00:00:007 ms]%0a[S-HdfsCheckAccess :: 00:00:003
-          ms]%0a[S-FsDelete :: 00:00:007 ms]%0a[S-FsOpenStream :: 00:00:058 ms]%0a[S-FsAppendStream
-          :: 00:00:399 ms]%0a[BufferingTime :: 00:00:000 ms]%0a[WriteTime :: 00:00:399
-          ms]%0a[S-FsAppendStream :: 00:00:032 ms]%0a[S-FsCloseHandle :: 00:00:001
-          ms]%0a[CREATE :: 00:00:512 ms]%0a']
+      Server-Perf: ['[97dad013-b098-43de-8934-47fecf02092a][ AuthTime::2535.13501261794::PostAuthTime::616.677578980275
+          ][S-HdfsGetFileStatusV2 :: 00:00:008 ms]%0a[S-HdfsCheckAccess :: 00:00:004
+          ms]%0a[S-FsDelete :: 00:00:009 ms]%0a[S-FsOpenStream :: 00:00:052 ms]%0a[S-FsAppendStream
+          :: 00:00:155 ms]%0a[BufferingTime :: 00:00:000 ms]%0a[WriteTime :: 00:00:156
+          ms]%0a[S-FsAppendStream :: 00:00:032 ms]%0a[S-FsCloseHandle :: 00:00:002
+          ms]%0a[CREATE :: 00:00:270 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [64652597-9405-43a1-a659-7b7cfce9f8b2]
+      x-ms-request-id: [97dad013-b098-43de-8934-47fecf02092a]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 201, message: Created}
 - request:
@@ -41,20 +41,20 @@ interactions:
     method: GET
     uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/foo?OP=LISTSTATUS
   response:
-    body: {string: '{"FileStatuses":{"FileStatus":[{"length":6,"pathSuffix":"bar","type":"FILE","blockSize":268435456,"accessTime":1473975343524,"modificationTime":1473975343915,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
+    body: {string: '{"FileStatuses":{"FileStatus":[{"length":6,"pathSuffix":"bar","type":"FILE","blockSize":268435456,"accessTime":1473976868896,"modificationTime":1473976869026,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
     headers:
       Cache-Control: [no-cache]
       Content-Length: ['290']
       Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 15 Sep 2016 21:35:44 GMT']
+      Date: ['Thu, 15 Sep 2016 22:01:08 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
-      Server-Perf: ['[d3c45135-9dc9-418c-87e2-98f08f2f7bd2][ AuthTime::0::PostAuthTime::0
-          ][S-HdfsListStatus :: 00:00:014 ms]%0a[LISTSTATUS :: 00:00:015 ms]%0a']
+      Server-Perf: ['[b250c453-3506-4396-8ca7-6000464ac52b][ AuthTime::0::PostAuthTime::0
+          ][S-HdfsListStatus :: 00:00:013 ms]%0a[LISTSTATUS :: 00:00:013 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [d3c45135-9dc9-418c-87e2-98f08f2f7bd2]
+      x-ms-request-id: [b250c453-3506-4396-8ca7-6000464ac52b]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 200, message: OK}
 - request:
@@ -73,15 +73,15 @@ interactions:
       Cache-Control: [no-cache]
       Content-Length: ['16']
       Content-Type: [application/json; charset=utf-8]
-      Date: ['Thu, 15 Sep 2016 21:35:44 GMT']
+      Date: ['Thu, 15 Sep 2016 22:01:09 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
-      Server-Perf: ['[6a20c894-610d-4c8d-9193-3e84e586d24a][ AuthTime::0::PostAuthTime::0
-          ][S-FsDelete :: 00:00:071 ms]%0a[DELETE :: 00:00:071 ms]%0a']
+      Server-Perf: ['[b37e73b1-bdf8-4972-a293-ca1dd9342c73][ AuthTime::0::PostAuthTime::0
+          ][S-FsDelete :: 00:00:086 ms]%0a[DELETE :: 00:00:087 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [6a20c894-610d-4c8d-9193-3e84e586d24a]
+      x-ms-request-id: [b37e73b1-bdf8-4972-a293-ca1dd9342c73]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 200, message: OK}
 version: 1

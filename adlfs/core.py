@@ -66,7 +66,7 @@ class AzureDLFileSystem(object):
         """ Return the most recently created AzureDLFileSystem
         """
         if not cls._singleton[0]:
-            raise ValueError('No current connection')
+            return cls()
         else:
             return cls._singleton[0]
 
