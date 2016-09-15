@@ -47,7 +47,7 @@ class ADLDownloader(object):
         directory to write within. Will create directories as required.
     nthreads: int [None]
         Number of threads to use. If None, uses the number of cores.
-    chunksize: int [2**22]
+    chunksize: int [2**28]
         Number of bytes in each chunk for splitting big files. Files smaller
         than this number will always be downloaded in a single thread.
     client: ADLTransferClient [None]
@@ -61,7 +61,7 @@ class ADLDownloader(object):
     --------
     adlfs.transfer.ADLTransferClient
     """
-    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**22,
+    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  client=None, run=True):
         if client:
             self.client = client
@@ -157,22 +157,27 @@ def get_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
     Internal function used by `download`.
     """
     with adlfs.open(src, 'rb', blocksize=0) as fin:
+        end = offset + size
+        miniblock = min(size, 2**22) # 4MB block size
         with open(dst, 'rb+') as fout:
-            if shutdown_event and shutdown_event.is_set():
-                return
-            tries = 0
-            try:
-                fout.seek(offset)
-                fin.seek(offset)
-                fout.write(fin.read(size))
-            except Exception as e:
-                # TODO : only some exceptions should be retriable
-                logger.debug('Download failed %s, byte offset %s; %s, %s', dst,
-                             offset, e, e.args)
-                tries += 1
-                if tries >= retries:
-                    logger.debug('Aborting %s, byte offset %s', dst, offset)
-                    raise
+            fout.seek(offset)
+            fin.seek(offset)
+            for o in range(offset, end, miniblock):
+                if shutdown_event and shutdown_event.is_set():
+                    return
+                tries = 0
+                while True:
+                    try:
+                        fout.write(fin.read(miniblock))
+                        break
+                    except Exception as e:
+                        # TODO : only some exceptions should be retriable
+                        logger.debug('Download failed %s, byte offset %s; %s, %s', dst,
+                                    o, e, e.args)
+                        tries += 1
+                        if tries >= retries:
+                            logger.debug('Aborting %s, byte offset %s', dst, o)
+                            raise
     logger.debug('Downloaded to %s, byte offset %s', dst, offset)
 
 
@@ -311,7 +316,7 @@ def put_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
                                      o, e, e.args)
                         tries += 1
                         if tries >= retries:
-                            logger.debug('Aborting %s, byte offset %s', src, offset)
+                            logger.debug('Aborting %s, byte offset %s', src, o)
                             raise
     logger.debug('Uploaded from %s, byte offset %s', src, offset)
     return True
