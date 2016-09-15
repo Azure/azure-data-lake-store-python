@@ -128,7 +128,7 @@ class ADLTransferClient(object):
     nthreads: int [None]
         Number of threads to use (minimum is 1). If None, uses the number of
         cores.
-    chunksize: int [2**26]
+    chunksize: int [2**28]
         Number of bytes in each chunk for splitting big files. Files smaller
         than this number will always be transferred in a single thread.
     tmp_path: str ['/tmp']
@@ -180,7 +180,7 @@ class ADLTransferClient(object):
     """
 
     def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
-                 chunksize=2**26, tmp_path='/tmp', tmp_prefix='part_',
+                 chunksize=2**28, tmp_path='/tmp', tmp_prefix='part_',
                  tmp_unique=True, persist_path=None, delimiter=None):
         self._adlfs = adlfs
         self._name = name
