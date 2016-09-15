@@ -210,7 +210,7 @@ class DatalakeRESTInterface:
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.token = refresh_token(self.token)
-            self.head = {'Authorization': 'Bearer ' + token['access']}
+            self.head = {'Authorization': 'Bearer ' + self.token['access']}
 
 
     def call(self, op, path='', **kwargs):
