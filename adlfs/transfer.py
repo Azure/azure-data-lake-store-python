@@ -155,7 +155,7 @@ class ADLTransferClient(object):
     files before merging. The exact temporary file is dependent upon on two
     parameters (`tmp_path`, `tmp_unique`). Given those values, the full
     temporary file can be accessed via the `temporary_path` property and looks
-    like this in pseudo-BNF form:
+    like this in pseudo-BNF:
 
     >>> # /{tmp_path}[/{unique_str}]/{basename}_{offset}
 
