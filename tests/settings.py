@@ -23,7 +23,7 @@ if RECORD_MODE == 'none':
         access=str(base64.b64encode(os.urandom(64))),
         refresh=str(base64.b64encode(os.urandom(64))),
         time=time.time(),
-        tenant=TENANT_ID)
+        tenant=TENANT_ID, expiresIn=3600)
     SUBSCRIPTION_ID = fake_settings.SUBSCRIPTION_ID
     RESOURCE_GROUP_NAME = fake_settings.RESOURCE_GROUP_NAME
 else:
