@@ -131,8 +131,11 @@ class ADLTransferClient(object):
         Number of threads to use (minimum is 1). If None, uses the number of
         cores.
     chunksize: int [2**28]
-        Number of bytes in each chunk for splitting big files. Files smaller
-        than this number will always be transferred in a single thread.
+        Number of bytes for a chunk. Large files are split into chunks. Files
+        smaller than this number will always be transferred in a single thread.
+    blocksize: int [2**25]
+        Number of bytes for a block. Within each chunk, we write a smaller
+        block for each API call. This block cannot be bigger than a chunk.
     tmp_path: str ['/tmp']
         Path used for temporarily storing transferred chunks until chunks
         are gathered into a single file. If None, then each chunk will be
@@ -167,11 +170,12 @@ class ADLTransferClient(object):
     merge step will be skipped.
 
     The `transfer` callable has the function signature,
-    `fn(adlfs, src, dst, offset, size, retries, shutdown_event)`. `adlfs` is
-    the ADL filesystem instance. `src` and `dst` refer to the source and
-    destination of the respective file transfer. `offset` is the location in
-    `src` to read `size` bytes from. `retries` is the number of time an Azure
-    query will be tried.
+    `fn(adlfs, src, dst, offset, size, blocksize, retries, shutdown_event)`.
+    `adlfs` is the ADL filesystem instance. `src` and `dst` refer to the source
+    and destination of the respective file transfer. `offset` is the location
+    in `src` to read `size` bytes from. `blocksize` is the number of bytes in a
+    chunk to write at one time. `retries` is the number of time an Azure query
+    will be tried.
 
     The `merge` callable has the function signature,
     `fn(adlfs, outfile, files, delete_source, shutdown_event)`. `adlfs` is
@@ -190,8 +194,8 @@ class ADLTransferClient(object):
     """
 
     def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
-                 chunksize=2**28, tmp_path='/tmp', tmp_unique=True,
-                 persist_path=None, delimiter=None):
+                 chunksize=2**28, blocksize=2**25, tmp_path='/tmp',
+                 tmp_unique=True, persist_path=None, delimiter=None):
         self._adlfs = adlfs
         self._name = name
         self._transfer = transfer
@@ -199,6 +203,7 @@ class ADLTransferClient(object):
         self._nthreads = max(1, nthreads or multiprocessing.cpu_count())
         self._chunksize = chunksize
         self._chunkretries = 5
+        self._blocksize = blocksize
         self._tmp_path = tmp_path
         self._tmp_unique = tmp_unique
         self._persist_path = persist_path
@@ -243,7 +248,7 @@ class ADLTransferClient(object):
             dic['cstates'][name] = 'running'
             dic['chunks'][name] = dict(
                 future=self._submit(transfer, self._adlfs, src, name, offset,
-                                    self._chunksize),
+                                    self._chunksize, self._blocksize),
                 retries=self._chunkretries,
                 offset=offset)
 
@@ -301,7 +306,8 @@ class ADLTransferClient(object):
                     if self._merge and len(chunks) > 1:
                         logger.debug("Merging file: %s", self._fstates[(src, dst)])
                         self._fstates[(src, dst)] = 'merging'
-                        dic['merge'] = self._submit(self._merge, self._adlfs, dst, chunks)
+                        dic['merge'] = self._submit(self._merge, self._adlfs,
+                                                    dst, chunks)
                     else:
                         dic['stop'] = time.time()
                         self._fstates[(src, dst)] = 'finished'
