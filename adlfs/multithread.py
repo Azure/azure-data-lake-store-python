@@ -160,7 +160,7 @@ def get_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
 
     Internal function used by `download`.
     """
-    with adlfs.open(src, 'rb', blocksize=0) as fin:
+    with adlfs.open(src, 'rb') as fin:
         end = offset + size
         miniblock = min(size, blocksize)
         with open(dst, 'rb+') as fout:
