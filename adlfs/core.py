@@ -48,15 +48,15 @@ class AzureDLFileSystem(object):
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
+    kwargs: optional key/values
+        For auth, such as username, password. See ``lib.auth()``
     """
-    _conn = {}
     _singleton = [None]
 
-    def __init__(self, store=None, token=None, url_suffix=None):
+    def __init__(self, token=None, **kwargs):
         # store instance vars
-        self.store = store
-        self.url_suffix = url_suffix
         self.token = token
+        self.kwargs = kwargs
         self.connect()
         self.dirs = {}
         AzureDLFileSystem._singleton[0] = self
@@ -66,41 +66,16 @@ class AzureDLFileSystem(object):
         """ Return the most recently created AzureDLFileSystem
         """
         if not cls._singleton[0]:
-            raise ValueError('No current connection')
+            return cls()
         else:
             return cls._singleton[0]
 
-    def connect(self, refresh=False):
+    def connect(self):
         """
         Establish connection object.
-
-        Parameters
-        ----------
-        refresh : bool (True)
-            To request a new token (good for 3600s)
         """
-        if self.store in self._conn:
-            token = self._conn[self.store]
-            if refresh or time.time() - token['time'] > 3000:
-                token = refresh_token(token)
-        else:
-            token = self.token
-
-        if token is None:
-            # default connection
-            tenant_id = os.environ.get('azure_tenant_id', "common")
-            username = os.environ['azure_username']
-            password = os.environ['azure_password']
-            self.store = self.store or os.environ['azure_store_name']
-            self.url_suffix = (self.url_suffix or
-                               os.environ.get('azure_url_suffix'))
-            token = auth(tenant_id, username, password)
-
-        self.azure = DatalakeRESTInterface(store_name=self.store,
-                                           token=token['access'],
-                                           url_suffix=self.url_suffix)
-        self._conn[self.store] = token
-        self.token = token
+        self.azure = DatalakeRESTInterface(token=self.token, **self.kwargs)
+        self.token = self.azure.token
 
     def __setstate__(self, state):
         self.__dict__.update(state)

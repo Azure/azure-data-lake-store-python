@@ -20,10 +20,11 @@ if RECORD_MODE == 'none':
     STORE_NAME = fake_settings.STORE_NAME
     TENANT_ID = fake_settings.TENANT_ID
     TOKEN = dict(
-        access=str(base64.b64encode(os.urandom(64))),
-        refresh=str(base64.b64encode(os.urandom(64))),
-        time=time.time(),
-        tenant=TENANT_ID)
+        access=str(base64.b64encode(os.urandom(1420))),
+        refresh=str(base64.b64encode(os.urandom(718))),
+        time=time.time(), client='common',
+        resource="https://management.core.windows.net/",
+        tenant=TENANT_ID, expiresIn=3600)
     SUBSCRIPTION_ID = fake_settings.SUBSCRIPTION_ID
     RESOURCE_GROUP_NAME = fake_settings.RESOURCE_GROUP_NAME
 else:

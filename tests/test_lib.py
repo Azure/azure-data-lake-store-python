@@ -23,18 +23,18 @@ def token():
 
 @pytest.fixture()
 def rest(token):
-    return DatalakeRESTInterface(settings.STORE_NAME, token['access'])
+    return DatalakeRESTInterface(settings.STORE_NAME, token)
 
 
 @pytest.fixture()
 def management(token):
     return ManagementRESTInterface(settings.SUBSCRIPTION_ID,
                                    settings.RESOURCE_GROUP_NAME,
-                                   token['access'])
+                                   token)
 
 
-def test_errors():
-    no_rest = DatalakeRESTInterface("none", "blank")
+def test_errors(token):
+    no_rest = DatalakeRESTInterface("none", token)
 
     with pytest.raises(ValueError):
         # no such op
@@ -65,7 +65,7 @@ def test_auth_refresh(token):
 
 @my_vcr.use_cassette
 def test_response(rest):
-    out = rest.call('GETCONTENTSUMMARY')
+    out = rest.call('LISTSTATUS', '')
     assert out
 
 
