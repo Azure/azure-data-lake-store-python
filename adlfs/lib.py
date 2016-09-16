@@ -52,7 +52,7 @@ def refresh_token(token):
         Produced by `auth()` or `refresh_token`.
     """
     if token.get('refresh', False) is False:
-        raise ValueError("Token cannot be aut-refreshed.")
+        raise ValueError("Token cannot be auto-refreshed.")
     context = adal.AuthenticationContext('https://login.microsoftonline.com/' +
                                          token['tenant'])
     out = context.acquire_token_with_refresh_token(token['refresh'],
