@@ -47,9 +47,12 @@ class ADLDownloader(object):
         directory to write within. Will create directories as required.
     nthreads: int [None]
         Number of threads to use. If None, uses the number of cores.
-    chunksize: int [2**22]
-        Number of bytes in each chunk for splitting big files. Files smaller
-        than this number will always be downloaded in a single thread.
+    chunksize: int [2**28]
+        Number of bytes for a chunk. Large files are split into chunks. Files
+        smaller than this number will always be transferred in a single thread.
+    blocksize: int [2**25]
+        Number of bytes for a block. Within each chunk, we write a smaller
+        block for each API call. This block cannot be bigger than a chunk.
     client: ADLTransferClient [None]
         Set an instance of ADLTransferClient when finer-grained control over
         transfer parameters is needed. Ignores `nthreads` and `chunksize` set
@@ -61,17 +64,18 @@ class ADLDownloader(object):
     --------
     adlfs.transfer.ADLTransferClient
     """
-    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**22,
-                 client=None, run=True):
+    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
+                 blocksize=2**25, client=None, run=True):
         if client:
             self.client = client
         else:
             self.client = ADLTransferClient(
                 adlfs,
-                name=tokenize(adlfs, rpath, lpath, chunksize),
+                name=tokenize(adlfs, rpath, lpath, chunksize, blocksize),
                 transfer=get_chunk,
                 nthreads=nthreads,
                 chunksize=chunksize,
+                blocksize=blocksize,
                 tmp_path=None,
                 persist_path=os.path.join(datadir, 'downloads'))
         self.rpath = rpath
@@ -150,29 +154,34 @@ class ADLDownloader(object):
     __repr__ = __str__
 
 
-def get_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
+def get_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
               shutdown_event=None):
     """ Download a piece of a remote file and write locally
 
     Internal function used by `download`.
     """
-    with adlfs.open(src, 'rb', blocksize=0) as fin:
+    with adlfs.open(src, 'rb') as fin:
+        end = offset + size
+        miniblock = min(size, blocksize)
         with open(dst, 'rb+') as fout:
-            if shutdown_event and shutdown_event.is_set():
-                return
-            tries = 0
-            try:
-                fout.seek(offset)
-                fin.seek(offset)
-                fout.write(fin.read(size))
-            except Exception as e:
-                # TODO : only some exceptions should be retriable
-                logger.debug('Download failed %s, byte offset %s; %s, %s', dst,
-                             offset, e, e.args)
-                tries += 1
-                if tries >= retries:
-                    logger.debug('Aborting %s, byte offset %s', dst, offset)
-                    raise
+            fout.seek(offset)
+            fin.seek(offset)
+            for o in range(offset, end, miniblock):
+                if shutdown_event and shutdown_event.is_set():
+                    return
+                tries = 0
+                while True:
+                    try:
+                        fout.write(fin.read(miniblock))
+                        break
+                    except Exception as e:
+                        # TODO : only some exceptions should be retriable
+                        logger.debug('Download failed %s, byte offset %s; %s, %s', dst,
+                                    o, e, e.args)
+                        tries += 1
+                        if tries >= retries:
+                            logger.debug('Aborting %s, byte offset %s', dst, o)
+                            raise
     logger.debug('Downloaded to %s, byte offset %s', dst, offset)
 
 
@@ -196,8 +205,11 @@ class ADLUploader(object):
     nthreads: int [None]
         Number of threads to use. If None, uses the number of cores.
     chunksize: int [2**28]
-        Number of bytes in each chunk for splitting big files. Files smaller
-        than this number will always be sent in a single thread.
+        Number of bytes for a chunk. Large files are split into chunks. Files
+        smaller than this number will always be transferred in a single thread.
+    blocksize: int [2**25]
+        Number of bytes for a block. Within each chunk, we write a smaller
+        block for each API call. This block cannot be bigger than a chunk.
     client: ADLTransferClient [None]
         Set an instance of ADLTransferClient when finer-grained control over
         transfer parameters is needed. Ignores `nthreads`, `chunksize`, and
@@ -213,17 +225,18 @@ class ADLUploader(object):
     adlfs.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 client=None, run=True, delimiter=None):
+                 blocksize=2**25, client=None, run=True, delimiter=None):
         if client:
             self.client = client
         else:
             self.client = ADLTransferClient(
                 adlfs,
-                name=tokenize(adlfs, rpath, lpath, chunksize),
+                name=tokenize(adlfs, rpath, lpath, chunksize, blocksize),
                 transfer=put_chunk,
                 merge=merge_chunks,
                 nthreads=nthreads,
                 chunksize=chunksize,
+                blocksize=blocksize,
                 persist_path=os.path.join(datadir, 'uploads'),
                 delimiter=delimiter)
         self.rpath = AzureDLPath(rpath)
@@ -287,7 +300,7 @@ class ADLUploader(object):
     __repr__ = __str__
 
 
-def put_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
+def put_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
               delimiter=None, shutdown_event=None):
     """ Upload a piece of a local file
 
@@ -295,7 +308,7 @@ def put_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
     """
     with adlfs.open(dst, 'wb', delimiter=delimiter) as fout:
         end = offset + size
-        miniblock = min(size, 2**22) # 4MB block size
+        miniblock = min(size, blocksize)
         with open(src, 'rb') as fin:
             for o in range(offset, end, miniblock):
                 if shutdown_event and shutdown_event.is_set():
@@ -311,7 +324,7 @@ def put_chunk(adlfs, src, dst, offset, size, retries=MAXRETRIES,
                                      o, e, e.args)
                         tries += 1
                         if tries >= retries:
-                            logger.debug('Aborting %s, byte offset %s', src, offset)
+                            logger.debug('Aborting %s, byte offset %s', src, o)
                             raise
     logger.debug('Uploaded from %s, byte offset %s', src, offset)
     return True
