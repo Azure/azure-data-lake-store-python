@@ -50,7 +50,7 @@ class ADLDownloader(object):
     chunksize: int [2**28]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
-    blocksize: int [2**25]
+    blocksize: int [2**22]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
     client: ADLTransferClient [None]
@@ -65,7 +65,7 @@ class ADLDownloader(object):
     adlfs.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**25, client=None, run=True):
+                 blocksize=2**22, client=None, run=True):
         if client:
             self.client = client
         else:
