@@ -30,7 +30,7 @@ def test_interrupt(azure):
     assert client.progress[0].state != 'finished'
 
 
-def test_submit_without_run(azure):
+def test_submit_and_run(azure):
     def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
         pass
 
@@ -41,9 +41,19 @@ def test_submit_without_run(azure):
     client.submit('abc', '123', 8)
 
     nfiles = len(client.progress)
-
     assert nfiles == 2
     assert len([client.progress[i].chunks for i in range(nfiles)])
+
     assert all([client.progress[i].state == 'pending' for i in range(nfiles)])
     assert all([chunk.state == 'pending' for f in client.progress
                                          for chunk in f.chunks])
+
+    expected = {('bar', 0), ('bar', 8), ('123', 0)}
+    assert {(chunk.name, chunk.offset) for f in client.progress
+                                       for chunk in f.chunks} == expected
+
+    client.run()
+
+    assert all([client.progress[i].state == 'finished' for i in range(nfiles)])
+    assert all([chunk.state == 'finished' for f in client.progress
+                                          for chunk in f.chunks])
