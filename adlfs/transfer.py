@@ -319,6 +319,7 @@ class ADLTransferClient(object):
 
             if cstates.contains_all('finished'):
                 logger.debug("Chunks transferred")
+                src, dst = parent
                 if self._merge and len(cstates.objects) > 1:
                     logger.debug("Merging file: %s", self._fstates[parent])
                     self._fstates[parent] = 'merging'
@@ -329,7 +330,7 @@ class ADLTransferClient(object):
                 else:
                     self._fstates[parent] = 'finished'
                     self._files[parent]['stop'] = time.time()
-                    self._status(*parent)
+                    self._status(src, dst)
             elif cstates.contains_none('running'):
                 logger.debug("Transfer failed: %s", cstates)
                 self._fstates[parent] = 'errored'
