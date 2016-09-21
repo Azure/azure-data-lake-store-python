@@ -210,6 +210,9 @@ class ADLTransferClient(object):
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
         self._files = {}
+        self._chunks = {}
+        self._ffutures = {}
+        self._cfutures = {}
         self._fstates = StateManager(
             'pending', 'transferring', 'merging', 'finished', 'cancelled',
             'errored')
@@ -221,7 +224,6 @@ class ADLTransferClient(object):
         All submitted files/chunks start in the `pending` state until `run()`
         is called.
         """
-        chunks = {}
         cstates = StateManager(
             'pending', 'running', 'finished', 'cancelled', 'errored')
 
@@ -234,8 +236,8 @@ class ADLTransferClient(object):
             else:
                 name = dst
             cstates[(name, offset)] = 'pending'
-            chunks[(name, offset)] = dict(
-                future=None,
+            self._chunks[(name, offset)] = dict(
+                parent=(src, dst),
                 retries=self._chunkretries)
             logger.debug("Submitted %s, byte offset %d", name, offset)
 
@@ -244,23 +246,25 @@ class ADLTransferClient(object):
             length=length,
             start=None,
             stop=None,
-            chunks=chunks,
-            cstates=cstates,
-            merge=None)
+            cstates=cstates)
 
     def _submit(self, fn, *args, **kwargs):
         kwargs['shutdown_event'] = self._shutdown_event
-        return self._pool.submit(fn, *args, **kwargs)
+        future = self._pool.submit(fn, *args, **kwargs)
+        future.add_done_callback(self._update)
+        return future
 
     def _start(self, src, dst, transfer):
-        dic = self._files[(src, dst)]
-        self._fstates[(src, dst)] = 'transferring'
-        self._files[(src, dst)]['start'] = time.time()
-        for name, offset in self._files[(src, dst)]['chunks']:
-            dic['cstates'][(name, offset)] = 'running'
-            dic['chunks'][(name, offset)]['future'] = self._submit(
+        key = (src, dst)
+        self._fstates[key] = 'transferring'
+        self._files[key]['start'] = time.time()
+        for obj in self._files[key]['cstates'].objects:
+            name, offset = obj
+            self._files[key]['cstates'][obj] = 'running'
+            future = self._submit(
                 transfer, self._adlfs, src, name, offset,
                 self._chunksize, self._blocksize)
+            self._cfutures[future] = obj
 
     @property
     def temporary_path(self):
@@ -272,74 +276,75 @@ class ADLTransferClient(object):
     def progress(self):
         """ Return a summary of all transferred file/chunks """
         files = []
-        for fkey in self._files:
-            src, dst = fkey
+        for key in self._files:
+            src, dst = key
             chunks = []
-            for ckey in self._files[fkey]['chunks']:
-                name, offset = ckey
+            for obj in self._files[key]['cstates'].objects:
+                name, offset = obj
                 chunks.append(Chunk(
                     name=name,
                     offset=offset,
-                    state=self._files[fkey]['cstates'][ckey],
-                    retries=self._files[fkey]['chunks'][ckey]['retries']))
+                    state=self._files[key]['cstates'][obj],
+                    retries=self._chunks[obj]['retries']))
             files.append(File(
                 src=src,
                 dst=dst,
-                state=self._fstates[fkey],
-                length=self._files[fkey]['length'],
-                start=self._files[fkey]['start'],
-                stop=self._files[fkey]['stop'],
+                state=self._fstates[key],
+                length=self._files[key]['length'],
+                start=self._files[key]['start'],
+                stop=self._files[key]['stop'],
                 chunks=chunks))
         return files
 
-    def _status(self, src, dst, length, start, stop):
-        elapsed = stop - start
-        rate = length / elapsed / 1024 / 1024
+    def _status(self, src, dst):
+        dic = self._files[(src, dst)]
+        elapsed = dic['stop'] - dic['start']
+        rate = dic['length'] / elapsed / 1024 / 1024
         logger.info("Transferred %s -> %s in %f seconds at %f MB/s",
                     src, dst, elapsed, rate)
 
-    def _update(self):
-        for (src, dst), dic in self._files.items():
-            if self._fstates[(src, dst)] == 'transferring':
-                for ckey in list(dic['chunks']):
-                    future = dic['chunks'][ckey]['future']
-                    if not future.done():
-                        continue
-                    if future.cancelled():
-                        dic['cstates'][ckey] = 'cancelled'
-                    elif future.exception():
-                        dic['cstates'][ckey] = 'errored'
-                    else:
-                        dic['cstates'][ckey] = 'finished'
-                if dic['cstates'].contains_all('finished'):
-                    logger.debug("Chunks transferred")
-                    chunks = list(dic['chunks'])
-                    if self._merge and len(chunks) > 1:
-                        logger.debug("Merging file: %s", self._fstates[(src, dst)])
-                        self._fstates[(src, dst)] = 'merging'
-                        dic['merge'] = self._submit(self._merge, self._adlfs,
-                                                    dst, chunks)
-                    else:
-                        dic['stop'] = time.time()
-                        self._fstates[(src, dst)] = 'finished'
-                        self._status(src, dst, dic['length'], dic['start'], dic['stop'])
-                elif dic['cstates'].contains_none('running'):
-                    logger.debug("Transfer failed: %s", dic['cstates'])
-                    self._fstates[(src, dst)] = 'errored'
+    def _update(self, future):
+        if future in self._cfutures:
+            obj = self._cfutures[future]
+            parent = self._chunks[obj]['parent']
+            cstates = self._files[parent]['cstates']
+
+            if future.cancelled():
+                cstates[obj] = 'cancelled'
+            elif future.exception():
+                cstates[obj] = 'errored'
+            else:
+                result = future.result()
+                cstates[obj] = 'finished'
+
+            if cstates.contains_all('finished'):
+                logger.debug("Chunks transferred")
+                if self._merge and len(cstates.objects) > 1:
+                    logger.debug("Merging file: %s", self._fstates[parent])
+                    self._fstates[parent] = 'merging'
+                    merge_future = self._submit(
+                        self._merge, self._adlfs, dst,
+                        [o[0] for o in cstates.objects])
+                    self._ffutures[merge_future] = parent
                 else:
-                    logger.debug("Transferring chunks: %s", dic['cstates'])
-            elif self._fstates[(src, dst)] == 'merging':
-                future = dic['merge']
-                if not future.done():
-                    continue
-                if future.cancelled():
-                    self._fstates[(src, dst)] = 'cancelled'
-                elif future.exception():
-                    self._fstates[(src, dst)] = 'errored'
-                else:
-                    dic['stop'] = time.time()
-                    self._fstates[(src, dst)] = 'finished'
-                    self._status(src, dst, dic['length'], dic['start'], dic['stop'])
+                    self._fstates[parent] = 'finished'
+                    self._files[parent]['stop'] = time.time()
+                    self._status(*parent)
+            elif cstates.contains_none('running'):
+                logger.debug("Transfer failed: %s", cstates)
+                self._fstates[parent] = 'errored'
+        elif future in self._ffutures:
+            src, dst = self._ffutures[future]
+
+            if future.cancelled():
+                self._fstates[(src, dst)] = 'cancelled'
+            elif future.exception():
+                self._fstates[(src, dst)] = 'errored'
+            else:
+                result = future.result()
+                self._fstates[(src, dst)] = 'finished'
+                self._files[(src, dst)]['stop'] = time.time()
+                self._status(src, dst)
         self.save()
 
     def run(self, nthreads=None, monitor=True, before_start=None):
@@ -351,33 +356,21 @@ class ADLTransferClient(object):
         if monitor:
             self.monitor()
 
-    def _cancel(self):
-        for dic in self._files.values():
-            for transfer in dic['chunks'].values():
-                transfer['future'].cancel()
-            if dic['merge']:
-                dic['merge'].cancel()
-
     def _wait(self, poll=0.1, timeout=0):
         start = time.time()
         while not self._fstates.contains_none('pending', 'transferring', 'merging'):
             if timeout > 0 and time.time() - start > timeout:
                 break
             time.sleep(poll)
-            self._update()
 
     def _clear(self):
-        for dic in self._files.values():
-            for key in dic['chunks']:
-                dic['chunks'][key]['future'] = None
-            dic['merge'] = None
+        self._cfutures = {}
+        self._ffutures = {}
         self._pool = None
 
     def shutdown(self):
         self._shutdown_event.set()
-        self._cancel()
         self._pool.shutdown(wait=True)
-        self._update()
 
     def monitor(self, poll=0.1, timeout=0):
         """ Wait for download to happen """
@@ -391,20 +384,16 @@ class ADLTransferClient(object):
 
     def __getstate__(self):
         dic2 = self.__dict__.copy()
+        dic2.pop('_cfutures', None)
+        dic2.pop('_ffutures', None)
         dic2.pop('_transfer', None)
         dic2.pop('_merge', None)
         dic2.pop('_pool', None)
         dic2.pop('_shutdown_event', None)
+
         dic2['_files'] = dic2.get('_files', {}).copy()
-        for k, v in list(dic2['_files'].items()):
-            v = v.copy()
-            v['chunks'] = v['chunks'].copy()
-            for ck, cv in list(v['chunks'].items()):
-                cv = cv.copy()
-                cv['future'] = None
-                v['chunks'][ck] = cv
-            v['merge'] = None
-            dic2['_files'][k] = v
+        dic2['_chunks'] = dic2.get('_chunks', {}).copy()
+
         return dic2
 
     @staticmethod
