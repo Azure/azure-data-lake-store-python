@@ -18,7 +18,7 @@ def test_interrupt(azure):
     def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
         while shutdown_event and not shutdown_event.is_set():
             time.sleep(0.1)
-        return size
+        return size, None
 
     client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=1,
                                tmp_path=None)
@@ -34,7 +34,7 @@ def test_interrupt(azure):
 def test_submit_and_run(azure):
     def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
         time.sleep(0.1)
-        return size
+        return size, None
 
     client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=8,
                                tmp_path=None)
@@ -65,7 +65,8 @@ def test_submit_and_run(azure):
 
 def test_temporary_path(azure):
     def transfer(adlfs, src, dst, offset, size):
-        pass
+        time.sleep(0.1)
+        return size, None
 
     client = ADLTransferClient(azure, 'foobar', transfer=transfer, tmp_unique=False)
     assert posix(client.temporary_path) == '/tmp'

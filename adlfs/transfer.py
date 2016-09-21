@@ -103,7 +103,7 @@ class StateManager(object):
 
 # Named tuples used to serialize client progress
 File = namedtuple('File', 'src dst state length start stop chunks')
-Chunk = namedtuple('Chunk', 'name state offset retries expected actual')
+Chunk = namedtuple('Chunk', 'name state offset retries expected actual exception')
 
 
 class ADLTransferClient(object):
@@ -202,7 +202,7 @@ class ADLTransferClient(object):
         Using a tuple of the chunk name/offset as the key, this dictionary
         stores the chunk metadata and has a reference to the chunk's parent
         file. The dictionary key is `(name, offset)` and the value is
-        `dict(parent=(src, dst), retries, expected, actual)`.
+        `dict(parent=(src, dst), retries, expected, actual, exception)`.
     self._ffutures: dict
         Using a Future object as the key, this dictionary provides a reverse
         lookup for the file associated with the given future. The returned
@@ -269,7 +269,8 @@ class ADLTransferClient(object):
                 parent=(src, dst),
                 retries=self._chunkretries,
                 expected=min(length - offset, self._chunksize),
-                actual=0)
+                actual=0,
+                exception=None)
             logger.debug("Submitted %s, byte offset %d", name, offset)
 
         self._fstates[(src, dst)] = 'pending'
@@ -285,7 +286,7 @@ class ADLTransferClient(object):
         future.add_done_callback(self._update)
         return future
 
-    def _start(self, src, dst, transfer):
+    def _start(self, src, dst):
         key = (src, dst)
         self._fstates[key] = 'transferring'
         self._files[key]['start'] = time.time()
@@ -293,7 +294,7 @@ class ADLTransferClient(object):
             name, offset = obj
             self._files[key]['cstates'][obj] = 'running'
             future = self._submit(
-                transfer, self._adlfs, src, name, offset,
+                self._transfer, self._adlfs, src, name, offset,
                 self._chunksize, self._blocksize)
             self._cfutures[future] = obj
 
@@ -318,7 +319,8 @@ class ADLTransferClient(object):
                     state=self._files[key]['cstates'][obj],
                     retries=self._chunks[obj]['retries'],
                     expected=self._chunks[obj]['expected'],
-                    actual=self._chunks[obj]['actual']))
+                    actual=self._chunks[obj]['actual'],
+                    exception=self._chunks[obj]['exception']))
             files.append(File(
                 src=src,
                 dst=dst,
@@ -347,7 +349,9 @@ class ADLTransferClient(object):
             elif future.exception():
                 cstates[obj] = 'errored'
             else:
-                self._chunks[obj]['actual'] = future.result()
+                nbytes, exception = future.result()
+                self._chunks[obj]['actual'] = nbytes
+                self._chunks[obj]['exception'] = exception
                 cstates[obj] = 'finished'
 
             if cstates.contains_all('finished'):
@@ -386,7 +390,7 @@ class ADLTransferClient(object):
         for src, dst in self._files:
             if before_start:
                 before_start(self._adlfs, src, dst)
-            self._start(src, dst, self._transfer)
+            self._start(src, dst)
         if monitor:
             self.monitor()
 

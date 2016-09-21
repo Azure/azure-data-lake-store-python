@@ -169,7 +169,7 @@ def get_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
             fin.seek(offset)
             for o in range(offset, end, miniblock):
                 if shutdown_event and shutdown_event.is_set():
-                    return nbytes
+                    return nbytes, None
                 tries = 0
                 while True:
                     try:
@@ -179,13 +179,13 @@ def get_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
                     except Exception as e:
                         # TODO : only some exceptions should be retriable
                         logger.debug('Download failed %s, byte offset %s; %s, %s', dst,
-                                    o, e, e.args)
+                                     o, e, e.args)
                         tries += 1
                         if tries >= retries:
                             logger.debug('Aborting %s, byte offset %s', dst, o)
-                            raise
+                            return nbytes, str(e)
     logger.debug('Downloaded to %s, byte offset %s', dst, offset)
-    return nbytes
+    return nbytes, None
 
 
 class ADLUploader(object):
@@ -316,7 +316,7 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
         with open(src, 'rb') as fin:
             for o in range(offset, end, miniblock):
                 if shutdown_event and shutdown_event.is_set():
-                    return nbytes
+                    return nbytes, None
                 tries = 0
                 while True:
                     try:
@@ -330,9 +330,9 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
                         tries += 1
                         if tries >= retries:
                             logger.debug('Aborting %s, byte offset %s', src, o)
-                            raise
+                            return nbytes, str(e)
     logger.debug('Uploaded from %s, byte offset %s', src, offset)
-    return nbytes
+    return nbytes, None
 
 
 def merge_chunks(adlfs, outfile, files, shutdown_event=None):
