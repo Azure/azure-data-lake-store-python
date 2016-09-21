@@ -28,3 +28,22 @@ def test_interrupt(azure):
     client.monitor()
 
     assert client.progress[0].state != 'finished'
+
+
+def test_submit_without_run(azure):
+    def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
+        pass
+
+    client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=8,
+                               tmp_path=None)
+
+    client.submit('foo', 'bar', 16)
+    client.submit('abc', '123', 8)
+
+    nfiles = len(client.progress)
+
+    assert nfiles == 2
+    assert len([client.progress[i].chunks for i in range(nfiles)])
+    assert all([client.progress[i].state == 'pending' for i in range(nfiles)])
+    assert all([chunk.state == 'pending' for f in client.progress
+                                         for chunk in f.chunks])

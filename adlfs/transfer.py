@@ -216,27 +216,16 @@ class ADLTransferClient(object):
 
     def submit(self, src, dst, nbytes):
         """
-        All submitted files start in the `pending` state until `run()` is
-        called.
+        Split a given file into chunks.
+
+        All submitted files/chunks start in the `pending` state until `run()`
+        is called.
         """
-        self._fstates[(src, dst)] = 'pending'
-        self._files[(src, dst)] = dict(
-            nbytes=nbytes,
-            start=None,
-            stop=None,
-            chunks={},
-            cstates=StateManager('running', 'finished', 'cancelled', 'errored'),
-            merge=None)
+        chunks = {}
+        cstates = StateManager(
+            'pending', 'running', 'finished', 'cancelled', 'errored')
 
-    def _submit(self, fn, *args, **kwargs):
-        kwargs['shutdown_event'] = self._shutdown_event
-        return self._pool.submit(fn, *args, **kwargs)
-
-    def _scatter(self, src, dst, transfer):
-        """ Split a given file into chunks """
-        dic = self._files[(src, dst)]
-        self._fstates[(src, dst)] = 'transferring'
-        offsets = list(range(0, dic['nbytes'], self._chunksize))
+        offsets = list(range(0, nbytes, self._chunksize))
         for offset in offsets:
             if self._tmp_path and len(offsets) > 1:
                 name = os.path.join(
@@ -244,13 +233,36 @@ class ADLTransferClient(object):
                     dst.name + '_' + str(offset))
             else:
                 name = dst
-            logger.debug("Submitted %s, byte offset %d", name, offset)
-            dic['cstates'][name] = 'running'
-            dic['chunks'][name] = dict(
-                future=self._submit(transfer, self._adlfs, src, name, offset,
-                                    self._chunksize, self._blocksize),
+            cstates[name] = 'pending'
+            chunks[name] = dict(
+                future=None,
                 retries=self._chunkretries,
                 offset=offset)
+            logger.debug("Submitted %s, byte offset %d", name, offset)
+
+        self._fstates[(src, dst)] = 'pending'
+        self._files[(src, dst)] = dict(
+            nbytes=nbytes,
+            start=None,
+            stop=None,
+            chunks=chunks,
+            cstates=cstates,
+            merge=None)
+
+    def _submit(self, fn, *args, **kwargs):
+        kwargs['shutdown_event'] = self._shutdown_event
+        return self._pool.submit(fn, *args, **kwargs)
+
+    def _start(self, src, dst, transfer):
+        dic = self._files[(src, dst)]
+        self._fstates[(src, dst)] = 'transferring'
+        self._files[(src, dst)]['start'] = time.time()
+        for name in self._files[(src, dst)]['chunks']:
+            dic['cstates'][name] = 'running'
+            dic['chunks'][name]['future'] = self._submit(
+                transfer, self._adlfs, src, name,
+                dic['chunks'][name]['offset'], self._chunksize,
+                self._blocksize)
 
     @property
     def temporary_path(self):
@@ -331,14 +343,12 @@ class ADLTransferClient(object):
                     self._status(src, dst, dic['nbytes'], dic['start'], dic['stop'])
         self.save()
 
-    def run(self, nthreads=None, monitor=True, before_scatter=None):
+    def run(self, nthreads=None, monitor=True, before_start=None):
         self._nthreads = nthreads or self._nthreads
         for src, dst in self._files:
-            self._files[(src, dst)]['start'] = time.time()
-            self._fstates[(src, dst)] = 'transferring'
-            if before_scatter:
-                before_scatter(self._adlfs, src, dst)
-            self._scatter(src, dst, self._transfer)
+            if before_start:
+                before_start(self._adlfs, src, dst)
+            self._start(src, dst, self._transfer)
         if monitor:
             self.monitor()
 
