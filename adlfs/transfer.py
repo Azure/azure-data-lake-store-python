@@ -187,6 +187,30 @@ class ADLTransferClient(object):
     The event will be set when a shutdown is requested. It is good practice
     to listen for this.
 
+    Internal State
+    --------------
+
+    self._fstates: StateManager
+        This captures the current state of each transferred file.
+    self._files: dict
+        Using a tuple of the file source/destination as the key, this
+        dictionary stores the file metadata and all chunk states. The
+        dictionary key is `(src, dst)` and the value is
+        `dict(length, start, stop, cstates)`.
+    self._chunks: dict
+        Using a tuple of the chunk name/offset as the key, this dictionary
+        stores the chunk metadata and has a reference to the chunk's parent
+        file. The dictionary key is `(name, offset)` and the value is
+        `dict(file=(src, dst), retries)`.
+    self._ffutures: dict
+        Using a Future object as the key, this dictionary provides a reverse
+        lookup for the file associated with the given future. The returned
+        value is the file's primary key, `(src, dst)`.
+    self._cfutures: dict
+        Using a Future object as the key, this dictionary provides a reverse
+        lookup for the chunk associated with the given future. The returned
+        value is the chunk's primary key, `(name, offset)`.
+
     See Also
     --------
     adlfs.multithread.ADLDownloader
@@ -209,6 +233,8 @@ class ADLTransferClient(object):
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
+
+        # Internal state tracking files/chunks/futures
         self._files = {}
         self._chunks = {}
         self._ffutures = {}
