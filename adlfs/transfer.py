@@ -352,7 +352,12 @@ class ADLTransferClient(object):
                 nbytes, exception = future.result()
                 self._chunks[obj]['actual'] = nbytes
                 self._chunks[obj]['exception'] = exception
-                cstates[obj] = 'finished'
+                if exception:
+                    cstates[obj] = 'errored'
+                elif self._chunks[obj]['expected'] != nbytes:
+                    cstates[obj] = 'errored'
+                else:
+                    cstates[obj] = 'finished'
 
             if cstates.contains_all('finished'):
                 logger.debug("Chunks transferred")
