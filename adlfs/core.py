@@ -40,7 +40,7 @@ class AzureDLFileSystem(object):
 
     Parameters
     ----------
-    store : str ("")
+    store_name : str ("")
         Store name to connect to
     token : dict
         When setting up a new connection, this contains the authorization
@@ -49,7 +49,8 @@ class AzureDLFileSystem(object):
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
     kwargs: optional key/values
-        For auth, such as username, password. See ``lib.auth()``
+        See ``lib.auth()``; full list: tenant_id, username, password, client_id,
+        client_secret, resource
     """
     _singleton = [None]
 
@@ -719,7 +720,7 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
                              read='true')
             return resp
         except Exception as e:
-            logger.debug('Exception %e on ADL download, retrying', e,
+            logger.debug('Exception %s on ADL download, retrying', e,
                          exc_info=True)
     raise RuntimeError("Max number of ADL retries exceeded")
 

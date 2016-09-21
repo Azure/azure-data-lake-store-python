@@ -218,8 +218,10 @@ class ADLTransferClient(object):
     adlfs.multithread.ADLUploader
     """
 
+    DEFAULT_TMP_PATH = os.path.join(os.path.sep, 'tmp')
+
     def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
-                 chunksize=2**28, blocksize=2**25, tmp_path='/tmp',
+                 chunksize=2**28, blocksize=2**25, tmp_path=DEFAULT_TMP_PATH,
                  tmp_unique=True, persist_path=None, delimiter=None):
         self._adlfs = adlfs
         self._name = name

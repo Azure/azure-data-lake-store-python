@@ -9,7 +9,7 @@
 import pytest
 import time
 
-from tests.testing import azure
+from tests.testing import azure, posix
 from adlfs.transfer import ADLTransferClient
 
 
@@ -61,3 +61,11 @@ def test_submit_and_run(azure):
                                           for chunk in f.chunks])
     assert all([chunk.expected == chunk.actual for f in client.progress
                                                for chunk in f.chunks])
+
+
+def test_temporary_path(azure):
+    def transfer(adlfs, src, dst, offset, size):
+        pass
+
+    client = ADLTransferClient(azure, 'foobar', transfer=transfer, tmp_unique=False)
+    assert posix(client.temporary_path) == '/tmp'
