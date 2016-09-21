@@ -233,11 +233,10 @@ class ADLTransferClient(object):
                     dst.name + '_' + str(offset))
             else:
                 name = dst
-            cstates[name] = 'pending'
-            chunks[name] = dict(
+            cstates[(name, offset)] = 'pending'
+            chunks[(name, offset)] = dict(
                 future=None,
-                retries=self._chunkretries,
-                offset=offset)
+                retries=self._chunkretries)
             logger.debug("Submitted %s, byte offset %d", name, offset)
 
         self._fstates[(src, dst)] = 'pending'
@@ -257,12 +256,11 @@ class ADLTransferClient(object):
         dic = self._files[(src, dst)]
         self._fstates[(src, dst)] = 'transferring'
         self._files[(src, dst)]['start'] = time.time()
-        for name in self._files[(src, dst)]['chunks']:
-            dic['cstates'][name] = 'running'
-            dic['chunks'][name]['future'] = self._submit(
-                transfer, self._adlfs, src, name,
-                dic['chunks'][name]['offset'], self._chunksize,
-                self._blocksize)
+        for name, offset in self._files[(src, dst)]['chunks']:
+            dic['cstates'][(name, offset)] = 'running'
+            dic['chunks'][(name, offset)]['future'] = self._submit(
+                transfer, self._adlfs, src, name, offset,
+                self._chunksize, self._blocksize)
 
     @property
     def temporary_path(self):
@@ -274,22 +272,23 @@ class ADLTransferClient(object):
     def progress(self):
         """ Return a summary of all transferred file/chunks """
         files = []
-        for key in self._files:
-            src, dst = key
+        for fkey in self._files:
+            src, dst = fkey
             chunks = []
-            for name in self._files[key]['chunks']:
+            for ckey in self._files[fkey]['chunks']:
+                name, offset = ckey
                 chunks.append(Chunk(
                     name=name,
-                    state=self._files[key]['cstates'][name],
-                    offset=self._files[key]['chunks'][name]['offset'],
-                    retries=self._files[key]['chunks'][name]['retries']))
+                    offset=offset,
+                    state=self._files[fkey]['cstates'][ckey],
+                    retries=self._files[fkey]['chunks'][ckey]['retries']))
             files.append(File(
                 src=src,
                 dst=dst,
-                state=self._fstates[key],
-                length=self._files[key]['length'],
-                start=self._files[key]['start'],
-                stop=self._files[key]['stop'],
+                state=self._fstates[fkey],
+                length=self._files[fkey]['length'],
+                start=self._files[fkey]['start'],
+                stop=self._files[fkey]['stop'],
                 chunks=chunks))
         return files
 
@@ -302,16 +301,16 @@ class ADLTransferClient(object):
     def _update(self):
         for (src, dst), dic in self._files.items():
             if self._fstates[(src, dst)] == 'transferring':
-                for name in list(dic['chunks']):
-                    future = dic['chunks'][name]['future']
+                for ckey in list(dic['chunks']):
+                    future = dic['chunks'][ckey]['future']
                     if not future.done():
                         continue
                     if future.cancelled():
-                        dic['cstates'][name] = 'cancelled'
+                        dic['cstates'][ckey] = 'cancelled'
                     elif future.exception():
-                        dic['cstates'][name] = 'errored'
+                        dic['cstates'][ckey] = 'errored'
                     else:
-                        dic['cstates'][name] = 'finished'
+                        dic['cstates'][ckey] = 'finished'
                 if dic['cstates'].contains_all('finished'):
                     logger.debug("Chunks transferred")
                     chunks = list(dic['chunks'])
@@ -369,8 +368,8 @@ class ADLTransferClient(object):
 
     def _clear(self):
         for dic in self._files.values():
-            for name in dic['chunks']:
-                dic['chunks'][name]['future'] = None
+            for key in dic['chunks']:
+                dic['chunks'][key]['future'] = None
             dic['merge'] = None
         self._pool = None
 
