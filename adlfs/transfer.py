@@ -102,7 +102,7 @@ class StateManager(object):
 
 
 # Named tuples used to serialize client progress
-File = namedtuple('File', 'src dst state nbytes start stop chunks')
+File = namedtuple('File', 'src dst state length start stop chunks')
 Chunk = namedtuple('Chunk', 'name state offset retries')
 
 
@@ -214,7 +214,7 @@ class ADLTransferClient(object):
             'pending', 'transferring', 'merging', 'finished', 'cancelled',
             'errored')
 
-    def submit(self, src, dst, nbytes):
+    def submit(self, src, dst, length):
         """
         Split a given file into chunks.
 
@@ -225,7 +225,7 @@ class ADLTransferClient(object):
         cstates = StateManager(
             'pending', 'running', 'finished', 'cancelled', 'errored')
 
-        offsets = list(range(0, nbytes, self._chunksize))
+        offsets = list(range(0, length, self._chunksize))
         for offset in offsets:
             if self._tmp_path and len(offsets) > 1:
                 name = os.path.join(
@@ -242,7 +242,7 @@ class ADLTransferClient(object):
 
         self._fstates[(src, dst)] = 'pending'
         self._files[(src, dst)] = dict(
-            nbytes=nbytes,
+            length=length,
             start=None,
             stop=None,
             chunks=chunks,
@@ -287,15 +287,15 @@ class ADLTransferClient(object):
                 src=src,
                 dst=dst,
                 state=self._fstates[key],
-                nbytes=self._files[key]['nbytes'],
+                length=self._files[key]['length'],
                 start=self._files[key]['start'],
                 stop=self._files[key]['stop'],
                 chunks=chunks))
         return files
 
-    def _status(self, src, dst, nbytes, start, stop):
+    def _status(self, src, dst, length, start, stop):
         elapsed = stop - start
-        rate = nbytes / elapsed / 1024 / 1024
+        rate = length / elapsed / 1024 / 1024
         logger.info("Transferred %s -> %s in %f seconds at %f MB/s",
                     src, dst, elapsed, rate)
 
@@ -323,7 +323,7 @@ class ADLTransferClient(object):
                     else:
                         dic['stop'] = time.time()
                         self._fstates[(src, dst)] = 'finished'
-                        self._status(src, dst, dic['nbytes'], dic['start'], dic['stop'])
+                        self._status(src, dst, dic['length'], dic['start'], dic['stop'])
                 elif dic['cstates'].contains_none('running'):
                     logger.debug("Transfer failed: %s", dic['cstates'])
                     self._fstates[(src, dst)] = 'errored'
@@ -340,7 +340,7 @@ class ADLTransferClient(object):
                 else:
                     dic['stop'] = time.time()
                     self._fstates[(src, dst)] = 'finished'
-                    self._status(src, dst, dic['nbytes'], dic['start'], dic['stop'])
+                    self._status(src, dst, dic['length'], dic['start'], dic['stop'])
         self.save()
 
     def run(self, nthreads=None, monitor=True, before_start=None):
