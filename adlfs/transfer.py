@@ -175,7 +175,8 @@ class ADLTransferClient(object):
     and destination of the respective file transfer. `offset` is the location
     in `src` to read `size` bytes from. `blocksize` is the number of bytes in a
     chunk to write at one time. `retries` is the number of time an Azure query
-    will be tried.
+    will be tried. The callable should return an integer representing the
+    number of bytes written.
 
     The `merge` callable has the function signature,
     `fn(adlfs, outfile, files, delete_source, shutdown_event)`. `adlfs` is
@@ -201,7 +202,7 @@ class ADLTransferClient(object):
         Using a tuple of the chunk name/offset as the key, this dictionary
         stores the chunk metadata and has a reference to the chunk's parent
         file. The dictionary key is `(name, offset)` and the value is
-        `dict(file=(src, dst), retries)`.
+        `dict(parent=(src, dst), retries, expected, actual)`.
     self._ffutures: dict
         Using a Future object as the key, this dictionary provides a reverse
         lookup for the file associated with the given future. The returned
@@ -264,7 +265,9 @@ class ADLTransferClient(object):
             cstates[(name, offset)] = 'pending'
             self._chunks[(name, offset)] = dict(
                 parent=(src, dst),
-                retries=self._chunkretries)
+                retries=self._chunkretries,
+                expected=min(self._chunksize - offset, self._chunksize),
+                actual=0)
             logger.debug("Submitted %s, byte offset %d", name, offset)
 
         self._fstates[(src, dst)] = 'pending'
@@ -311,7 +314,9 @@ class ADLTransferClient(object):
                     name=name,
                     offset=offset,
                     state=self._files[key]['cstates'][obj],
-                    retries=self._chunks[obj]['retries']))
+                    retries=self._chunks[obj]['retries'],
+                    expected=self._chunks[obj]['expected'],
+                    actual=self._chunks[obj]['actual']))
             files.append(File(
                 src=src,
                 dst=dst,
@@ -340,7 +345,7 @@ class ADLTransferClient(object):
             elif future.exception():
                 cstates[obj] = 'errored'
             else:
-                result = future.result()
+                self._chunks[obj]['actual'] = future.result()
                 cstates[obj] = 'finished'
 
             if cstates.contains_all('finished'):

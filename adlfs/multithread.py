@@ -160,6 +160,7 @@ def get_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
 
     Internal function used by `download`.
     """
+    nbytes = 0
     with adlfs.open(src, 'rb') as fin:
         end = offset + size
         miniblock = min(size, blocksize)
@@ -168,11 +169,12 @@ def get_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
             fin.seek(offset)
             for o in range(offset, end, miniblock):
                 if shutdown_event and shutdown_event.is_set():
-                    return
+                    return nbytes
                 tries = 0
                 while True:
                     try:
-                        fout.write(fin.read(miniblock))
+                        data = fin.read(miniblock)
+                        nbytes += fout.write(data)
                         break
                     except Exception as e:
                         # TODO : only some exceptions should be retriable
@@ -183,6 +185,7 @@ def get_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
                             logger.debug('Aborting %s, byte offset %s', dst, o)
                             raise
     logger.debug('Downloaded to %s, byte offset %s', dst, offset)
+    return nbytes
 
 
 class ADLUploader(object):
@@ -306,17 +309,19 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
 
     Internal function used by `upload`.
     """
+    nbytes = 0
     with adlfs.open(dst, 'wb', delimiter=delimiter) as fout:
         end = offset + size
         miniblock = min(size, blocksize)
         with open(src, 'rb') as fin:
             for o in range(offset, end, miniblock):
                 if shutdown_event and shutdown_event.is_set():
-                    return False
+                    return nbytes
                 tries = 0
                 while True:
                     try:
-                        fout.write(read_block(fin, o, miniblock, delimiter))
+                        data = read_block(fin, o, miniblock, delimiter)
+                        nbytes += fout.write(data)
                         break
                     except Exception as e:
                         # TODO : only some exceptions should be retriable
@@ -327,7 +332,7 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
                             logger.debug('Aborting %s, byte offset %s', src, o)
                             raise
     logger.debug('Uploaded from %s, byte offset %s', src, offset)
-    return True
+    return nbytes
 
 
 def merge_chunks(adlfs, outfile, files, shutdown_event=None):
