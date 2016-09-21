@@ -720,7 +720,7 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
                              read='true')
             return resp
         except Exception as e:
-            logger.debug('Exception %e on ADL download, retrying', e,
+            logger.debug('Exception %s on ADL download, retrying', e,
                          exc_info=True)
     raise RuntimeError("Max number of ADL retries exceeded")
 

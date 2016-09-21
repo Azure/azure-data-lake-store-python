@@ -9,7 +9,7 @@
 import pytest
 import time
 
-from tests.testing import azure
+from tests.testing import azure, posix
 from adlfs.transfer import ADLTransferClient
 
 
@@ -28,3 +28,11 @@ def test_interrupt(azure):
     client.monitor()
 
     assert client.progress[0].state != 'finished'
+
+
+def test_temporary_path(azure):
+    def transfer(adlfs, src, dst, offset, size):
+        pass
+
+    client = ADLTransferClient(azure, 'foobar', transfer=transfer, tmp_unique=False)
+    assert posix(client.temporary_path) == '/tmp'
