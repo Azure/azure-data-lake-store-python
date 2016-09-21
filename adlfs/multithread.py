@@ -135,7 +135,7 @@ class ADLDownloader(object):
             with open(dst, 'wb'):
                 pass
 
-        self.client.run(nthreads, monitor, before_scatter=touch)
+        self.client.run(nthreads, monitor, before_start=touch)
 
     @staticmethod
     def load():
