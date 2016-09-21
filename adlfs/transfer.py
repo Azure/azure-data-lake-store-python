@@ -103,7 +103,7 @@ class StateManager(object):
 
 # Named tuples used to serialize client progress
 File = namedtuple('File', 'src dst state length start stop chunks')
-Chunk = namedtuple('Chunk', 'name state offset retries')
+Chunk = namedtuple('Chunk', 'name state offset retries expected actual')
 
 
 class ADLTransferClient(object):
@@ -266,7 +266,7 @@ class ADLTransferClient(object):
             self._chunks[(name, offset)] = dict(
                 parent=(src, dst),
                 retries=self._chunkretries,
-                expected=min(self._chunksize - offset, self._chunksize),
+                expected=min(length - offset, self._chunksize),
                 actual=0)
             logger.debug("Submitted %s, byte offset %d", name, offset)
 

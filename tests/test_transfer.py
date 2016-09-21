@@ -59,3 +59,5 @@ def test_submit_and_run(azure):
     assert all([client.progress[i].state == 'finished' for i in range(nfiles)])
     assert all([chunk.state == 'finished' for f in client.progress
                                           for chunk in f.chunks])
+    assert all([chunk.expected == chunk.actual for f in client.progress
+                                               for chunk in f.chunks])
