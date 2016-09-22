@@ -257,7 +257,7 @@ class ADLTransferClient(object):
 
         # Create unique temporary directory for each file
         if self._tmp_unique and self._tmp_path:
-            tmpdir = os.path.join(self._tmp_path, uuid.uuid1().hex[:10])
+            tmpdir = os.path.join(self._tmp_path, uuid.uuid4().hex)
         else:
             tmpdir = self._tmp_path
 
