@@ -6,11 +6,13 @@
 # license information.
 # --------------------------------------------------------------------------
 
+import os
 import pytest
 import time
 
-from tests.testing import azure, posix
+from adlfs.core import AzureDLPath
 from adlfs.transfer import ADLTransferClient
+from tests.testing import azure, posix
 
 
 @pytest.mark.skipif(True, reason="skip until resolve timing issue")
@@ -68,5 +70,8 @@ def test_temporary_path(azure):
         time.sleep(0.1)
         return size, None
 
-    client = ADLTransferClient(azure, 'foobar', transfer=transfer, tmp_unique=False)
-    assert posix(client.temporary_path) == '/tmp'
+    client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=8,
+                               tmp_unique=False)
+    client.submit('foo', AzureDLPath('bar'), 16)
+
+    assert os.path.dirname(posix(client.progress[0].chunks[0].name)) == '/tmp'

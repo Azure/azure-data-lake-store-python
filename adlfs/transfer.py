@@ -157,8 +157,7 @@ class ADLTransferClient(object):
     When a merge step is available, the client will write chunks to temporary
     files before merging. The exact temporary file is dependent upon on two
     parameters (`tmp_path`, `tmp_unique`). Given those values, the full
-    temporary file can be accessed via the `temporary_path` property and looks
-    like this in pseudo-BNF:
+    temporary file looks like this in pseudo-BNF:
 
     >>> # /{tmp_path}[/{unique_str}]/{basename}_{offset}
 
@@ -218,7 +217,7 @@ class ADLTransferClient(object):
     adlfs.multithread.ADLUploader
     """
 
-    DEFAULT_TMP_PATH = os.path.join(os.path.sep, 'tmp')
+    DEFAULT_TMP_PATH = 'tmp'
 
     def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
                  chunksize=2**28, blocksize=2**25, tmp_path=DEFAULT_TMP_PATH,
@@ -233,7 +232,6 @@ class ADLTransferClient(object):
         self._blocksize = blocksize
         self._tmp_path = tmp_path
         self._tmp_unique = tmp_unique
-        self._unique_subdir = uuid.uuid1().hex[:10] if self._tmp_unique else ''
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
@@ -257,11 +255,18 @@ class ADLTransferClient(object):
         cstates = StateManager(
             'pending', 'running', 'finished', 'cancelled', 'errored')
 
+        # Create unique temporary directory for each file
+        if self._tmp_unique and self._tmp_path:
+            tmpdir = os.path.join(self._tmp_path, uuid.uuid1().hex[:10])
+        else:
+            tmpdir = self._tmp_path
+
         offsets = list(range(0, length, self._chunksize))
         for offset in offsets:
             if self._tmp_path and len(offsets) > 1:
                 name = os.path.join(
-                    self.temporary_path,
+                    os.path.sep,
+                    tmpdir,
                     dst.name + '_' + str(offset))
             else:
                 name = dst
@@ -298,11 +303,6 @@ class ADLTransferClient(object):
                 self._transfer, self._adlfs, src, name, offset,
                 self._chunksize, self._blocksize)
             self._cfutures[future] = obj
-
-    @property
-    def temporary_path(self):
-        """ Return temporary path used to store chunks before merging """
-        return os.path.join(self._tmp_path, self._unique_subdir)
 
     @property
     def progress(self):
