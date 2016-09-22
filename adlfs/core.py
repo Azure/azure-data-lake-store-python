@@ -652,8 +652,10 @@ class AzureDLFile(object):
                 self.buffer = io.BytesIO(data)
                 self.buffer.seek(0, 2)
             if not self.delimiter or force:
+                zero_offset = self.tell() - len(data)
                 offsets = range(0, len(data), self.blocksize)
                 for o in offsets:
+                    offset = zero_offset + o
                     d2 = data[o:o+self.blocksize]
                     if self.first_write:
                         out = self.azure.azure.call('CREATE',
@@ -666,6 +668,7 @@ class AzureDLFile(object):
                         out = self.azure.azure.call('APPEND',
                                                     path=self.path.as_posix(),
                                                     data=d2,
+                                                    offset=offset,
                                                     append='true')
                     logger.debug('Wrote %d bytes to %s' % (len(d2), self))
                 self.buffer = io.BytesIO()

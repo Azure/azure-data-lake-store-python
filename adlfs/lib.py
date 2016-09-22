@@ -181,7 +181,7 @@ class DatalakeRESTInterface:
 
     ends = {
         # OP: (HTTP method, required fields, allowed fields)
-        'APPEND': ('post', set(), {'append'}),
+        'APPEND': ('post', set(), {'append', 'offset'}),
         'CHECKACCESS': ('get', set(), {'fsaction'}),
         'CONCAT': ('post', {'sources'}, {'sources'}),
         'MSCONCAT': ('post', set(), {'deleteSourceDirectory'}),
