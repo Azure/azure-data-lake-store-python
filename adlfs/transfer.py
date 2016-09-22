@@ -233,6 +233,7 @@ class ADLTransferClient(object):
         self._blocksize = blocksize
         self._tmp_path = tmp_path
         self._tmp_unique = tmp_unique
+        self._unique_subdir = uuid.uuid1().hex[:10] if self._tmp_unique else ''
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
@@ -301,8 +302,7 @@ class ADLTransferClient(object):
     @property
     def temporary_path(self):
         """ Return temporary path used to store chunks before merging """
-        subdir = uuid.uuid1().hex[:10] if self._tmp_unique else ''
-        return os.path.join(self._tmp_path, subdir)
+        return os.path.join(self._tmp_path, self._unique_subdir)
 
     @property
     def progress(self):
