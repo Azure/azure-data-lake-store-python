@@ -619,10 +619,12 @@ class AzureDLFile(object):
         if self.mode in {'wb', 'ab'} and not self.closed:
             if self.buffer.tell() == 0:
                 if force and self.first_write:
-                    self.azure.azure.call('CREATE',
-                                          path=self.path.as_posix(),
-                                          overwrite='true',
-                                          write='true')
+                    _put_data(self.azure.azure,
+                              'CREATE',
+                              path=self.path.as_posix(),
+                              data=None,
+                              overwrite='true',
+                              write='true')
                     self.first_write = False
                 return
             self.buffer.seek(0)
@@ -636,17 +638,19 @@ class AzureDLFile(object):
                     else:
                         limit = place + len(self.delimiter)
                     if self.first_write:
-                        out = self.azure.azure.call('CREATE',
-                                                    path=self.path.as_posix(),
-                                                    data=data[:limit],
-                                                    overwrite='true',
-                                                    write='true')
+                        out = _put_data(self.azure.azure,
+                                        'CREATE',
+                                        path=self.path.as_posix(),
+                                        data=data[:limit],
+                                        overwrite='true',
+                                        write='true')
                         self.first_write = False
                     else:
-                        out = self.azure.azure.call('APPEND',
-                                                    path=self.path.as_posix(),
-                                                    data=data[:limit],
-                                                    append='true')
+                        out = _put_data(self.azure.azure,
+                                        'APPEND',
+                                        path=self.path.as_posix(),
+                                        data=data[:limit],
+                                        append='true')
                     logger.debug('Wrote %d bytes to %s' % (limit, self))
                     data = data[limit:]
                 self.buffer = io.BytesIO(data)
@@ -658,18 +662,20 @@ class AzureDLFile(object):
                     offset = zero_offset + o
                     d2 = data[o:o+self.blocksize]
                     if self.first_write:
-                        out = self.azure.azure.call('CREATE',
-                                                    path=self.path.as_posix(),
-                                                    data=d2,
-                                                    overwrite='true',
-                                                    write='true')
+                        out = _put_data(self.azure.azure,
+                                        'CREATE',
+                                        path=self.path.as_posix(),
+                                        data=d2,
+                                        overwrite='true',
+                                        write='true')
                         self.first_write = False
                     else:
-                        out = self.azure.azure.call('APPEND',
-                                                    path=self.path.as_posix(),
-                                                    data=d2,
-                                                    offset=offset,
-                                                    append='true')
+                        out = _put_data(self.azure.azure,
+                                        'APPEND',
+                                        path=self.path.as_posix(),
+                                        data=d2,
+                                        offset=offset,
+                                        append='true')
                     logger.debug('Wrote %d bytes to %s' % (len(d2), self))
                 self.buffer = io.BytesIO()
             return out
@@ -724,6 +730,18 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
             return resp
         except Exception as e:
             logger.debug('Exception %s on ADL download, retrying', e,
+                         exc_info=True)
+    raise RuntimeError("Max number of ADL retries exceeded")
+
+
+def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
+    logger.debug("Put: %s, %s", path, kwargs)
+    for i in range(max_attempts):
+        try:
+            resp = rest.call(op, path=path, data=data, **kwargs)
+            return resp
+        except Exception as e:
+            logger.debug('Exception %s on ADL upload, retrying', e,
                          exc_info=True)
     raise RuntimeError("Max number of ADL retries exceeded")
 
