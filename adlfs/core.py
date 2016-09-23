@@ -24,7 +24,7 @@ import time
 
 # local imports
 from .lib import DatalakeRESTInterface, auth, refresh_token
-from .utils import FileNotFoundError, PY2, ensure_writable, read_block
+from .utils import FileNotFoundError, PermissionError, PY2, ensure_writable, read_block
 
 if sys.version_info >= (3, 4):
     import pathlib
@@ -740,6 +740,8 @@ def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
         try:
             resp = rest.call(op, path=path, data=data, **kwargs)
             return resp
+        except (PermissionError, FileNotFoundError):
+            raise
         except Exception as e:
             logger.debug('Exception %s on ADL upload, retrying', e,
                          exc_info=True)
