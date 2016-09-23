@@ -735,7 +735,7 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
 
 
 def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
-    logger.debug("Put: %s, %s", path, kwargs)
+    logger.debug("Put: %s %s, %s", op, path, kwargs)
     for i in range(max_attempts):
         try:
             resp = rest.call(op, path=path, data=data, **kwargs)
