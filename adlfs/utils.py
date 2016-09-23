@@ -18,7 +18,7 @@ PY2 = sys.version_info.major == 2
 try:
     FileNotFoundError = FileNotFoundError
 except NameError:
-    class FileNotFoundError(OSError):
+    class FileNotFoundError(IOError):
         pass
 
 try:
