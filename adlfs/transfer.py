@@ -367,7 +367,8 @@ class ADLTransferClient(object):
                     self._fstates[parent] = 'merging'
                     merge_future = self._submit(
                         self._merge, self._adlfs, dst,
-                        [o[0] for o in cstates.objects])
+                        [name for name, _ in sorted(cstates.objects,
+                                                    key=lambda obj: obj[1])])
                     self._ffutures[merge_future] = parent
                 else:
                     self._fstates[parent] = 'finished'
