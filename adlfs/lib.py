@@ -249,9 +249,9 @@ class DatalakeRESTInterface:
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: %s', str(e))
         if r.status_code == 403:
-            raise PermissionError
+            raise PermissionError(path)
         elif r.status_code == 404:
-            raise FileNotFoundError
+            raise FileNotFoundError(path)
         elif r.status_code >= 400:
             raise DatalakeRESTException("Data-lake REST exception: %s, %s, %s" %
                                         (op, r.status_code, r.content.decode()))
