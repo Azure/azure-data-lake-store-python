@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import shutil
 import sys
 import time
 
@@ -154,16 +155,17 @@ if __name__ == '__main__':
 
     # Required setup until outstanding issues are resolved
     adl.mkdir(remoteFolderName)
-    if adl.exists(remoteFolderName + '/50gbfile.txt'):
-        adl.rm(remoteFolderName + '/50gbfile.txt')
-    if adl.exists(remoteFolderName + '/50_1GB_Files'):
-        adl.rm(remoteFolderName + '/50_1GB_Files', recursive=True)
 
     # Upload/download 1 50GB files
 
     lpath_up = os.path.join(localdir, '50gbfile.txt')
     lpath_down = os.path.join(localdir, '50gbfile.txt.out')
     rpath = remoteFolderName + '/50gbfile.txt'
+
+    if adl.exists(rpath):
+        adl.rm(rpath)
+    if os.path.exists(lpath_down):
+        os.remove(lpath_down)
 
     bench_upload_1_50gb(adl, lpath_up, rpath, nthreads)
     bench_download_1_50gb(adl, lpath_down, rpath, nthreads)
@@ -175,6 +177,11 @@ if __name__ == '__main__':
     lpath_up = os.path.join(localdir, '50_1GB_Files')
     lpath_down = os.path.join(localdir, '50_1GB_Files.out')
     rpath = remoteFolderName + '/50_1GB_Files'
+
+    if adl.exists(rpath):
+        adl.rm(rpath, recursive=True)
+    if os.path.exists(lpath_down):
+        shutil.rmtree(lpath_down)
 
     bench_upload_50_1gb(adl, lpath_up, rpath, nthreads)
     bench_download_50_1gb(adl, lpath_down, rpath, nthreads)
