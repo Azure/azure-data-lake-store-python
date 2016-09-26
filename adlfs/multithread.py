@@ -22,8 +22,6 @@ from .core import AzureDLPath
 from .transfer import ADLTransferClient
 from .utils import commonprefix, datadir, read_block, tokenize
 
-MAXRETRIES = 5
-
 logger = logging.getLogger(__name__)
 
 
@@ -154,36 +152,28 @@ class ADLDownloader(object):
     __repr__ = __str__
 
 
-def get_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
-              shutdown_event=None):
+def get_chunk(adlfs, src, dst, offset, size, blocksize, shutdown_event=None):
     """ Download a piece of a remote file and write locally
 
     Internal function used by `download`.
     """
     nbytes = 0
-    with adlfs.open(src, 'rb') as fin:
-        end = offset + size
-        miniblock = min(size, blocksize)
-        with open(dst, 'rb+') as fout:
-            fout.seek(offset)
-            fin.seek(offset)
-            for o in range(offset, end, miniblock):
-                if shutdown_event and shutdown_event.is_set():
-                    return nbytes, None
-                tries = 0
-                while True:
-                    try:
-                        data = fin.read(miniblock)
-                        nbytes += fout.write(data)
-                        break
-                    except Exception as e:
-                        # TODO : only some exceptions should be retriable
-                        logger.debug('Download failed %s, byte offset %s; %s, %s', dst,
-                                     o, e, e.args)
-                        tries += 1
-                        if tries >= retries:
-                            logger.debug('Aborting %s, byte offset %s', dst, o)
-                            return nbytes, str(e)
+    try:
+        with adlfs.open(src, 'rb') as fin:
+            end = offset + size
+            miniblock = min(size, blocksize)
+            with open(dst, 'rb+') as fout:
+                fout.seek(offset)
+                fin.seek(offset)
+                for o in range(offset, end, miniblock):
+                    if shutdown_event and shutdown_event.is_set():
+                        return nbytes, None
+                    data = fin.read(miniblock)
+                    nbytes += fout.write(data)
+    except Exception as e:
+        exception = repr(e)
+        logger.debug('Download failed %s; %s', dst, exception)
+        return nbytes, exception
     logger.debug('Downloaded to %s, byte offset %s', dst, offset)
     return nbytes, None
 
@@ -303,34 +293,27 @@ class ADLUploader(object):
     __repr__ = __str__
 
 
-def put_chunk(adlfs, src, dst, offset, size, blocksize, retries=MAXRETRIES,
-              delimiter=None, shutdown_event=None):
+def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
+              shutdown_event=None):
     """ Upload a piece of a local file
 
     Internal function used by `upload`.
     """
     nbytes = 0
-    with adlfs.open(dst, 'wb', delimiter=delimiter) as fout:
-        end = offset + size
-        miniblock = min(size, blocksize)
-        with open(src, 'rb') as fin:
-            for o in range(offset, end, miniblock):
-                if shutdown_event and shutdown_event.is_set():
-                    return nbytes, None
-                tries = 0
-                while True:
-                    try:
-                        data = read_block(fin, o, miniblock, delimiter)
-                        nbytes += fout.write(data)
-                        break
-                    except Exception as e:
-                        # TODO : only some exceptions should be retriable
-                        logger.debug('Upload failed %s, byte offset %s; %s, %s', src,
-                                     o, e, e.args)
-                        tries += 1
-                        if tries >= retries:
-                            logger.debug('Aborting %s, byte offset %s', src, o)
-                            return nbytes, str(e)
+    try:
+        with adlfs.open(dst, 'wb', delimiter=delimiter) as fout:
+            end = offset + size
+            miniblock = min(size, blocksize)
+            with open(src, 'rb') as fin:
+                for o in range(offset, end, miniblock):
+                    if shutdown_event and shutdown_event.is_set():
+                        return nbytes, None
+                    data = read_block(fin, o, miniblock, delimiter)
+                    nbytes += fout.write(data)
+    except Exception as e:
+        exception = repr(e)
+        logger.debug('Upload failed %s; %s', src, exception)
+        return nbytes, exception
     logger.debug('Uploaded from %s, byte offset %s', src, offset)
     return nbytes, None
 
