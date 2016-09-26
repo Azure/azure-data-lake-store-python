@@ -39,12 +39,16 @@ def mock_client(adl, nthreads):
 
 def checksum(path):
     """ Generate checksum for file/directory content """
+    if not os.path.exists(path):
+        return None
     if os.path.isfile(path):
         return md5sum(path)
     partial_sums = []
     for root, dirs, files in os.walk(path):
         for f in files:
-            partial_sums.append(str.encode(md5sum(os.path.join(root, f))))
+            filename = os.path.join(root, f)
+            if os.path.exists(filename):
+                partial_sums.append(str.encode(md5sum(filename)))
     return hashlib.md5(b''.join(sorted(partial_sums))).hexdigest()
 
 
@@ -62,16 +66,26 @@ def du(path):
 def verify(adl, progress, lfile, rfile):
     """ Confirm whether target file matches source file """
     print("local file      :", lfile)
-    print("local file size :", du(lfile))
+    if os.path.exists(lfile):
+        print("local file size :", du(lfile))
+    else:
+        print("local file size :", None)
 
     print("remote file     :", rfile)
-    print("remote file size:", adl.du(rfile, total=True, deep=True))
+    if adl.exists(rfile):
+        print("remote file size:", adl.du(rfile, total=True, deep=True))
+    else:
+        print("remote file size:", None)
 
     for f in progress:
         chunks_finished = 0
         for chunk in f.chunks:
             if chunk.state == 'finished':
                 chunks_finished += 1
+            else:
+                print("[{}] file {} -> {}, chunk {} {}: {}".format(
+                    chunk.state, f.src, f.dst, chunk.name, chunk.offset,
+                    chunk.exception))
         print("[{:4d}/{:4d} chunks] {} -> {}".format(chunks_finished,
                                                      len(f.chunks),
                                                      f.src, f.dst))
