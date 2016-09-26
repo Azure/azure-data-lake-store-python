@@ -331,13 +331,6 @@ class ADLTransferClient(object):
                 chunks=chunks))
         return files
 
-    def _status(self, src, dst):
-        dic = self._files[(src, dst)]
-        elapsed = dic['stop'] - dic['start']
-        rate = dic['length'] / elapsed / 1024 / 1024
-        logger.info("Transferred %s -> %s in %f seconds at %f MB/s",
-                    src, dst, elapsed, rate)
-
     def _update(self, future):
         if future in self._cfutures:
             obj = self._cfutures[future]
@@ -373,7 +366,7 @@ class ADLTransferClient(object):
                 else:
                     self._fstates[parent] = 'finished'
                     self._files[parent]['stop'] = time.time()
-                    self._status(src, dst)
+                    logger.info("Transferred %s -> %s", src, dst)
             elif cstates.contains_none('running'):
                 logger.debug("Transfer failed: %s", cstates)
                 self._fstates[parent] = 'errored'
@@ -388,7 +381,7 @@ class ADLTransferClient(object):
                 result = future.result()
                 self._fstates[(src, dst)] = 'finished'
                 self._files[(src, dst)]['stop'] = time.time()
-                self._status(src, dst)
+                logger.info("Transferred %s -> %s", src, dst)
         self.save()
 
     def run(self, nthreads=None, monitor=True, before_start=None):
