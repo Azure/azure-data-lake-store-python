@@ -24,7 +24,7 @@ import time
 
 # local imports
 from .lib import DatalakeRESTInterface, auth, refresh_token
-from .utils import FileNotFoundError, PY2, ensure_writable, read_block
+from .utils import FileNotFoundError, PermissionError, PY2, ensure_writable, read_block
 
 if sys.version_info >= (3, 4):
     import pathlib
@@ -619,10 +619,12 @@ class AzureDLFile(object):
         if self.mode in {'wb', 'ab'} and not self.closed:
             if self.buffer.tell() == 0:
                 if force and self.first_write:
-                    self.azure.azure.call('CREATE',
-                                          path=self.path.as_posix(),
-                                          overwrite='true',
-                                          write='true')
+                    _put_data(self.azure.azure,
+                              'CREATE',
+                              path=self.path.as_posix(),
+                              data=None,
+                              overwrite='true',
+                              write='true')
                     self.first_write = False
                 return
             self.buffer.seek(0)
@@ -636,37 +638,44 @@ class AzureDLFile(object):
                     else:
                         limit = place + len(self.delimiter)
                     if self.first_write:
-                        out = self.azure.azure.call('CREATE',
-                                                    path=self.path.as_posix(),
-                                                    data=data[:limit],
-                                                    overwrite='true',
-                                                    write='true')
+                        out = _put_data(self.azure.azure,
+                                        'CREATE',
+                                        path=self.path.as_posix(),
+                                        data=data[:limit],
+                                        overwrite='true',
+                                        write='true')
                         self.first_write = False
                     else:
-                        out = self.azure.azure.call('APPEND',
-                                                    path=self.path.as_posix(),
-                                                    data=data[:limit],
-                                                    append='true')
+                        out = _put_data(self.azure.azure,
+                                        'APPEND',
+                                        path=self.path.as_posix(),
+                                        data=data[:limit],
+                                        append='true')
                     logger.debug('Wrote %d bytes to %s' % (limit, self))
                     data = data[limit:]
                 self.buffer = io.BytesIO(data)
                 self.buffer.seek(0, 2)
             if not self.delimiter or force:
+                zero_offset = self.tell() - len(data)
                 offsets = range(0, len(data), self.blocksize)
                 for o in offsets:
+                    offset = zero_offset + o
                     d2 = data[o:o+self.blocksize]
                     if self.first_write:
-                        out = self.azure.azure.call('CREATE',
-                                                    path=self.path.as_posix(),
-                                                    data=d2,
-                                                    overwrite='true',
-                                                    write='true')
+                        out = _put_data(self.azure.azure,
+                                        'CREATE',
+                                        path=self.path.as_posix(),
+                                        data=d2,
+                                        overwrite='true',
+                                        write='true')
                         self.first_write = False
                     else:
-                        out = self.azure.azure.call('APPEND',
-                                                    path=self.path.as_posix(),
-                                                    data=d2,
-                                                    append='true')
+                        out = _put_data(self.azure.azure,
+                                        'APPEND',
+                                        path=self.path.as_posix(),
+                                        data=d2,
+                                        offset=offset,
+                                        append='true')
                     logger.debug('Wrote %d bytes to %s' % (len(d2), self))
                 self.buffer = io.BytesIO()
             return out
@@ -721,6 +730,20 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
             return resp
         except Exception as e:
             logger.debug('Exception %s on ADL download, retrying', e,
+                         exc_info=True)
+    raise RuntimeError("Max number of ADL retries exceeded")
+
+
+def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
+    logger.debug("Put: %s %s, %s", op, path, kwargs)
+    for i in range(max_attempts):
+        try:
+            resp = rest.call(op, path=path, data=data, **kwargs)
+            return resp
+        except (PermissionError, FileNotFoundError):
+            raise
+        except Exception as e:
+            logger.debug('Exception %s on ADL upload, retrying', e,
                          exc_info=True)
     raise RuntimeError("Max number of ADL retries exceeded")
 

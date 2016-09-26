@@ -25,6 +25,8 @@ import time
 import adal
 import azure
 
+from .utils import FileNotFoundError, PermissionError
+
 client_id = "1950a258-227b-4e31-a9cf-717495945fc2"
 
 logger = logging.getLogger(__name__)
@@ -181,7 +183,7 @@ class DatalakeRESTInterface:
 
     ends = {
         # OP: (HTTP method, required fields, allowed fields)
-        'APPEND': ('post', set(), {'append'}),
+        'APPEND': ('post', set(), {'append', 'offset'}),
         'CHECKACCESS': ('get', set(), {'fsaction'}),
         'CONCAT': ('post', {'sources'}, {'sources'}),
         'MSCONCAT': ('post', set(), {'deleteSourceDirectory'}),
@@ -246,7 +248,11 @@ class DatalakeRESTInterface:
             r = func(url, params=params, headers=self.head, data=data)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: %s', str(e))
-        if r.status_code >= 400:
+        if r.status_code == 403:
+            raise PermissionError(path)
+        elif r.status_code == 404:
+            raise FileNotFoundError(path)
+        elif r.status_code >= 400:
             raise DatalakeRESTException("Data-lake REST exception: %s, %s, %s" %
                                         (op, r.status_code, r.content.decode()))
         if r.content:

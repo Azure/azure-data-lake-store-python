@@ -21,6 +21,12 @@ except NameError:
     class FileNotFoundError(IOError):
         pass
 
+try:
+    PermissionError = PermissionError
+except NameError:
+    class PermissionError(OSError):
+        pass
+
 WIN = platform.platform() == 'Windows'
 
 if WIN:
