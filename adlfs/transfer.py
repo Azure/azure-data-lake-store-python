@@ -102,7 +102,7 @@ class StateManager(object):
 
 
 # Named tuples used to serialize client progress
-File = namedtuple('File', 'src dst state length start stop chunks')
+File = namedtuple('File', 'src dst state length start stop chunks exception')
 Chunk = namedtuple('Chunk', 'name state offset retries expected actual exception')
 
 
@@ -196,7 +196,7 @@ class ADLTransferClient(object):
         Using a tuple of the file source/destination as the key, this
         dictionary stores the file metadata and all chunk states. The
         dictionary key is `(src, dst)` and the value is
-        `dict(length, start, stop, cstates)`.
+        `dict(length, start, stop, cstates, exception)`.
     self._chunks: dict
         Using a tuple of the chunk name/offset as the key, this dictionary
         stores the chunk metadata and has a reference to the chunk's parent
@@ -284,7 +284,8 @@ class ADLTransferClient(object):
             length=length,
             start=None,
             stop=None,
-            cstates=cstates)
+            cstates=cstates,
+            exception=None)
 
     def _submit(self, fn, *args, **kwargs):
         kwargs['shutdown_event'] = self._shutdown_event
@@ -328,15 +329,9 @@ class ADLTransferClient(object):
                 length=self._files[key]['length'],
                 start=self._files[key]['start'],
                 stop=self._files[key]['stop'],
-                chunks=chunks))
+                chunks=chunks,
+                exception=self._files[key]['exception']))
         return files
-
-    def _status(self, src, dst):
-        dic = self._files[(src, dst)]
-        elapsed = dic['stop'] - dic['start']
-        rate = dic['length'] / elapsed / 1024 / 1024
-        logger.info("Transferred %s -> %s in %f seconds at %f MB/s",
-                    src, dst, elapsed, rate)
 
     def _update(self, future):
         if future in self._cfutures:
@@ -347,6 +342,7 @@ class ADLTransferClient(object):
             if future.cancelled():
                 cstates[obj] = 'cancelled'
             elif future.exception():
+                self._chunks[obj]['exception'] = repr(future.exception())
                 cstates[obj] = 'errored'
             else:
                 nbytes, exception = future.result()
@@ -373,7 +369,7 @@ class ADLTransferClient(object):
                 else:
                     self._fstates[parent] = 'finished'
                     self._files[parent]['stop'] = time.time()
-                    self._status(src, dst)
+                    logger.info("Transferred %s -> %s", src, dst)
             elif cstates.contains_none('running'):
                 logger.debug("Transfer failed: %s", cstates)
                 self._fstates[parent] = 'errored'
@@ -383,12 +379,17 @@ class ADLTransferClient(object):
             if future.cancelled():
                 self._fstates[(src, dst)] = 'cancelled'
             elif future.exception():
+                self._files[(src, dst)]['exception'] = repr(future.exception())
                 self._fstates[(src, dst)] = 'errored'
             else:
-                result = future.result()
-                self._fstates[(src, dst)] = 'finished'
-                self._files[(src, dst)]['stop'] = time.time()
-                self._status(src, dst)
+                exception = future.result()
+                self._files[(src, dst)]['exception'] = exception
+                if exception:
+                    self._fstates[(src, dst)] = 'errored'
+                else:
+                    self._fstates[(src, dst)] = 'finished'
+                    self._files[(src, dst)]['stop'] = time.time()
+                    logger.info("Transferred %s -> %s", src, dst)
         self.save()
 
     def run(self, nthreads=None, monitor=True, before_start=None):

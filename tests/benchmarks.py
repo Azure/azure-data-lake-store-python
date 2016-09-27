@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import shutil
 import sys
 import time
 
@@ -39,12 +40,16 @@ def mock_client(adl, nthreads):
 
 def checksum(path):
     """ Generate checksum for file/directory content """
+    if not os.path.exists(path):
+        return None
     if os.path.isfile(path):
         return md5sum(path)
     partial_sums = []
     for root, dirs, files in os.walk(path):
         for f in files:
-            partial_sums.append(str.encode(md5sum(os.path.join(root, f))))
+            filename = os.path.join(root, f)
+            if os.path.exists(filename):
+                partial_sums.append(str.encode(md5sum(filename)))
     return hashlib.md5(b''.join(sorted(partial_sums))).hexdigest()
 
 
@@ -62,19 +67,35 @@ def du(path):
 def verify(adl, progress, lfile, rfile):
     """ Confirm whether target file matches source file """
     print("local file      :", lfile)
-    print("local file size :", du(lfile))
+    if os.path.exists(lfile):
+        print("local file size :", du(lfile))
+    else:
+        print("local file size :", None)
 
     print("remote file     :", rfile)
-    print("remote file size:", adl.du(rfile, total=True, deep=True))
+    if adl.exists(rfile):
+        print("remote file size:", adl.du(rfile, total=True, deep=True))
+    else:
+        print("remote file size:", None)
 
     for f in progress:
         chunks_finished = 0
         for chunk in f.chunks:
             if chunk.state == 'finished':
                 chunks_finished += 1
-        print("[{:4d}/{:4d} chunks] {} -> {}".format(chunks_finished,
-                                                     len(f.chunks),
-                                                     f.src, f.dst))
+            elif chunk.exception:
+                print("[{}] file {} -> {}, chunk {} {}: {}".format(
+                    chunk.state, f.src, f.dst, chunk.name, chunk.offset,
+                    chunk.exception))
+            else:
+                print("[{}] file {} -> {}, chunk {} {}".format(
+                    chunk.state, f.src, f.dst, chunk.name, chunk.offset))
+        if f.exception:
+            print("[{:4d}/{:4d} chunks] {} -> {}: {}".format(
+                chunks_finished, len(f.chunks), f.src, f.dst, f.exception))
+        else:
+            print("[{:4d}/{:4d} chunks] {} -> {}".format(
+                chunks_finished, len(f.chunks), f.src, f.dst))
 
 
 @benchmark
@@ -140,16 +161,17 @@ if __name__ == '__main__':
 
     # Required setup until outstanding issues are resolved
     adl.mkdir(remoteFolderName)
-    if adl.exists(remoteFolderName + '/50gbfile.txt'):
-        adl.rm(remoteFolderName + '/50gbfile.txt')
-    if adl.exists(remoteFolderName + '/50_1GB_Files'):
-        adl.rm(remoteFolderName + '/50_1GB_Files', recursive=True)
 
     # Upload/download 1 50GB files
 
     lpath_up = os.path.join(localdir, '50gbfile.txt')
     lpath_down = os.path.join(localdir, '50gbfile.txt.out')
     rpath = remoteFolderName + '/50gbfile.txt'
+
+    if adl.exists(rpath):
+        adl.rm(rpath)
+    if os.path.exists(lpath_down):
+        os.remove(lpath_down)
 
     bench_upload_1_50gb(adl, lpath_up, rpath, nthreads)
     bench_download_1_50gb(adl, lpath_down, rpath, nthreads)
@@ -161,6 +183,11 @@ if __name__ == '__main__':
     lpath_up = os.path.join(localdir, '50_1GB_Files')
     lpath_down = os.path.join(localdir, '50_1GB_Files.out')
     rpath = remoteFolderName + '/50_1GB_Files'
+
+    if adl.exists(rpath):
+        adl.rm(rpath, recursive=True)
+    if os.path.exists(lpath_down):
+        shutil.rmtree(lpath_down)
 
     bench_upload_50_1gb(adl, lpath_up, rpath, nthreads)
     bench_download_50_1gb(adl, lpath_down, rpath, nthreads)
