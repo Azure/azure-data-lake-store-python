@@ -319,4 +319,11 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
 
 
 def merge_chunks(adlfs, outfile, files, shutdown_event=None):
-    return adlfs.concat(outfile, files)
+    try:
+        adlfs.concat(outfile, files)
+    except Exception as e:
+        exception = repr(e)
+        logger.debug('Merged failed %s; %s', outfile, exception)
+        return exception
+    logger.debug('Merged %s', outfile)
+    return None

@@ -83,13 +83,19 @@ def verify(adl, progress, lfile, rfile):
         for chunk in f.chunks:
             if chunk.state == 'finished':
                 chunks_finished += 1
-            else:
+            elif chunk.exception:
                 print("[{}] file {} -> {}, chunk {} {}: {}".format(
                     chunk.state, f.src, f.dst, chunk.name, chunk.offset,
                     chunk.exception))
-        print("[{:4d}/{:4d} chunks] {} -> {}".format(chunks_finished,
-                                                     len(f.chunks),
-                                                     f.src, f.dst))
+            else:
+                print("[{}] file {} -> {}, chunk {} {}".format(
+                    chunk.state, f.src, f.dst, chunk.name, chunk.offset))
+        if f.exception:
+            print("[{:4d}/{:4d} chunks] {} -> {}: {}".format(
+                chunks_finished, len(f.chunks), f.src, f.dst, f.exception))
+        else:
+            print("[{:4d}/{:4d} chunks] {} -> {}".format(
+                chunks_finished, len(f.chunks), f.src, f.dst))
 
 
 @benchmark
