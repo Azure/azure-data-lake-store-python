@@ -19,6 +19,7 @@ import logging
 import os
 
 from .core import AzureDLPath
+from .exceptions import FileExistsError
 from .transfer import ADLTransferClient
 from .utils import commonprefix, datadir, read_block, tokenize
 
@@ -57,13 +58,17 @@ class ADLDownloader(object):
         by constructor.
     run: bool [True]
         Whether to begin executing immediately.
+    overwrite: bool [False]
+        Whether to forcibly overwrite existing files/directories.
 
     See Also
     --------
     adlfs.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**22, client=None, run=True):
+                 blocksize=2**22, client=None, run=True, overwrite=False):
+        if not overwrite and adlfs.exists(rpath):
+            raise FileExistsError(rpath)
         if client:
             self.client = client
         else:
@@ -78,6 +83,7 @@ class ADLDownloader(object):
                 persist_path=os.path.join(datadir, 'downloads'))
         self.rpath = rpath
         self.lpath = lpath
+        self._overwrite = overwrite
         self._setup()
         if run:
             self.run()
@@ -212,13 +218,18 @@ class ADLUploader(object):
     delimiter: byte(s) or None
         If set, will write blocks using delimiters in the backend, as well as
         split files for uploading on that delimiter.
+    overwrite: bool [False]
+        Whether to forcibly overwrite existing files/directories.
 
     See Also
     --------
     adlfs.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**25, client=None, run=True, delimiter=None):
+                 blocksize=2**25, client=None, run=True, delimiter=None,
+                 overwrite=False):
+        if not overwrite and os.path.exists(lpath):
+            raise FileExistsError(lpath)
         if client:
             self.client = client
         else:
@@ -234,6 +245,7 @@ class ADLUploader(object):
                 delimiter=delimiter)
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
+        self._overwrite = overwrite
         self._setup()
         if run:
             self.run()

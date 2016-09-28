@@ -181,10 +181,12 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser.add_argument('local_path', type=str, nargs='?', default='.')
         parser.add_argument('-b', '--chunksize', type=int, default=2**28)
         parser.add_argument('-c', '--threads', type=int, default=None)
+        parser.add_argument('-f', '--force', action='store_true')
         args = parser.parse_args(line.split())
 
         ADLDownloader(self._fs, args.remote_path, args.local_path,
-                      nthreads=args.threads, chunksize=args.chunksize)
+                      nthreads=args.threads, chunksize=args.chunksize,
+                      overwrite=args.force)
 
     def help_get(self):
         print("get [option]... remote-path [local-path]\n")
@@ -196,6 +198,9 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("    -c <int>")
         print("    --threads <int>")
         print("        Set number of multiple requests to perform at a time.")
+        print("    -f")
+        print("    --force")
+        print("        Overwrite an existing file or directory.")
 
     def do_head(self, line):
         parser = argparse.ArgumentParser(prog="head", add_help=False)
@@ -305,10 +310,12 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser.add_argument('remote_path', type=str, nargs='?', default='.')
         parser.add_argument('-b', '--chunksize', type=int, default=2**28)
         parser.add_argument('-c', '--threads', type=int, default=None)
+        parser.add_argument('-f', '--force', action='store_true')
         args = parser.parse_args(line.split())
 
         ADLUploader(self._fs, args.remote_path, args.local_path,
-                    nthreads=args.threads, chunksize=args.chunksize)
+                    nthreads=args.threads, chunksize=args.chunksize,
+                    overwrite=args.force)
 
     def help_put(self):
         print("put [option]... local-path [remote-path]\n")
@@ -320,6 +327,9 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("    -c <int>")
         print("    --threads <int>")
         print("        Set number of multiple requests to perform at a time.")
+        print("    -f")
+        print("    --force")
+        print("        Overwrite an existing file or directory.")
 
     def do_quit(self, line):
         return True

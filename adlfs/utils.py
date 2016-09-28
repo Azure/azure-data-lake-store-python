@@ -15,18 +15,6 @@ import sys
 
 PY2 = sys.version_info.major == 2
 
-try:
-    FileNotFoundError = FileNotFoundError
-except NameError:
-    class FileNotFoundError(IOError):
-        pass
-
-try:
-    PermissionError = PermissionError
-except NameError:
-    class PermissionError(OSError):
-        pass
-
 WIN = platform.platform() == 'Windows'
 
 if WIN:
