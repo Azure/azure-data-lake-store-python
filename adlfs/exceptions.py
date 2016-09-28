@@ -14,7 +14,7 @@ except NameError:
 
 try:
     FileExistsError = FileExistsError
-except FileExistsError:
+except NameError:
     class FileExistsError(OSError):
         pass
 
