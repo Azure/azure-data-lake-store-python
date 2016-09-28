@@ -71,7 +71,7 @@ def test_temporary_path(azure):
         return size, None
 
     client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=8,
-                               tmp_unique=False)
+                               unique_temporary=False)
     client.submit('foo', AzureDLPath('bar'), 16)
 
     assert os.path.dirname(posix(client.progress[0].chunks[0].name)) == 'bar.segments'
