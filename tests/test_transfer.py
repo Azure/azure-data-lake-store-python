@@ -23,7 +23,7 @@ def test_interrupt(azure):
         return size, None
 
     client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=1,
-                               tmp_path=None)
+                               chunked=False)
     client.submit('foo', 'bar', 16)
     client.run(monitor=False)
     time.sleep(1)
@@ -39,7 +39,7 @@ def test_submit_and_run(azure):
         return size, None
 
     client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=8,
-                               tmp_path=None)
+                               chunked=False)
 
     client.submit('foo', 'bar', 16)
     client.submit('abc', '123', 8)
@@ -74,4 +74,4 @@ def test_temporary_path(azure):
                                tmp_unique=False)
     client.submit('foo', AzureDLPath('bar'), 16)
 
-    assert os.path.dirname(posix(client.progress[0].chunks[0].name)) == '/tmp'
+    assert os.path.dirname(posix(client.progress[0].chunks[0].name)) == 'bar.segments'
