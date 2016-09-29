@@ -743,6 +743,9 @@ def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
         except (PermissionError, FileNotFoundError):
             raise
         except Exception as e:
+            if '"BadOffsetException"' in repr(e):
+                logger.debug("Writing to block that already exists - skipping")
+                return
             logger.debug('Exception %s on ADL upload, retrying', e,
                          exc_info=True)
     raise RuntimeError("Max number of ADL retries exceeded")
