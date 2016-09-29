@@ -431,7 +431,8 @@ class ADLTransferClient(object):
             logger.error("Unexpected exception occurred during shutdown: %s", repr(e));
         else:
             logger.debug("Shutdown complete")
-        signal.signal(signal.SIGINT, handler)
+        finally:
+            signal.signal(signal.SIGINT, handler)
 
     def monitor(self, poll=0.1, timeout=0):
         """ Wait for download to happen """
