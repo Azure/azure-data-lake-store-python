@@ -91,13 +91,13 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
 
     def _parse_ownership(self, ownership):
         if ':' in ownership:
-            user, group = ownership.split(':')
-            if not user:
-                user = None
+            owner, group = ownership.split(':')
+            if not owner:
+                owner = None
         else:
-            user = ownership
+            owner = ownership
             group = None
-        return user, group
+        return owner, group
 
     def do_chown(self, line):
         parser = argparse.ArgumentParser(prog="chown", add_help=False)
@@ -105,10 +105,10 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser.add_argument('files', type=str, nargs='+')
         args = parser.parse_args(line.split())
 
-        user, group = self._parse_ownership(args.ownership)
+        owner, group = self._parse_ownership(args.ownership)
 
         for f in args.files:
-            self._fs.chown(f, user=user, group=group)
+            self._fs.chown(f, owner=owner, group=group)
 
     def help_chown(self):
         print("chown owner[:group] file ...")
