@@ -56,6 +56,13 @@ def test_cat(capsys, azure, client):
 
 
 @my_vcr.use_cassette
+def test_chgrp(capsys, azure, client):
+    with setup_file(azure) as azurefile:
+        client.onecmd('chgrp foo ' + azurefile)
+        assert not read_stdout(capsys)
+
+
+@my_vcr.use_cassette
 def test_chmod(capsys, azure, client):
     with setup_file(azure) as azurefile:
         client.onecmd('info ' + azurefile)
@@ -66,6 +73,19 @@ def test_chmod(capsys, azure, client):
 
         client.onecmd('info ' + azurefile)
         assert 'permission       = 550' in read_stdout(capsys)
+
+
+@my_vcr.use_cassette
+def test_chown(capsys, azure, client):
+    with setup_file(azure) as azurefile:
+        client.onecmd('chown foo ' + azurefile)
+        assert not read_stdout(capsys)
+
+        client.onecmd('chown :foo ' + azurefile)
+        assert not read_stdout(capsys)
+
+        client.onecmd('chown foo:foo ' + azurefile)
+        assert not read_stdout(capsys)
 
 
 @my_vcr.use_cassette

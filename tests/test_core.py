@@ -605,6 +605,27 @@ def test_chmod(azure):
         azure.chmod(test_dir / 'deep', '770')
 
 
+@my_vcr.use_cassette
+def test_chown(azure):
+    with azure_teardown(azure):
+        azure.touch(a)
+
+        # Account doesn't have permission to change owner
+        owner = azure.info(a)['owner']
+        azure.chown(a, owner='foo')
+        assert owner == azure.info(a)['owner']
+
+        # Account doesn't have permission to change group
+        group = azure.info(a)['group']
+        azure.chown(a, group='bar')
+        assert group == azure.info(a)['group']
+
+        # Account doesn't have permission to change owner/group
+        azure.chown(a, owner='foo', group='bar')
+        assert owner == azure.info(a)['owner']
+        assert group == azure.info(a)['group']
+
+
 @pytest.mark.skipif(sys.platform != 'win32', reason="requires windows")
 def test_backslash():
     from adlfs.core import AzureDLPath
