@@ -1,0 +1,90 @@
+interactions:
+- request:
+    body: '000000000000000'
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['15']
+      User-Agent: [python-requests/2.11.1]
+    method: PUT
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?overwrite=true&OP=CREATE&write=true
+  response:
+    body: {string: ''}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['0']
+      ContentLength: ['0']
+      Date: ['Thu, 29 Sep 2016 17:22:26 GMT']
+      Expires: ['-1']
+      Location: ['https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?overwrite=true&OP=CREATE&write=true']
+      Pragma: [no-cache]
+      Server-Perf: ['[09c608e7-c893-4a61-b2a2-bea38268b461][ AuthTime::920.312957724193::PostAuthTime::203.991301502993
+          ][S-HdfsGetFileStatusV2 :: 00:00:007 ms]%0a[S-HdfsCheckAccess :: 00:00:002
+          ms]%0a[S-FsDelete :: 00:00:006 ms]%0a[S-FsOpenStream :: 00:00:058 ms]%0a[S-FsAppendStream
+          :: 00:00:163 ms]%0a[BufferingTime :: 00:00:000 ms]%0a[WriteTime :: 00:00:163
+          ms]%0a[S-FsAppendStream :: 00:00:033 ms]%0a[S-FsCloseHandle :: 00:00:001
+          ms]%0a[CREATE :: 00:00:282 ms]%0a']
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [09c608e7-c893-4a61-b2a2-bea38268b461]
+      x-ms-webhdfs-version: [16.07.18.01]
+    status: {code: 201, message: Created}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.11.1]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir?OP=LISTSTATUS
+  response:
+    body: {string: '{"FileStatuses":{"FileStatus":[{"length":15,"pathSuffix":"a","type":"FILE","blockSize":268435456,"accessTime":1475169746854,"modificationTime":1475169747012,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":0,"pathSuffix":"foo","type":"DIRECTORY","blockSize":0,"accessTime":1475122175657,"modificationTime":1475122179037,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['543']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Thu, 29 Sep 2016 17:22:27 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[d4add18f-b494-497d-8b2f-5f15b6a702f3][ AuthTime::943.832352794013::PostAuthTime::201.425028620743
+          ][S-HdfsListStatus :: 00:00:011 ms]%0a[LISTSTATUS :: 00:00:011 ms]%0a']
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [d4add18f-b494-497d-8b2f-5f15b6a702f3]
+      x-ms-webhdfs-version: [16.07.18.01]
+    status: {code: 200, message: OK}
+- request:
+    body: blah
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['4']
+      User-Agent: [python-requests/2.11.1]
+    method: POST
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?append=true&OP=APPEND&offset=5
+  response:
+    body: {string: '{"RemoteException":{"exception":"BadOffsetException","message":"FsAppendStream
+        failed with error 0x83090015 (Bad offset). [a59574c4-d991-4aa9-ad25-4faa706e5137][2016-09-29T10:22:27.7705665-07:00]","javaClassName":"org.apache.hadoop.fs.adl.BadOffsetException"}}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['260']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Thu, 29 Sep 2016 17:22:26 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[a59574c4-d991-4aa9-ad25-4faa706e5137][ AuthTime::857.02152518185::PostAuthTime::172.345147030083
+          ][S-FsOpenStream :: 00:00:011 ms]%0a[BufferingTime :: 00:00:000 ms]%0a[WriteTime
+          :: 00:00:000 ms]%0a[S-FsAppendStream :: 00:00:027 ms]%0a[S-FsCloseHandle
+          :: 00:00:001 ms]%0a[APPEND :: 00:00:053 ms]%0a']
+      Status: ['0x83090015']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [a59574c4-d991-4aa9-ad25-4faa706e5137]
+      x-ms-webhdfs-version: [16.07.18.01]
+    status: {code: 400, message: Bad Request}
+version: 1

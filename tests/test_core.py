@@ -484,6 +484,19 @@ def test_write_blocks(azure):
 
 
 @my_vcr.use_cassette
+def test_skip_existing_block(azure):
+    with azure.open(a, mode='wb') as f:
+        f.write(b'0' * 15)
+
+    f = azure.open(a, mode='ab')
+    assert f.tell() == 15
+    f.loc = 5  # not a user method
+    f.write(b'blah')
+    f.close()  # no error here
+    assert f.loc == 9
+
+
+@my_vcr.use_cassette
 def test_gzip(azure):
     import gzip
     data = b'name,amount\nAlice,100\nBob,200'
