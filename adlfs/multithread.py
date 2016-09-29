@@ -59,7 +59,10 @@ class ADLDownloader(object):
     run: bool [True]
         Whether to begin executing immediately.
     overwrite: bool [False]
-        Whether to forcibly overwrite existing files/directories.
+        Whether to forcibly overwrite existing files/directories. If False and
+        local path is a directory, will quit regardless if any files would be
+        overwritten or not. If True, only matching filenames are actually
+        overwritten.
 
     See Also
     --------
@@ -219,7 +222,10 @@ class ADLUploader(object):
         If set, will write blocks using delimiters in the backend, as well as
         split files for uploading on that delimiter.
     overwrite: bool [False]
-        Whether to forcibly overwrite existing files/directories.
+        Whether to forcibly overwrite existing files/directories. If False and
+        remote path is a directory, will quit regardless if any files would be
+        overwritten or not. If True, only matching filenames are actually
+        overwritten.
 
     See Also
     --------
