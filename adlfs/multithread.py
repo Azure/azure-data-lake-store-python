@@ -74,7 +74,7 @@ class ADLDownloader(object):
                 nthreads=nthreads,
                 chunksize=chunksize,
                 blocksize=blocksize,
-                tmp_path=None,
+                chunked=False,
                 persist_path=os.path.join(datadir, 'downloads'))
         self.rpath = rpath
         self.lpath = lpath

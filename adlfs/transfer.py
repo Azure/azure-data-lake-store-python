@@ -136,14 +136,13 @@ class ADLTransferClient(object):
     blocksize: int [2**25]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
-    tmp_path: str ['/tmp']
-        Path used for temporarily storing transferred chunks until chunks
-        are gathered into a single file. If None, then each chunk will be
-        written into the same file.
-    tmp_unique: bool [True]
-        If True, then a unique ID will be generated to create a subdirectory
-        containing the temporary chunks. Otherwise, all temporary chunks
-        will be placed in `tmp_path`.
+    chunked: bool [True]
+        If set, each transferred chunk is stored in a separate file until
+        chunks are gathered into a single file. Otherwise, each chunk will be
+        written into the same destination file.
+    unique_temporary: bool [True]
+        If set, transferred chunks are written into a unique temporary
+        directory.
     persist_path: str [None]
         Path used for persisting a client's state. If None, then `save()`
         and `load()` will be empty operations.
@@ -155,11 +154,10 @@ class ADLTransferClient(object):
     ---------------
 
     When a merge step is available, the client will write chunks to temporary
-    files before merging. The exact temporary file is dependent upon on two
-    parameters (`tmp_path`, `tmp_unique`). Given those values, the full
-    temporary file looks like this in pseudo-BNF:
+    files before merging. The exact temporary file looks like this in
+    pseudo-BNF:
 
-    >>> # /{tmp_path}[/{unique_str}]/{basename}_{offset}
+    >>> # {dirname}/{basename}.segments[.{unique_str}]/{basename}_{offset}
 
     Function Signatures
     -------------------
@@ -217,11 +215,9 @@ class ADLTransferClient(object):
     adlfs.multithread.ADLUploader
     """
 
-    DEFAULT_TMP_PATH = 'tmp'
-
     def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
-                 chunksize=2**28, blocksize=2**25, tmp_path=DEFAULT_TMP_PATH,
-                 tmp_unique=True, persist_path=None, delimiter=None):
+                 chunksize=2**28, blocksize=2**25, chunked=True,
+                 unique_temporary=True, persist_path=None, delimiter=None):
         self._adlfs = adlfs
         self._name = name
         self._transfer = transfer
@@ -230,8 +226,9 @@ class ADLTransferClient(object):
         self._chunksize = chunksize
         self._chunkretries = 5
         self._blocksize = blocksize
-        self._tmp_path = tmp_path
-        self._tmp_unique = tmp_unique
+        self._chunked = chunked
+        self._unique_temporary = unique_temporary
+        self._unique_str = uuid.uuid4().hex
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
@@ -256,18 +253,17 @@ class ADLTransferClient(object):
             'pending', 'running', 'finished', 'cancelled', 'errored')
 
         # Create unique temporary directory for each file
-        if self._tmp_unique and self._tmp_path:
-            tmpdir = os.path.join(self._tmp_path, uuid.uuid4().hex)
+        if self._chunked and self._unique_temporary:
+            tmpdir = dst.parent / "{}.segments.{}".format(dst.name, self._unique_str)
+        elif self._chunked:
+            tmpdir = dst.parent / "{}.segments".format(dst.name)
         else:
-            tmpdir = self._tmp_path
+            tmpdir = None
 
         offsets = list(range(0, length, self._chunksize))
         for offset in offsets:
-            if self._tmp_path and len(offsets) > 1:
-                name = os.path.join(
-                    os.path.sep,
-                    tmpdir,
-                    dst.name + '_' + str(offset))
+            if tmpdir and len(offsets) > 1:
+                name = tmpdir / "{}_{}".format(dst.name, offset)
             else:
                 name = dst
             cstates[(name, offset)] = 'pending'
