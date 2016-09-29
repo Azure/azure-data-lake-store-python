@@ -15,9 +15,9 @@ from adlfs.transfer import ADLTransferClient
 from tests.testing import azure, posix
 
 
-@pytest.mark.skipif(True, reason="skip until resolve timing issue")
-def test_interrupt(azure):
+def test_shutdown(azure):
     def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
+        time.sleep(1.0)
         while shutdown_event and not shutdown_event.is_set():
             time.sleep(0.1)
         return size, None
@@ -26,11 +26,10 @@ def test_interrupt(azure):
                                tmp_path=None)
     client.submit('foo', 'bar', 16)
     client.run(monitor=False)
-    time.sleep(1)
+    time.sleep(0.1)
     client.shutdown()
-    client.monitor()
 
-    assert client.progress[0].state != 'finished'
+    assert client.progress[0].state == 'finished'
 
 
 def test_submit_and_run(azure):
