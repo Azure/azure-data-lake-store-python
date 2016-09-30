@@ -123,14 +123,16 @@ def test_download_many(tempdir, azure):
 def test_download_glob(tempdir, azure):
     with setup_tree(azure):
         remote_path = test_dir / 'data' / 'a' / '*.csv'
-        down = ADLDownloader(azure, remote_path, tempdir, run=False)
+        down = ADLDownloader(azure, remote_path, tempdir, run=False,
+                             overwrite=True)
         assert len(down.rfiles) == 2
 
         lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
         assert lfiles == ['x.csv', 'y.csv']
 
         remote_path = test_dir / 'data' / '*' / '*.csv'
-        down = ADLDownloader(azure, remote_path, tempdir, run=False)
+        down = ADLDownloader(azure, remote_path, tempdir, run=False,
+                             overwrite=True)
         assert len(down.rfiles) == 4
 
         lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
@@ -141,7 +143,8 @@ def test_download_glob(tempdir, azure):
             os.path.join('b', 'y.csv')]
 
         remote_path = test_dir / 'data' / '*' / 'z.txt'
-        down = ADLDownloader(azure, remote_path, tempdir, run=False)
+        down = ADLDownloader(azure, remote_path, tempdir, run=False,
+                             overwrite=True)
         assert len(down.rfiles) == 2
 
         lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
