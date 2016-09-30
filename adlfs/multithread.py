@@ -154,11 +154,8 @@ class ADLDownloader(object):
         self.client.save(keep)
 
     def __str__(self):
-        progress = self.client.progress
-        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
-        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
-        return "<ADL Download: %s -> %s (%s of %s chunks remain)>" % (
-            self.rpath, self.lpath, nchunks, nchunks_orig)
+        return "<ADL Download: %s -> %s (%s)>" % (self.rpath, self.lpath,
+                                                  self.client.status)
 
     __repr__ = __str__
 
@@ -307,11 +304,8 @@ class ADLUploader(object):
         self.client.save(keep)
 
     def __str__(self):
-        progress = self.client.progress
-        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
-        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
-        return "<ADL Upload: %s -> %s (%s of %s chunks remain)>" % (
-            self.lpath, self.rpath, nchunks, nchunks_orig)
+        return "<ADL Upload: %s -> %s (%s)>" % (self.lpath, self.rpath,
+                                                self.client.status)
 
     __repr__ = __str__
 

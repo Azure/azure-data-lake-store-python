@@ -391,9 +391,13 @@ class ADLTransferClient(object):
                     logger.info("Transferred %s -> %s", src, dst)
         self.save()
         if self.verbose:
-            c = sum([Counter([c.state for c in f.chunks]) for f in
-                     self.progress], Counter())
-            print('\b' * 200, dict(c), end='', flush=True)
+            print('\b' * 200, self.status, end='', flush=True)
+
+    @property
+    def status(self):
+        c = sum([Counter([c.state for c in f.chunks]) for f in
+                 self.progress], Counter())
+        return dict(c)
 
 
     def run(self, nthreads=None, monitor=True, before_start=None):
