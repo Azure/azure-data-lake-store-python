@@ -74,7 +74,7 @@ class ADLDownloader(object):
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**25, blocksize=2**22, client=None, run=True,
                  overwrite=False, verbose=True):
-        if not overwrite and adlfs.exists(lpath):
+        if not overwrite and os.path.exists(lpath):
             raise FileExistsError(lpath)
         if client:
             self.client = client
