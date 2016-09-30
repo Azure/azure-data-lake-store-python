@@ -16,7 +16,7 @@ from tests.testing import azure, posix
 
 
 def test_shutdown(azure):
-    def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
+    def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, retries=5, shutdown_event=None):
         time.sleep(1.0)
         while shutdown_event and not shutdown_event.is_set():
             time.sleep(0.1)
@@ -33,7 +33,7 @@ def test_shutdown(azure):
 
 
 def test_submit_and_run(azure):
-    def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
+    def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, retries=5, shutdown_event=None):
         time.sleep(0.1)
         return size, None
 
@@ -65,7 +65,7 @@ def test_submit_and_run(azure):
 
 
 def test_temporary_path(azure):
-    def transfer(adlfs, src, dst, offset, size):
+    def transfer(adlfs, src, dst, offset, size, blocksize, buffersize):
         time.sleep(0.1)
         return size, None
 
