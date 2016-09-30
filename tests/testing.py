@@ -16,7 +16,7 @@ import tempfile
 import pytest
 import vcr
 
-from adlfs.core import AzureDLPath
+from azure.datalake.store.core import AzureDLPath
 from tests import fake_settings, settings
 
 
@@ -72,7 +72,7 @@ def working_dir():
 
 @pytest.yield_fixture()
 def azure():
-    from adlfs import AzureDLFileSystem
+    from azure.datalake.store import AzureDLFileSystem
     fs = AzureDLFileSystem(token=settings.TOKEN, store_name=settings.STORE_NAME)
 
     # Clear filesystem cache to ensure we capture all requests from a test

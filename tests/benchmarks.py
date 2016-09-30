@@ -5,8 +5,8 @@ import shutil
 import sys
 import time
 
-from adlfs import core, multithread
-from adlfs.transfer import ADLTransferClient
+from azure.datalake.store import core, multithread
+from azure.datalake.store.transfer import ADLTransferClient
 from tests.testing import md5sum
 
 
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     # Log only Azure messages, ignoring 3rd-party libraries
     logging.basicConfig(
         format='%(asctime)s %(name)-17s %(levelname)-8s %(message)s')
-    logger = logging.getLogger('adlfs')
+    logger = logging.getLogger('azure.datalake.store')
     logger.setLevel(logging.INFO)
 
     # Required setup until outstanding issues are resolved

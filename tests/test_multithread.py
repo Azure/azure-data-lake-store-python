@@ -12,10 +12,10 @@ import pytest
 import shutil
 import tempfile
 
-from adlfs.core import AzureDLPath
-from adlfs.multithread import ADLDownloader, ADLUploader
+from azure.datalake.store.core import AzureDLPath
+from azure.datalake.store.multithread import ADLDownloader, ADLUploader
 from tests.testing import azure, azure_teardown, md5sum, my_vcr, posix, working_dir
-from adlfs.transfer import ADLTransferClient
+from azure.datalake.store.transfer import ADLTransferClient
 
 test_dir = working_dir()
 
@@ -195,7 +195,7 @@ def test_upload_one(local_files, azure):
         bigfile, littlefile, a, b, c = local_files
 
         # transfer client w/ deterministic temporary directory
-        from adlfs.multithread import put_chunk
+        from azure.datalake.store.multithread import put_chunk
         client = ADLTransferClient(azure, 'foo', transfer=put_chunk,
                                    unique_temporary=False)
 

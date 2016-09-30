@@ -18,9 +18,9 @@ PY2 = sys.version_info.major == 2
 WIN = platform.platform() == 'Windows'
 
 if WIN:
-    datadir = os.path.join(os.environ['APPDATA'], 'adlfs')
+    datadir = os.path.join(os.environ['APPDATA'], 'azure-datalake-store')
 else:
-    datadir = os.sep.join([os.path.expanduser("~"), '.config', 'adlfs'])
+    datadir = os.sep.join([os.path.expanduser("~"), '.config', 'azure-datalake-store'])
 
 try:
     os.makedirs(datadir)

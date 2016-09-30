@@ -212,8 +212,8 @@ class ADLTransferClient(object):
 
     See Also
     --------
-    adlfs.multithread.ADLDownloader
-    adlfs.multithread.ADLUploader
+    azure.datalake.store.multithread.ADLDownloader
+    azure.datalake.store.multithread.ADLUploader
     """
 
     def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,

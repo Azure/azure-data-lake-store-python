@@ -10,8 +10,8 @@ import os
 import pytest
 import time
 
-from adlfs.core import AzureDLPath
-from adlfs.transfer import ADLTransferClient
+from azure.datalake.store.core import AzureDLPath
+from azure.datalake.store.transfer import ADLTransferClient
 from tests.testing import azure, posix
 
 
