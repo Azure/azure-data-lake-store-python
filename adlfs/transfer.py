@@ -9,8 +9,9 @@
 """
 Low-level classes for managing data transfer.
 """
+from __future__ import print_function
 
-from collections import namedtuple
+from collections import namedtuple, Counter
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import multiprocessing
@@ -222,7 +223,7 @@ class ADLTransferClient(object):
     def __init__(self, adlfs, transfer, merge=None, nthreads=None,
                  chunksize=2**28, blocksize=2**25, chunked=True,
                  unique_temporary=True, delimiter=None,
-                 parent=None):
+                 parent=None, verbose=True):
         self._adlfs = adlfs
         self._parent = parent
         self._transfer = transfer
@@ -394,6 +395,15 @@ class ADLTransferClient(object):
                     self._files[(src, dst)]['stop'] = time.time()
                     logger.info("Transferred %s -> %s", src, dst)
         self.save()
+        if self.verbose:
+            print('\b' * 200, self.status, end='', flush=True)
+
+    @property
+    def status(self):
+        c = sum([Counter([c.state for c in f.chunks]) for f in
+                 self.progress], Counter())
+        return dict(c)
+
 
     def run(self, nthreads=None, monitor=True, before_start=None):
         self._pool = ThreadPoolExecutor(self._nthreads)

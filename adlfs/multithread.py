@@ -94,9 +94,10 @@ class ADLDownloader(object):
     adlfs.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**22, client=None, run=True, overwrite=False):
-        if not overwrite and adlfs.exists(rpath):
-            raise FileExistsError(rpath)
+                 blocksize=2**22, client=None, run=True, overwrite=False,
+                 verbose=True):
+        if not overwrite and os.path.exists(lpath):
+            raise FileExistsError(lpath)
         if client:
             self.client = client
         else:
@@ -107,8 +108,9 @@ class ADLDownloader(object):
                 chunksize=chunksize,
                 blocksize=blocksize,
                 chunked=False,
+                verbose=verbose,
                 parent=self)
-        self.name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
+        self._name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = rpath
         self.lpath = lpath
         self._overwrite = overwrite
@@ -182,11 +184,8 @@ class ADLDownloader(object):
         self.client.run(nthreads, monitor, before_start=touch)
 
     def __str__(self):
-        progress = self.client.progress
-        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
-        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
-        return "<ADL Download: %s -> %s (%s of %s chunks remain)>" % (
-            self.rpath, self.lpath, nchunks, nchunks_orig)
+        return "<ADL Download: %s -> %s (%s)>" % (self.rpath, self.lpath,
+                                                  self.client.status)
 
     __repr__ = __str__
 
@@ -265,9 +264,9 @@ class ADLUploader(object):
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  blocksize=2**25, client=None, run=True, delimiter=None,
-                 overwrite=False):
-        if not overwrite and os.path.exists(lpath):
-            raise FileExistsError(lpath)
+                 overwrite=False, verbose=True):
+        if not overwrite and adlfs.exists(rpath):
+            raise FileExistsError(rpath)
         if client:
             self.client = client
         else:
@@ -279,7 +278,8 @@ class ADLUploader(object):
                 chunksize=chunksize,
                 blocksize=blocksize,
                 delimiter=delimiter,
-                parent=self)
+                parent=self,
+                verbose=verbose)
         self._name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
@@ -287,7 +287,6 @@ class ADLUploader(object):
         self._setup()
         if run:
             self.run()
-
 
     def save(self, keep=True):
         save(self, os.path.join(datadir, 'uploads'), keep)
@@ -340,11 +339,8 @@ class ADLUploader(object):
         self.client.run(nthreads, monitor)
 
     def __str__(self):
-        progress = self.client.progress
-        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
-        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
-        return "<ADL Upload: %s -> %s (%s of %s chunks remain)>" % (
-            self.lpath, self.rpath, nchunks, nchunks_orig)
+        return "<ADL Upload: %s -> %s (%s)>" % (self.lpath, self.rpath,
+                                                self.client.status)
 
     __repr__ = __str__
 
