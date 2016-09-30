@@ -69,9 +69,10 @@ class ADLDownloader(object):
     adlfs.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**22, client=None, run=True, overwrite=False):
+                 blocksize=2**22, client=None, run=True, overwrite=False,
+                 verbose=True):
         if not overwrite and adlfs.exists(rpath):
-            raise FileExistsError(rpath)
+            raise FileExistsError(lpath)
         if client:
             self.client = client
         else:
@@ -83,7 +84,8 @@ class ADLDownloader(object):
                 chunksize=chunksize,
                 blocksize=blocksize,
                 chunked=False,
-                persist_path=os.path.join(datadir, 'downloads'))
+                persist_path=os.path.join(datadir, 'downloads'),
+                verbose=verbose)
         self.rpath = rpath
         self.lpath = lpath
         self._overwrite = overwrite
@@ -235,9 +237,9 @@ class ADLUploader(object):
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  blocksize=2**25, client=None, run=True, delimiter=None,
-                 overwrite=False):
+                 overwrite=False, verbose=True):
         if not overwrite and os.path.exists(lpath):
-            raise FileExistsError(lpath)
+            raise FileExistsError(rpath)
         if client:
             self.client = client
         else:
@@ -250,7 +252,8 @@ class ADLUploader(object):
                 chunksize=chunksize,
                 blocksize=blocksize,
                 persist_path=os.path.join(datadir, 'uploads'),
-                delimiter=delimiter)
+                delimiter=delimiter,
+                verbose=verbose)
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
         self._overwrite = overwrite

@@ -10,7 +10,7 @@
 Low-level classes for managing data transfer.
 """
 
-from collections import namedtuple
+from collections import namedtuple, Counter
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import multiprocessing
@@ -218,7 +218,8 @@ class ADLTransferClient(object):
 
     def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
                  chunksize=2**28, blocksize=2**25, chunked=True,
-                 unique_temporary=True, persist_path=None, delimiter=None):
+                 unique_temporary=True, persist_path=None, delimiter=None,
+                 verbose=True):
         self._adlfs = adlfs
         self._name = name
         self._transfer = transfer
@@ -233,6 +234,7 @@ class ADLTransferClient(object):
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
+        self.verbose = verbose
 
         # Internal state tracking files/chunks/futures
         self._files = {}
@@ -388,6 +390,11 @@ class ADLTransferClient(object):
                     self._files[(src, dst)]['stop'] = time.time()
                     logger.info("Transferred %s -> %s", src, dst)
         self.save()
+        if self.verbose:
+            c = sum([Counter([c.state for c in f.chunks]) for f in
+                     self.progress], Counter())
+            print('\b' * 200, dict(c), end='', flush=True)
+
 
     def run(self, nthreads=None, monitor=True, before_start=None):
         self._nthreads = nthreads or self._nthreads
