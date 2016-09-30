@@ -9,6 +9,7 @@
 """
 Low-level classes for managing data transfer.
 """
+from __future__ import print_function
 
 from collections import namedtuple, Counter
 from concurrent.futures import ThreadPoolExecutor
