@@ -263,7 +263,6 @@ class DatalakeRESTInterface:
             self._log_request(method, url, self.head)
             r = func(url, params=params, headers=self.head, data=data)
         except requests.exceptions.RequestException as e:
-            self._log_response(r, payload=True)
             raise DatalakeRESTException('HTTP error: %s', str(e))
 
         if r.status_code == 403:
