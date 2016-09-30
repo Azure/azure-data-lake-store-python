@@ -16,6 +16,7 @@ import logging
 import multiprocessing
 import os
 import pickle
+import signal
 import threading
 import time
 import uuid
@@ -410,8 +411,24 @@ class ADLTransferClient(object):
         self._pool = None
 
     def shutdown(self):
-        self._shutdown_event.set()
-        self._pool.shutdown(wait=True)
+        """
+        Shutdown task threads in an orderly fashion.
+
+        Within the context of this method, we disable Ctrl+C keystroke events
+        until all threads have exited. We re-enable Ctrl+C keystroke events
+        before leaving.
+        """
+        handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        try:
+            logger.debug("Shutting down worker threads")
+            self._shutdown_event.set()
+            self._pool.shutdown(wait=True)
+        except Exception as e:
+            logger.error("Unexpected exception occurred during shutdown: %s", repr(e));
+        else:
+            logger.debug("Shutdown complete")
+        finally:
+            signal.signal(signal.SIGINT, handler)
 
     def monitor(self, poll=0.1, timeout=0):
         """ Wait for download to happen """

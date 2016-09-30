@@ -169,7 +169,9 @@ def get_chunk(adlfs, src, dst, offset, size, blocksize, shutdown_event=None):
                     if shutdown_event and shutdown_event.is_set():
                         return nbytes, None
                     data = fin.read(miniblock)
-                    nbytes += fout.write(data)
+                    nwritten = fout.write(data)
+                    if nwritten:
+                        nbytes += nwritten
     except Exception as e:
         exception = repr(e)
         logger.debug('Download failed %s; %s', dst, exception)
@@ -309,7 +311,9 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
                     if shutdown_event and shutdown_event.is_set():
                         return nbytes, None
                     data = read_block(fin, o, miniblock, delimiter)
-                    nbytes += fout.write(data)
+                    nwritten = fout.write(data)
+                    if nwritten:
+                        nbytes += nwritten
     except Exception as e:
         exception = repr(e)
         logger.debug('Upload failed %s; %s', src, exception)
