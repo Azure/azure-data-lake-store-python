@@ -391,6 +391,54 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
     def do_EOF(self, line):
         return True
 
+    def do_list_uploads(self, line):
+        print(ADLUploader.load())
+
+    def help_list_uploads(self):
+        print("Shows interrupted but persisted downloads")
+
+    def do_clear_uploads(self, line):
+        ADLUploader.clear_saved()
+
+    def help_clear_uploads(self):
+        print("Forget all persisted uploads")
+
+    def do_resume_upload(self, line):
+        try:
+            up = ADLUploader.load()[line]
+            up.run()
+        except KeyError:
+            print("No such upload")
+
+    def help_resume_upload(self):
+        print("resume_upload name")
+        print()
+        print("Restart the upload designated by <name> and run until done.")
+
+    def do_list_downloads(self, line):
+        print(ADLDownloader.load())
+
+    def help_list_downloads(self):
+        print("Shows interrupted but persisted uploads")
+
+    def do_clear_downloads(self, line):
+        ADLDownloader.clear_saved()
+
+    def help_clear_downloads(self):
+        print("Forget all persisted downloads")
+
+    def do_resume_download(self, line):
+        try:
+            up = ADLDownloader.load()[line]
+            up.run()
+        except KeyError:
+            print("No such download")
+
+    def help_resume_download(self):
+        print("resume_download name")
+        print()
+        print("Restart the download designated by <name> and run until done.")
+
 
 def setup_logging(default_level='WARNING'):
     """ Setup logging configuration

@@ -36,8 +36,12 @@ def save(instance, filename, keep=True):
         all_downloads[instance._name] = instance
     else:
         all_downloads.pop(instance._name, None)
-    with open(filename, 'wb') as f:
-        pickle.dump(all_downloads, f)
+    try:
+        # persist failure should not halt things
+        with open(filename, 'wb') as f:
+            pickle.dump(all_downloads, f)
+    except IOError:
+        logger.debug("Persist failed: %s" % filename)
 
 
 def load(filename):
