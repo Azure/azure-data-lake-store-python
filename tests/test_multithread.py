@@ -156,8 +156,9 @@ def test_download_glob(tempdir, azure):
 @my_vcr.use_cassette
 def test_download_overwrite(tempdir, azure):
     with setup_tree(azure):
-        with pytest.raises(OSError):
+        with pytest.raises(OSError) as e:
             ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
+        assert tempdir in str(e)
 
 
 @my_vcr.use_cassette
@@ -280,8 +281,9 @@ def test_upload_overwrite(local_files, azure):
     bigfile, littlefile, a, b, c = local_files
 
     with azure_teardown(azure):
-        with pytest.raises(OSError):
+        with pytest.raises(OSError) as e:
             ADLUploader(azure, test_dir, littlefile, nthreads=1)
+        assert test_dir.as_posix() in str(e)
 
 
 def test_save_up(local_files, azure):
