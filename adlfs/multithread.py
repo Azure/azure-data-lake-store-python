@@ -17,6 +17,7 @@ Only implements upload and download of (massive) files and directory trees.
 import glob
 import logging
 import os
+import pickle
 
 from .core import AzureDLPath
 from .exceptions import FileExistsError
@@ -24,6 +25,26 @@ from .transfer import ADLTransferClient
 from .utils import commonprefix, datadir, read_block, tokenize
 
 logger = logging.getLogger(__name__)
+
+
+def save(instance, filename, keep=True):
+    if os.path.exists(filename):
+        all_downloads = load(filename)
+    else:
+        all_downloads = {}
+    if not instance.client._fstates.contains_all('finished') and keep:
+        all_downloads[instance._name] = instance
+    else:
+        all_downloads.pop(instance._name, None)
+    with open(filename, 'wb') as f:
+        pickle.dump(all_downloads, f)
+
+
+def load(filename):
+    try:
+        return pickle.load(open(filename, 'rb'))
+    except:
+        return {}
 
 
 class ADLDownloader(object):
@@ -77,13 +98,13 @@ class ADLDownloader(object):
         else:
             self.client = ADLTransferClient(
                 adlfs,
-                name=tokenize(adlfs, rpath, lpath, chunksize, blocksize),
                 transfer=get_chunk,
                 nthreads=nthreads,
                 chunksize=chunksize,
                 blocksize=blocksize,
                 chunked=False,
-                persist_path=os.path.join(datadir, 'downloads'))
+                parent=self)
+        self.name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = rpath
         self.lpath = lpath
         self._overwrite = overwrite
@@ -91,9 +112,21 @@ class ADLDownloader(object):
         if run:
             self.run()
 
+    def save(self, keep=True):
+        save(self, os.path.join(datadir, 'downloads'), keep)
+
+    @staticmethod
+    def load():
+        return load(os.path.join(datadir, 'downloads'))
+
+    @staticmethod
+    def clear_saved():
+        if os.path.exists(os.path.join(datadir, 'downloads')):
+            os.remove(os.path.join(datadir, 'downloads'))
+
     @property
     def hash(self):
-        return self.client._name
+        return self._name
 
     def _setup(self):
         """ Create set of parameters to loop over
@@ -143,13 +176,6 @@ class ADLDownloader(object):
                 pass
 
         self.client.run(nthreads, monitor, before_start=touch)
-
-    @staticmethod
-    def load():
-        return ADLTransferClient.load(os.path.join(datadir, 'downloads'))
-
-    def save(self, keep=True):
-        self.client.save(keep)
 
     def __str__(self):
         progress = self.client.progress
@@ -243,14 +269,14 @@ class ADLUploader(object):
         else:
             self.client = ADLTransferClient(
                 adlfs,
-                name=tokenize(adlfs, rpath, lpath, chunksize, blocksize),
                 transfer=put_chunk,
                 merge=merge_chunks,
                 nthreads=nthreads,
                 chunksize=chunksize,
                 blocksize=blocksize,
-                persist_path=os.path.join(datadir, 'uploads'),
-                delimiter=delimiter)
+                delimiter=delimiter,
+                parent=self)
+        self._name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
         self._overwrite = overwrite
@@ -258,9 +284,22 @@ class ADLUploader(object):
         if run:
             self.run()
 
+
+    def save(self, keep=True):
+        save(self, os.path.join(datadir, 'uploads'), keep)
+
+    @staticmethod
+    def load():
+        return load(os.path.join(datadir, 'uploads'))
+
+    @staticmethod
+    def clear_saved():
+        if os.path.exists(os.path.join(datadir, 'uploads')):
+            os.remove(os.path.join(datadir, 'uploads'))
+
     @property
     def hash(self):
-        return self.client._name
+        return self._name
 
     def _setup(self):
         """ Create set of parameters to loop over
@@ -295,13 +334,6 @@ class ADLUploader(object):
 
     def run(self, nthreads=None, monitor=True):
         self.client.run(nthreads, monitor)
-
-    @staticmethod
-    def load():
-        return ADLTransferClient.load(os.path.join(datadir, 'uploads'))
-
-    def save(self, keep=True):
-        self.client.save(keep)
 
     def __str__(self):
         progress = self.client.progress

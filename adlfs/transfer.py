@@ -150,6 +150,9 @@ class ADLTransferClient(object):
     delimiter: byte(s) or None
         If set, will transfer blocks using delimiters, as well as split
         files for transferring on that delimiter.
+    parent: ADLDownloader, ADLUploader or None
+        In typical usage, the transfer client is created in the context of an
+        upload or download, which can be persisted between sessions.
 
     Temporary Files
     ---------------
@@ -216,11 +219,12 @@ class ADLTransferClient(object):
     adlfs.multithread.ADLUploader
     """
 
-    def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
+    def __init__(self, adlfs, transfer, merge=None, nthreads=None,
                  chunksize=2**28, blocksize=2**25, chunked=True,
-                 unique_temporary=True, persist_path=None, delimiter=None):
+                 unique_temporary=True, delimiter=None,
+                 parent=None):
         self._adlfs = adlfs
-        self._name = name
+        self._parent = parent
         self._transfer = transfer
         self._merge = merge
         self._nthreads = max(1, nthreads or multiprocessing.cpu_count())
@@ -230,9 +234,6 @@ class ADLTransferClient(object):
         self._chunked = chunked
         self._unique_temporary = unique_temporary
         self._unique_str = uuid.uuid4().hex
-        self._persist_path = persist_path
-        self._pool = ThreadPoolExecutor(self._nthreads)
-        self._shutdown_event = threading.Event()
 
         # Internal state tracking files/chunks/futures
         self._files = {}
@@ -291,12 +292,17 @@ class ADLTransferClient(object):
         return future
 
     def _start(self, src, dst):
+        self._ffutures = {}
+        self._cfutures = {}
         key = (src, dst)
         self._fstates[key] = 'transferring'
-        self._files[key]['start'] = time.time()
+        self._files[key]['start'] = self._files[key].get('start', time.time())
         for obj in self._files[key]['cstates'].objects:
             name, offset = obj
-            self._files[key]['cstates'][obj] = 'running'
+            cs = self._files[key]['cstates']
+            if obj in cs.objects and cs[obj] == 'finished':
+                continue
+            cs[obj] = 'running'
             future = self._submit(
                 self._transfer, self._adlfs, src, name, offset,
                 self._chunksize, self._blocksize)
@@ -390,10 +396,13 @@ class ADLTransferClient(object):
         self.save()
 
     def run(self, nthreads=None, monitor=True, before_start=None):
+        self._pool = ThreadPoolExecutor(self._nthreads)
+        self._shutdown_event = threading.Event()
         self._nthreads = nthreads or self._nthreads
         for src, dst in self._files:
             if before_start:
                 before_start(self._adlfs, src, dst)
+                before_start = None
             self._start(src, dst)
         if monitor:
             self.monitor()
@@ -444,8 +453,6 @@ class ADLTransferClient(object):
         dic2 = self.__dict__.copy()
         dic2.pop('_cfutures', None)
         dic2.pop('_ffutures', None)
-        dic2.pop('_transfer', None)
-        dic2.pop('_merge', None)
         dic2.pop('_pool', None)
         dic2.pop('_shutdown_event', None)
 
@@ -454,19 +461,6 @@ class ADLTransferClient(object):
 
         return dic2
 
-    @staticmethod
-    def load(filename):
-        try:
-            return pickle.load(open(filename, 'rb'))
-        except:
-            return {}
-
     def save(self, keep=True):
-        if self._persist_path:
-            all_downloads = self.load(self._persist_path)
-            if not self._fstates.contains_all('finished') and keep:
-                all_downloads[self._name] = self
-            else:
-                all_downloads.pop(self._name, None)
-            with open(self._persist_path, 'wb') as f:
-                pickle.dump(all_downloads, f)
+        if self._parent is not None:
+            self._parent.save(keep=keep)

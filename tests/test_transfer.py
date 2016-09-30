@@ -22,7 +22,7 @@ def test_shutdown(azure):
             time.sleep(0.1)
         return size, None
 
-    client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=1,
+    client = ADLTransferClient(azure, transfer=transfer, chunksize=1,
                                chunked=False)
     client.submit('foo', 'bar', 16)
     client.run(monitor=False)
@@ -37,7 +37,7 @@ def test_submit_and_run(azure):
         time.sleep(0.1)
         return size, None
 
-    client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=8,
+    client = ADLTransferClient(azure, transfer=transfer, chunksize=8,
                                chunked=False)
 
     client.submit('foo', 'bar', 16)
@@ -69,7 +69,7 @@ def test_temporary_path(azure):
         time.sleep(0.1)
         return size, None
 
-    client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=8,
+    client = ADLTransferClient(azure, transfer=transfer, chunksize=8,
                                unique_temporary=False)
     client.submit('foo', AzureDLPath('bar'), 16)
 
