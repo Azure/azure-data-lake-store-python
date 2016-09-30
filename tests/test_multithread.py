@@ -123,14 +123,16 @@ def test_download_many(tempdir, azure):
 def test_download_glob(tempdir, azure):
     with setup_tree(azure):
         remote_path = test_dir / 'data' / 'a' / '*.csv'
-        down = ADLDownloader(azure, remote_path, tempdir, run=False)
+        down = ADLDownloader(azure, remote_path, tempdir, run=False,
+                             overwrite=True)
         assert len(down.rfiles) == 2
 
         lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
         assert lfiles == ['x.csv', 'y.csv']
 
         remote_path = test_dir / 'data' / '*' / '*.csv'
-        down = ADLDownloader(azure, remote_path, tempdir, run=False)
+        down = ADLDownloader(azure, remote_path, tempdir, run=False,
+                             overwrite=True)
         assert len(down.rfiles) == 4
 
         lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
@@ -141,7 +143,8 @@ def test_download_glob(tempdir, azure):
             os.path.join('b', 'y.csv')]
 
         remote_path = test_dir / 'data' / '*' / 'z.txt'
-        down = ADLDownloader(azure, remote_path, tempdir, run=False)
+        down = ADLDownloader(azure, remote_path, tempdir, run=False,
+                             overwrite=True)
         assert len(down.rfiles) == 2
 
         lfiles = [os.path.relpath(f, tempdir) for f in down.lfiles]
@@ -153,8 +156,9 @@ def test_download_glob(tempdir, azure):
 @my_vcr.use_cassette
 def test_download_overwrite(tempdir, azure):
     with setup_tree(azure):
-        with pytest.raises(OSError):
+        with pytest.raises(OSError) as e:
             ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
+        assert tempdir in str(e)
 
 
 @my_vcr.use_cassette
@@ -241,7 +245,8 @@ def test_upload_glob(tempdir, azure):
 
     with azure_teardown(azure):
         local_path = os.path.join(tempdir, 'data', 'a', '*.csv')
-        up = ADLUploader(azure, test_dir, local_path, run=False)
+        up = ADLUploader(azure, test_dir, local_path, run=False,
+                         overwrite=True)
         assert len(up.lfiles) == 2
 
         rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
@@ -249,7 +254,8 @@ def test_upload_glob(tempdir, azure):
         assert rfiles == ['x.csv', 'y.csv']
 
         local_path = os.path.join(tempdir, 'data', '*', '*.csv')
-        up = ADLUploader(azure, test_dir, local_path, run=False)
+        up = ADLUploader(azure, test_dir, local_path, run=False,
+                         overwrite=True)
         assert len(up.lfiles) == 4
 
         rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
@@ -261,7 +267,8 @@ def test_upload_glob(tempdir, azure):
             posix('b', 'y.csv')]
 
         local_path = os.path.join(tempdir, 'data', '*', 'z.txt')
-        up = ADLUploader(azure, test_dir, local_path, run=False)
+        up = ADLUploader(azure, test_dir, local_path, run=False,
+                         overwrite=True)
         assert len(up.lfiles) == 2
 
         rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
@@ -274,8 +281,9 @@ def test_upload_overwrite(local_files, azure):
     bigfile, littlefile, a, b, c = local_files
 
     with azure_teardown(azure):
-        with pytest.raises(OSError):
+        with pytest.raises(OSError) as e:
             ADLUploader(azure, test_dir, littlefile, nthreads=1)
+        assert test_dir.as_posix() in str(e)
 
 
 def test_save_up(local_files, azure):
