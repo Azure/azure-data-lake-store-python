@@ -22,8 +22,6 @@ import threading
 import time
 import uuid
 
-from .utils import clamp
-
 logger = logging.getLogger(__name__)
 
 
@@ -226,8 +224,6 @@ class ADLTransferClient(object):
                  chunksize=2**28, buffersize=2**25, blocksize=2**25,
                  chunked=True, unique_temporary=True, persist_path=None,
                  delimiter=None, verbose=True):
-        if chunksize < blocksize:
-            raise ValueError('Chunks must be at least as large as the buffer')
         self._adlfs = adlfs
         self._name = name
         self._transfer = transfer
@@ -235,7 +231,7 @@ class ADLTransferClient(object):
         self._nthreads = max(1, nthreads or multiprocessing.cpu_count())
         self._chunksize = chunksize
         self._chunkretries = 5
-        self._buffersize = clamp(buffersize, blocksize, chunksize)
+        self._buffersize = buffersize
         self._blocksize = blocksize
         self._chunked = chunked
         self._unique_temporary = unique_temporary
