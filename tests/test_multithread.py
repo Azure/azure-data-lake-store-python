@@ -244,7 +244,8 @@ def test_upload_glob(tempdir, azure):
 
     with azure_teardown(azure):
         local_path = os.path.join(tempdir, 'data', 'a', '*.csv')
-        up = ADLUploader(azure, test_dir, local_path, run=False)
+        up = ADLUploader(azure, test_dir, local_path, run=False,
+                         overwrite=True)
         assert len(up.lfiles) == 2
 
         rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
@@ -252,7 +253,8 @@ def test_upload_glob(tempdir, azure):
         assert rfiles == ['x.csv', 'y.csv']
 
         local_path = os.path.join(tempdir, 'data', '*', '*.csv')
-        up = ADLUploader(azure, test_dir, local_path, run=False)
+        up = ADLUploader(azure, test_dir, local_path, run=False,
+                         overwrite=True)
         assert len(up.lfiles) == 4
 
         rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
@@ -264,7 +266,8 @@ def test_upload_glob(tempdir, azure):
             posix('b', 'y.csv')]
 
         local_path = os.path.join(tempdir, 'data', '*', 'z.txt')
-        up = ADLUploader(azure, test_dir, local_path, run=False)
+        up = ADLUploader(azure, test_dir, local_path, run=False,
+                         overwrite=True)
         assert len(up.lfiles) == 2
 
         rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
