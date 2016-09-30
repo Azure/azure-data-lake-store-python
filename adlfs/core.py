@@ -23,8 +23,9 @@ import sys
 import time
 
 # local imports
+from .exceptions import FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface, auth, refresh_token
-from .utils import FileNotFoundError, PermissionError, PY2, ensure_writable, read_block
+from .utils import PY2, ensure_writable, read_block
 
 if sys.version_info >= (3, 4):
     import pathlib
