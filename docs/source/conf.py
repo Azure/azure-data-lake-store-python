@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# adlfs documentation build configuration file, created by
+# azure-datalake-store documentation build configuration file, created by
 # sphinx-quickstart on Mon Mar 21 15:20:01 2016.
 #
 # This file is execfile()d with the current directory set to its
@@ -53,7 +53,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'adlfs'
+project = 'azure-datalake-store'
 copyright = 'TBD'
 author = 'TBD'
 
@@ -62,8 +62,8 @@ author = 'TBD'
 # built documents.
 #
 # The short X.Y version.
-import adlfs
-version = adlfs.__version__
+import azure.datalake.store
+version = azure.datalake.store.__version__
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -213,7 +213,7 @@ html_static_path = ['_static']
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'adlfsdoc'
+htmlhelp_basename = 'azure-datalake-store-doc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -235,7 +235,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'adlfs.tex', 'adlfs Documentation',
+    (master_doc, 'azure-datalake-store.tex', 'azure-datalake-store Documentation',
      'TBA', 'manual'),
 ]
 
@@ -265,7 +265,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'adlfs', 'adlfs Documentation',
+    (master_doc, 'azure-datalake-store', 'azure-datalake-store Documentation',
      [author], 1)
 ]
 
@@ -279,8 +279,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'adlfs', 'adlfs Documentation',
-     author, 'adlfs', 'One line description of project.',
+    (master_doc, 'azure-datalake-store', 'azure-datalake-store Documentation',
+     author, 'azure-datalake-store', 'One line description of project.',
      'Miscellaneous'),
 ]
 

@@ -8,7 +8,7 @@
 
 import pytest
 
-from adlfs import AzureDLFileSystem
+from azure.datalake.store import AzureDLFileSystem
 from tests import settings
 from tests.testing import working_dir
 

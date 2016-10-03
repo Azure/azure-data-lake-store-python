@@ -69,7 +69,7 @@ class ADLDownloader(object):
 
     See Also
     --------
-    adlfs.transfer.ADLTransferClient
+    azure.datalake.store.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
@@ -237,7 +237,7 @@ class ADLUploader(object):
 
     See Also
     --------
-    adlfs.transfer.ADLTransferClient
+    azure.datalake.store.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,

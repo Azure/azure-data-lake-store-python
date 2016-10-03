@@ -24,10 +24,10 @@ import os
 import stat
 import sys
 
-from adlfs.core import AzureDLFileSystem
-from adlfs.lib import auth
-from adlfs.multithread import ADLDownloader, ADLUploader
-from adlfs.utils import write_stdout
+from azure.datalake.store.core import AzureDLFileSystem
+from azure.datalake.store.lib import auth
+from azure.datalake.store.multithread import ADLDownloader, ADLUploader
+from azure.datalake.store.utils import write_stdout
 
 
 class AzureDataLakeFSCommand(cmd.Cmd, object):

@@ -1,5 +1,5 @@
-adlfs
-====
+azure-datalake-store
+====================
 
 .. image:: https://travis-ci.org/Azure/azure-data-lake-store-python.svg?branch=dev
     :target: https://travis-ci.org/Azure/azure-data-lake-store-python
@@ -7,7 +7,7 @@ adlfs
 NOTE: This management package is currently under active development
 and should not be consumed until the first version is published.
 
-adlfs is a file-system management system in python for the
+azure-datalake-store is a file-system management system in python for the
 Azure Data-Lake Store.
 
 To install:
@@ -25,7 +25,7 @@ To play with the code, here is a starting point:
 
 .. code-block:: python
 
-    from adlfs import core, lib, multithread
+    from azure.datalake.store import core, lib, multithread
     token = lib.auth(tenant_id, username, password)
     adl = core.AzureDLFileSystem(store_name, token)
 
@@ -56,16 +56,16 @@ To play with the code, here is a starting point:
 
 
 To interact with the API at a higher-level, you can use the provided
-command-line interface in "adlfs/cli.py". You will need to set the appropriate
-environment variables as described above to connect to the Azure Data Lake
-Store.
+command-line interface in "azure/datalake/store/cli.py". You will need to set
+the appropriate environment variables as described above to connect to the
+Azure Data Lake Store.
 
-To start the CLI in interactive mode, run "python adlfs/cli.py" and then type
-"help" to see all available commands (similiar to Unix utilities):
+To start the CLI in interactive mode, run "python azure/datalake/store/cli.py"
+and then type "help" to see all available commands (similiar to Unix utilities):
 
 .. code-block:: bash
 
-    > python adlfs/cli.py
+    > python azure/datalake/store/cli.py
     azure> help
 
     Documented commands (type help <topic>):
@@ -84,7 +84,7 @@ familiar with the Unix/Linux "ls" command, the columns represent 1) permissions,
 
 .. code-block:: bash
 
-    > python adlfs/cli.py
+    > python azure/datalake/store/cli.py
     azure> ls -l
     drwxrwx--- 0123abcd 0123abcd         0 Aug 02 12:44 azure1
     -rwxrwx--- 0123abcd 0123abcd   1048576 Jul 25 18:33 abc.csv
@@ -104,7 +104,7 @@ named after the remote file minus the directory path.
 
 .. code-block:: bash
 
-    > python adlfs/cli.py
+    > python azure/datalake/store/cli.py
     azure> ls -l
     drwxrwx--- 0123abcd 0123abcd         0 Aug 02 12:44 azure1
     -rwxrwx--- 0123abcd 0123abcd   1048576 Jul 25 18:33 abc.csv
@@ -125,7 +125,7 @@ For example, listing the entries in the home directory:
 
 .. code-block:: bash
 
-    > python adlfs/cli.py ls -l
+    > python azure/datalake/store/cli.py ls -l
     drwxrwx--- 0123abcd 0123abcd         0 Aug 02 12:44 azure1
     -rwxrwx--- 0123abcd 0123abcd   1048576 Jul 25 18:33 abc.csv
     -r-xr-xr-x 0123abcd 0123abcd        36 Jul 22 18:32 xyz.csv
@@ -137,7 +137,7 @@ Also, downloading a remote file:
 
 .. code-block:: bash
 
-    > python adlfs/cli.py get xyz.csv
+    > python azure/datalake/store/cli.py get xyz.csv
     2016-08-04 18:57:48,603 - ADLFS - DEBUG - Creating empty file xyz.csv
     2016-08-04 18:57:48,604 - ADLFS - DEBUG - Fetch: xyz.csv, 0-36
     2016-08-04 18:57:49,726 - ADLFS - DEBUG - Downloaded to xyz.csv, byte offset 0
