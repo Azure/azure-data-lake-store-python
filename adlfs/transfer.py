@@ -235,6 +235,7 @@ class ADLTransferClient(object):
         self._chunked = chunked
         self._unique_temporary = unique_temporary
         self._unique_str = uuid.uuid4().hex
+        self.verbose = verbose
 
         # Internal state tracking files/chunks/futures
         self._files = {}
@@ -293,11 +294,9 @@ class ADLTransferClient(object):
         return future
 
     def _start(self, src, dst):
-        self._ffutures = {}
-        self._cfutures = {}
         key = (src, dst)
         self._fstates[key] = 'transferring'
-        self._files[key]['start'] = self._files[key].get('start', time.time())
+        self._files[key]['start'] = self._files[key]['start'] or time.time()
         for obj in self._files[key]['cstates'].objects:
             name, offset = obj
             cs = self._files[key]['cstates']
@@ -308,6 +307,7 @@ class ADLTransferClient(object):
                 self._transfer, self._adlfs, src, name, offset,
                 self._chunksize, self._blocksize)
             self._cfutures[future] = obj
+            print('Submitted', future, self._cfutures, flush=True, end='\n\n')
 
     @property
     def progress(self):
@@ -338,6 +338,7 @@ class ADLTransferClient(object):
         return files
 
     def _update(self, future):
+        print(future.result(), self._cfutures, self._ffutures, flush=True)
         if future in self._cfutures:
             obj = self._cfutures[future]
             parent = self._chunks[obj]['parent']
@@ -359,6 +360,7 @@ class ADLTransferClient(object):
                 else:
                     cstates[obj] = 'finished'
 
+            print(cstates)
             if cstates.contains_all('finished'):
                 logger.debug("Chunks transferred")
                 src, dst = parent
@@ -404,11 +406,12 @@ class ADLTransferClient(object):
                  self.progress], Counter())
         return dict(c)
 
-
     def run(self, nthreads=None, monitor=True, before_start=None):
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
         self._nthreads = nthreads or self._nthreads
+        self._ffutures = {}
+        self._cfutures = {}
         for src, dst in self._files:
             if before_start:
                 before_start(self._adlfs, src, dst)

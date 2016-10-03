@@ -279,7 +279,8 @@ class ADLUploader(object):
                 blocksize=blocksize,
                 delimiter=delimiter,
                 parent=self,
-                verbose=verbose)
+                verbose=verbose,
+                unique_temporary=True)
         self._name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
