@@ -9,8 +9,9 @@
 """
 Low-level classes for managing data transfer.
 """
+from __future__ import print_function
 
-from collections import namedtuple
+from collections import namedtuple, Counter
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import multiprocessing
@@ -134,6 +135,9 @@ class ADLTransferClient(object):
     chunksize: int [2**28]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
+    buffersize: int [2**25]
+        Number of bytes for internal buffer. This block cannot be bigger than
+        a chunk and cannot be smaller than a block.
     blocksize: int [2**25]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
@@ -217,8 +221,9 @@ class ADLTransferClient(object):
     """
 
     def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
-                 chunksize=2**28, blocksize=2**25, chunked=True,
-                 unique_temporary=True, persist_path=None, delimiter=None):
+                 chunksize=2**28, buffersize=2**25, blocksize=2**25,
+                 chunked=True, unique_temporary=True, persist_path=None,
+                 delimiter=None, verbose=True):
         self._adlfs = adlfs
         self._name = name
         self._transfer = transfer
@@ -226,6 +231,7 @@ class ADLTransferClient(object):
         self._nthreads = max(1, nthreads or multiprocessing.cpu_count())
         self._chunksize = chunksize
         self._chunkretries = 5
+        self._buffersize = buffersize
         self._blocksize = blocksize
         self._chunked = chunked
         self._unique_temporary = unique_temporary
@@ -233,6 +239,7 @@ class ADLTransferClient(object):
         self._persist_path = persist_path
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
+        self.verbose = verbose
 
         # Internal state tracking files/chunks/futures
         self._files = {}
@@ -299,7 +306,7 @@ class ADLTransferClient(object):
             self._files[key]['cstates'][obj] = 'running'
             future = self._submit(
                 self._transfer, self._adlfs, src, name, offset,
-                self._chunksize, self._blocksize)
+                self._chunksize, self._buffersize, self._blocksize)
             self._cfutures[future] = obj
 
     @property
@@ -388,6 +395,15 @@ class ADLTransferClient(object):
                     self._files[(src, dst)]['stop'] = time.time()
                     logger.info("Transferred %s -> %s", src, dst)
         self.save()
+        if self.verbose:
+            print('\b' * 200, self.status, end='', flush=True)
+
+    @property
+    def status(self):
+        c = sum([Counter([c.state for c in f.chunks]) for f in
+                 self.progress], Counter())
+        return dict(c)
+
 
     def run(self, nthreads=None, monitor=True, before_start=None):
         self._nthreads = nthreads or self._nthreads

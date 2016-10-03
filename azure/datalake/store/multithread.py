@@ -49,6 +49,9 @@ class ADLDownloader(object):
     chunksize: int [2**28]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
+    buffersize: int [2**22]
+        Number of bytes for internal buffer. This block cannot be bigger than
+        a chunk and cannot be smaller than a block.
     blocksize: int [2**22]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
@@ -69,9 +72,10 @@ class ADLDownloader(object):
     azure.datalake.store.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**22, client=None, run=True, overwrite=False):
-        if not overwrite and adlfs.exists(rpath):
-            raise FileExistsError(rpath)
+                 buffersize=2**22, blocksize=2**22, client=None, run=True,
+                 overwrite=False, verbose=True):
+        if not overwrite and os.path.exists(lpath):
+            raise FileExistsError(lpath)
         if client:
             self.client = client
         else:
@@ -81,9 +85,11 @@ class ADLDownloader(object):
                 transfer=get_chunk,
                 nthreads=nthreads,
                 chunksize=chunksize,
+                buffersize=buffersize,
                 blocksize=blocksize,
                 chunked=False,
-                persist_path=os.path.join(datadir, 'downloads'))
+                persist_path=os.path.join(datadir, 'downloads'),
+                verbose=verbose)
         self.rpath = rpath
         self.lpath = lpath
         self._overwrite = overwrite
@@ -152,23 +158,20 @@ class ADLDownloader(object):
         self.client.save(keep)
 
     def __str__(self):
-        progress = self.client.progress
-        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
-        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
-        return "<ADL Download: %s -> %s (%s of %s chunks remain)>" % (
-            self.rpath, self.lpath, nchunks, nchunks_orig)
+        return "<ADL Download: %s -> %s (%s)>" % (self.rpath, self.lpath,
+                                                  self.client.status)
 
     __repr__ = __str__
 
 
-def get_chunk(adlfs, src, dst, offset, size, blocksize, shutdown_event=None):
+def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, shutdown_event=None):
     """ Download a piece of a remote file and write locally
 
     Internal function used by `download`.
     """
     nbytes = 0
     try:
-        with adlfs.open(src, 'rb') as fin:
+        with adlfs.open(src, 'rb', blocksize=buffersize) as fin:
             end = offset + size
             miniblock = min(size, blocksize)
             with open(dst, 'rb+') as fout:
@@ -211,7 +214,10 @@ class ADLUploader(object):
     chunksize: int [2**28]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
-    blocksize: int [2**25]
+    buffersize: int [2**22]
+        Number of bytes for internal buffer. This block cannot be bigger than
+        a chunk and cannot be smaller than a block.
+    blocksize: int [2**22]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
     client: ADLTransferClient [None]
@@ -234,10 +240,10 @@ class ADLUploader(object):
     azure.datalake.store.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**25, client=None, run=True, delimiter=None,
-                 overwrite=False):
-        if not overwrite and os.path.exists(lpath):
-            raise FileExistsError(lpath)
+                 buffersize=2**22, blocksize=2**22, client=None, run=True,
+                 delimiter=None, overwrite=False, verbose=True):
+        if not overwrite and adlfs.exists(rpath):
+            raise FileExistsError(rpath)
         if client:
             self.client = client
         else:
@@ -248,9 +254,11 @@ class ADLUploader(object):
                 merge=merge_chunks,
                 nthreads=nthreads,
                 chunksize=chunksize,
+                buffersize=buffersize,
                 blocksize=blocksize,
                 persist_path=os.path.join(datadir, 'uploads'),
-                delimiter=delimiter)
+                delimiter=delimiter,
+                verbose=verbose)
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
         self._overwrite = overwrite
@@ -304,16 +312,13 @@ class ADLUploader(object):
         self.client.save(keep)
 
     def __str__(self):
-        progress = self.client.progress
-        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
-        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
-        return "<ADL Upload: %s -> %s (%s of %s chunks remain)>" % (
-            self.lpath, self.rpath, nchunks, nchunks_orig)
+        return "<ADL Upload: %s -> %s (%s)>" % (self.lpath, self.rpath,
+                                                self.client.status)
 
     __repr__ = __str__
 
 
-def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
+def put_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, delimiter=None,
               shutdown_event=None):
     """ Upload a piece of a local file
 
@@ -321,7 +326,7 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
     """
     nbytes = 0
     try:
-        with adlfs.open(dst, 'wb', delimiter=delimiter) as fout:
+        with adlfs.open(dst, 'wb', blocksize=buffersize, delimiter=delimiter) as fout:
             end = offset + size
             miniblock = min(size, blocksize)
             with open(src, 'rb') as fin:

@@ -218,7 +218,7 @@ def test_put(capsys, tmpdir, azure, client):
         client.onecmd(' '.join(['put', '-f', localfile, azuredir]))
 
         client.onecmd('head ' + azuredir + '/foo')
-        assert read_stdout(capsys) == '123456'
+        assert read_stdout(capsys).endswith('123456')
 
         client.onecmd('rm ' + azuredir + '/foo')
         assert not read_stdout(capsys)
