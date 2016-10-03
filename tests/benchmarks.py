@@ -1,3 +1,4 @@
+import functools
 import hashlib
 import logging
 import os
@@ -7,10 +8,12 @@ import time
 
 from adlfs import core, multithread
 from adlfs.transfer import ADLTransferClient
+from adlfs.utils import WIN
 from tests.testing import md5sum
 
 
 def benchmark(f):
+    @functools.wraps(f)
     def wrapped(*args, **kwargs):
         print('[%s] starting...' % (f.__name__))
         start = time.time()
@@ -99,57 +102,56 @@ def verify(adl, progress, lfile, rfile):
 
 
 @benchmark
-def bench_upload_1_50gb(adl, lpath, rpath, nthreads):
+def bench_upload_1_50gb(adl, lpath, rpath, config):
     up = multithread.ADLUploader(
         adl,
         lpath=lpath,
         rpath=rpath,
-        nthreads=nthreads)
+        **config[bench_upload_1_50gb.__name__])
 
     verify(adl, up.client.progress, lpath, rpath)
 
 
 @benchmark
-def bench_upload_50_1gb(adl, lpath, rpath, nthreads):
+def bench_upload_50_1gb(adl, lpath, rpath, config):
     up = multithread.ADLUploader(
         adl,
         lpath=lpath,
         rpath=rpath,
-        nthreads=nthreads)
+        **config[bench_upload_50_1gb.__name__])
 
     verify(adl, up.client.progress, lpath, rpath)
 
 
 @benchmark
-def bench_download_1_50gb(adl, lpath, rpath, nthreads):
+def bench_download_1_50gb(adl, lpath, rpath, config):
     down = multithread.ADLDownloader(
         adl,
         lpath=lpath,
         rpath=rpath,
-        nthreads=nthreads)
+        **config[bench_download_1_50gb.__name__])
 
     verify(adl, down.client.progress, lpath, rpath)
 
 
 @benchmark
-def bench_download_50_1gb(adl, lpath, rpath, nthreads):
+def bench_download_50_1gb(adl, lpath, rpath, config):
     down = multithread.ADLDownloader(
         adl,
         lpath=lpath,
         rpath=rpath,
-        nthreads=nthreads)
+        **config[bench_download_50_1gb.__name__])
 
     verify(adl, down.client.progress, lpath, rpath)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) <= 3:
-        print("Usage: benchmarks.py local_path remote_path [nthreads]")
+    if len(sys.argv) <= 2:
+        print("Usage: benchmarks.py local_path remote_path")
         sys.exit(1)
 
     localdir = sys.argv[1]
     remoteFolderName = sys.argv[2]
-    nthreads = int(sys.argv[3]) if len(sys.argv) > 3 else None
 
     adl = core.AzureDLFileSystem()
 
@@ -162,6 +164,55 @@ if __name__ == '__main__':
     # Required setup until outstanding issues are resolved
     adl.mkdir(remoteFolderName)
 
+    # OS-specific settings
+
+    if WIN:
+        config = {
+            'bench_upload_1_50gb': {
+                'nthreads': 64,
+                'buffersize': 32 * 2**20,
+                'blocksize': 4 * 2**20
+            },
+            'bench_upload_50_1gb': {
+                'nthreads': 64,
+                'buffersize': 32 * 2**20,
+                'blocksize': 32 * 2**20
+            },
+            'bench_download_1_50gb': {
+                'nthreads': 64,
+                'buffersize': 32 * 2**20,
+                'blocksize': 4 * 2**20
+            },
+            'bench_download_50_1gb': {
+                'nthreads': 64,
+                'buffersize': 32 * 2**20,
+                'blocksize': 4 * 2**20
+            }
+        }
+    else:
+        config = {
+            'bench_upload_1_50gb': {
+                'nthreads': 64,
+                'buffersize': 4 * 2**20,
+                'blocksize': 4 * 2**20
+            },
+            'bench_upload_50_1gb': {
+                'nthreads': 64,
+                'buffersize': 4 * 2**20,
+                'blocksize': 4 * 2**20
+            },
+            'bench_download_1_50gb': {
+                'nthreads': 16,
+                'buffersize': 8 * 2**20,
+                'blocksize': .4 * 2**20
+            },
+            'bench_download_50_1gb': {
+                'nthreads': 16,
+                'buffersize': 8 * 2**20,
+                'blocksize': 8 * 2**20
+            }
+        }
+
     # Upload/download 1 50GB files
 
     lpath_up = os.path.join(localdir, '50gbfile.txt')
@@ -173,8 +224,8 @@ if __name__ == '__main__':
     if os.path.exists(lpath_down):
         os.remove(lpath_down)
 
-    bench_upload_1_50gb(adl, lpath_up, rpath, nthreads)
-    bench_download_1_50gb(adl, lpath_down, rpath, nthreads)
+    bench_upload_1_50gb(adl, lpath_up, rpath, config)
+    bench_download_1_50gb(adl, lpath_down, rpath, config)
     print(checksum(lpath_up), lpath_up)
     print(checksum(lpath_down), lpath_down)
 
@@ -189,7 +240,7 @@ if __name__ == '__main__':
     if os.path.exists(lpath_down):
         shutil.rmtree(lpath_down)
 
-    bench_upload_50_1gb(adl, lpath_up, rpath, nthreads)
-    bench_download_50_1gb(adl, lpath_down, rpath, nthreads)
+    bench_upload_50_1gb(adl, lpath_up, rpath, config)
+    bench_download_50_1gb(adl, lpath_down, rpath, config)
     print(checksum(lpath_up), lpath_up)
     print(checksum(lpath_down), lpath_down)
