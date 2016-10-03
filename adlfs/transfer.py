@@ -307,7 +307,6 @@ class ADLTransferClient(object):
                 self._transfer, self._adlfs, src, name, offset,
                 self._chunksize, self._blocksize)
             self._cfutures[future] = obj
-            print('Submitted', future, self._cfutures, flush=True, end='\n\n')
 
     @property
     def progress(self):
@@ -338,7 +337,6 @@ class ADLTransferClient(object):
         return files
 
     def _update(self, future):
-        print(future.result(), self._cfutures, self._ffutures, flush=True)
         if future in self._cfutures:
             obj = self._cfutures[future]
             parent = self._chunks[obj]['parent']
@@ -360,7 +358,6 @@ class ADLTransferClient(object):
                 else:
                     cstates[obj] = 'finished'
 
-            print(cstates)
             if cstates.contains_all('finished'):
                 logger.debug("Chunks transferred")
                 src, dst = parent
@@ -415,8 +412,8 @@ class ADLTransferClient(object):
         for src, dst in self._files:
             if before_start:
                 before_start(self._adlfs, src, dst)
-                before_start = None
             self._start(src, dst)
+        before_start = None
         if monitor:
             self.monitor()
 
