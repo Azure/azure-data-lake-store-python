@@ -259,7 +259,7 @@ class DatalakeRESTInterface:
         func = getattr(requests, method)
         url = self.url + path
         try:
-            self.head['x-ms-client-request-id'] = str(uuid.uuid4())
+            self.head['x-ms-client-request-id'] = str(uuid.uuid1())
             self._log_request(method, url, self.head)
             r = func(url, params=params, headers=self.head, data=data)
         except requests.exceptions.RequestException as e:
