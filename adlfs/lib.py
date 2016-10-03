@@ -17,9 +17,11 @@ and authentication code.
 import json
 import logging
 import os
+import pprint
 import requests
 import requests.exceptions
 import time
+import uuid
 
 # 3rd party imports
 import adal
@@ -214,6 +216,18 @@ class DatalakeRESTInterface:
             self.token = refresh_token(self.token)
             self.head = {'Authorization': 'Bearer ' + self.token['access']}
 
+    def _log_request(self, method, url, headers):
+        logger.debug("Request Method: %s", method.upper())
+        logger.debug("Request URL: %s", url)
+        for header in headers:
+            logger.debug("Request Header: %s='%s'", header, headers[header])
+
+    def _log_response(self, response, payload=False):
+        logger.debug("Response Status Code: %s", response.status_code)
+        for header in response.headers:
+            logger.debug("Response Header: %s='%s'", header, response.headers[header])
+        if payload:
+            logger.debug("Response Body: %s", pprint.pformat(response.content))
 
     def call(self, op, path='', **kwargs):
         """ Execute a REST call
@@ -245,16 +259,25 @@ class DatalakeRESTInterface:
         func = getattr(requests, method)
         url = self.url + path
         try:
+            self.head['x-ms-client-request-id'] = str(uuid.uuid1())
+            self._log_request(method, url, self.head)
             r = func(url, params=params, headers=self.head, data=data)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: %s', str(e))
+
         if r.status_code == 403:
+            self._log_response(r, payload=True)
             raise PermissionError(path)
         elif r.status_code == 404:
+            self._log_response(r, payload=True)
             raise FileNotFoundError(path)
         elif r.status_code >= 400:
+            self._log_response(r, payload=True)
             raise DatalakeRESTException("Data-lake REST exception: %s, %s, %s" %
                                         (op, r.status_code, r.content.decode()))
+        else:
+            self._log_response(r)
+
         if r.content:
             if r.content.startswith(b'{'):
                 try:
