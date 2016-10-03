@@ -203,13 +203,13 @@ if __name__ == '__main__':
             },
             'bench_download_1_50gb': {
                 'nthreads': 16,
-                'buffersize': 8 * 2**20,
-                'blocksize': .4 * 2**20
+                'buffersize': 4 * 2**20,
+                'blocksize': 4 * 2**20
             },
             'bench_download_50_1gb': {
                 'nthreads': 16,
-                'buffersize': 8 * 2**20,
-                'blocksize': 8 * 2**20
+                'buffersize': 4 * 2**20,
+                'blocksize': 4 * 2**20
             }
         }
 
