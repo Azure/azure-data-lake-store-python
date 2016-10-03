@@ -18,6 +18,7 @@ import multiprocessing
 import os
 import pickle
 import signal
+import sys
 import threading
 import time
 import uuid
@@ -395,7 +396,8 @@ class ADLTransferClient(object):
                     logger.info("Transferred %s -> %s", src, dst)
         self.save()
         if self.verbose:
-            print('\b' * 200, self.status, end='', flush=True)
+            print('\b' * 200, self.status, end='')
+            sys.stdout.flush()
 
     @property
     def status(self):
