@@ -15,7 +15,7 @@ import sys
 
 PY2 = sys.version_info.major == 2
 
-WIN = platform.platform() == 'Windows'
+WIN = platform.system() == 'Windows'
 
 if WIN:
     datadir = os.path.join(os.environ['APPDATA'], 'azure-datalake-store')
