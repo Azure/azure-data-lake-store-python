@@ -17,6 +17,7 @@ Only implements upload and download of (massive) files and directory trees.
 import glob
 import logging
 import os
+import pickle
 
 from .core import AzureDLPath
 from .exceptions import FileExistsError
@@ -24,6 +25,30 @@ from .transfer import ADLTransferClient
 from .utils import commonprefix, datadir, read_block, tokenize
 
 logger = logging.getLogger(__name__)
+
+
+def save(instance, filename, keep=True):
+    if os.path.exists(filename):
+        all_downloads = load(filename)
+    else:
+        all_downloads = {}
+    if not instance.client._fstates.contains_all('finished') and keep:
+        all_downloads[instance._name] = instance
+    else:
+        all_downloads.pop(instance._name, None)
+    try:
+        # persist failure should not halt things
+        with open(filename, 'wb') as f:
+            pickle.dump(all_downloads, f)
+    except IOError:
+        logger.debug("Persist failed: %s" % filename)
+
+
+def load(filename):
+    try:
+        return pickle.load(open(filename, 'rb'))
+    except:
+        return {}
 
 
 class ADLDownloader(object):
@@ -81,15 +106,15 @@ class ADLDownloader(object):
         else:
             self.client = ADLTransferClient(
                 adlfs,
-                name=tokenize(adlfs, rpath, lpath, chunksize, blocksize),
                 transfer=get_chunk,
                 nthreads=nthreads,
                 chunksize=chunksize,
                 buffersize=buffersize,
                 blocksize=blocksize,
                 chunked=False,
-                persist_path=os.path.join(datadir, 'downloads'),
-                verbose=verbose)
+                verbose=verbose,
+                parent=self)
+        self._name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = rpath
         self.lpath = lpath
         self._overwrite = overwrite
@@ -97,9 +122,50 @@ class ADLDownloader(object):
         if run:
             self.run()
 
+    def save(self, keep=True):
+        """ Persist this download
+
+        Saves a copy of this transfer process in its current state to disk.
+        This is done automatically for a running transfer, so that as a chunk
+        is completed, this is reflected. Thus, if a transfer is interrupted,
+        e.g., by user action, the transfer can be restarted at another time.
+        All chunks that were not already completed will be restarted at that
+        time.
+
+        See methods ``load`` to retrieved saved transfers and ``run`` to
+        resume a stopped transfer.
+
+        Parameters
+        ----------
+        keep: bool (True)
+            If True, transfer will be saved if some chunks remain to be
+            completed; the transfer will be sure to be removed otherwise.
+        """
+        save(self, os.path.join(datadir, 'downloads'), keep)
+
+    @staticmethod
+    def load():
+        """ Load list of persisted transfers from disk, for possible resumption.
+
+        Returns
+        -------
+            A dictionary of download instances. The hashes are auto-
+            generated unique. The state of the chunks completed, errored, etc.,
+            can be seen in the status attribute. Instances can be resumed with
+            ``run()``.
+        """
+        return load(os.path.join(datadir, 'downloads'))
+
+    @staticmethod
+    def clear_saved():
+        """ Remove references to all persisted downloads.
+        """
+        if os.path.exists(os.path.join(datadir, 'downloads')):
+            os.remove(os.path.join(datadir, 'downloads'))
+
     @property
     def hash(self):
-        return self.client._name
+        return self._name
 
     def _setup(self):
         """ Create set of parameters to loop over
@@ -134,9 +200,7 @@ class ADLDownloader(object):
         nthreads: int [None]
             Override default nthreads, if given
         monitor: bool [True]
-            To watch and wait (block) until completion. If False, `update()`
-            should be called manually, otherwise process runs as "fire and
-            forget".
+            To watch and wait (block) until completion.
         """
         def touch(self, src, dst):
             root = os.path.dirname(dst)
@@ -149,13 +213,6 @@ class ADLDownloader(object):
                 pass
 
         self.client.run(nthreads, monitor, before_start=touch)
-
-    @staticmethod
-    def load():
-        return ADLTransferClient.load(os.path.join(datadir, 'downloads'))
-
-    def save(self, keep=True):
-        self.client.save(keep)
 
     def __str__(self):
         return "<ADL Download: %s -> %s (%s)>" % (self.rpath, self.lpath,
@@ -249,16 +306,17 @@ class ADLUploader(object):
         else:
             self.client = ADLTransferClient(
                 adlfs,
-                name=tokenize(adlfs, rpath, lpath, chunksize, blocksize),
                 transfer=put_chunk,
                 merge=merge_chunks,
                 nthreads=nthreads,
                 chunksize=chunksize,
                 buffersize=buffersize,
                 blocksize=blocksize,
-                persist_path=os.path.join(datadir, 'uploads'),
                 delimiter=delimiter,
-                verbose=verbose)
+                parent=self,
+                verbose=verbose,
+                unique_temporary=True)
+        self._name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
         self._overwrite = overwrite
@@ -266,9 +324,50 @@ class ADLUploader(object):
         if run:
             self.run()
 
+    def save(self, keep=True):
+        """ Persist this upload
+
+        Saves a copy of this transfer process in its current state to disk.
+        This is done automatically for a running transfer, so that as a chunk
+        is completed, this is reflected. Thus, if a transfer is interrupted,
+        e.g., by user action, the transfer can be restarted at another time.
+        All chunks that were not already completed will be restarted at that
+        time.
+
+        See methods ``load`` to retrieved saved transfers and ``run`` to
+        resume a stopped transfer.
+
+        Parameters
+        ----------
+        keep: bool (True)
+            If True, transfer will be saved if some chunks remain to be
+            completed; the transfer will be sure to be removed otherwise.
+        """
+        save(self, os.path.join(datadir, 'uploads'), keep)
+
+    @staticmethod
+    def load():
+        """ Load list of persisted transfers from disk, for possible resumption.
+
+        Returns
+        -------
+            A dictionary of upload instances. The hashes are auto-
+            generated unique. The state of the chunks completed, errored, etc.,
+            can be seen in the status attribute. Instances can be resumed with
+            ``run()``.
+        """
+        return load(os.path.join(datadir, 'uploads'))
+
+    @staticmethod
+    def clear_saved():
+        """ Remove references to all persisted uploads.
+        """
+        if os.path.exists(os.path.join(datadir, 'uploads')):
+            os.remove(os.path.join(datadir, 'uploads'))
+
     @property
     def hash(self):
-        return self.client._name
+        return self._name
 
     def _setup(self):
         """ Create set of parameters to loop over
@@ -302,14 +401,16 @@ class ADLUploader(object):
             self.client.submit(lfile, rfile, fsize)
 
     def run(self, nthreads=None, monitor=True):
+        """ Populate transfer queue and execute downloads
+
+        Parameters
+        ----------
+        nthreads: int [None]
+            Override default nthreads, if given
+        monitor: bool [True]
+            To watch and wait (block) until completion.
+        """
         self.client.run(nthreads, monitor)
-
-    @staticmethod
-    def load():
-        return ADLTransferClient.load(os.path.join(datadir, 'uploads'))
-
-    def save(self, keep=True):
-        self.client.save(keep)
 
     def __str__(self):
         return "<ADL Upload: %s -> %s (%s)>" % (self.lpath, self.rpath,
