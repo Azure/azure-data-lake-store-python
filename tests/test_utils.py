@@ -13,7 +13,7 @@ import pytest
 from azure.datalake.store.utils import WIN
 
 
-@pytest.mark.skipif(sys.platform == 'win32', reason="requires non-windows platform")
+@pytest.mark.skipif(sys.platform == 'win32', reason="requires non-windows")
 def test_non_windows_platform():
     assert not WIN
 
