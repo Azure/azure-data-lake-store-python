@@ -227,7 +227,7 @@ class ADLTransferClient(object):
     def __init__(self, adlfs, transfer, merge=None, nthreads=None,
                  chunksize=2**28, blocksize=2**25, chunked=True,
                  unique_temporary=True, delimiter=None,
-                 parent=None, verbose=True):
+                 parent=None, verbose=True, buffersize=2**25):
         self._adlfs = adlfs
         self._parent = parent
         self._transfer = transfer
