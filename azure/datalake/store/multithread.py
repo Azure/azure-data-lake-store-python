@@ -123,14 +123,43 @@ class ADLDownloader(object):
             self.run()
 
     def save(self, keep=True):
+        """ Persist this download
+
+        Saves a copy of this transfer process in its current state to disk.
+        This is done automatically for a running transfer, so that as a chunk
+        is completed, this is reflected. Thus, if a transfer is interrupted,
+        e.g., by user action, the transfer can be restarted at another time.
+        All chunks that were not already completed will be restarted at that
+        time.
+
+        See methods ``load`` to retrieved saved transfers and ``run`` to
+        resume a stopped transfer.
+
+        Parameters
+        ----------
+        keep: bool (True)
+            If True, transfer will be saved if some chunks remain to be
+            completed; the transfer will be sure to be removed otherwise.
+        """
         save(self, os.path.join(datadir, 'downloads'), keep)
 
     @staticmethod
     def load():
+        """ Load list of persisted transfers from disk, for possible resumption.
+
+        Returns
+        -------
+            A dictionary of download instances. The hashes are auto-
+            generated unique. The state of the chunks completed, errored, etc.,
+            can be seen in the status attribute. Instances can be resumed with
+            ``run()``.
+        """
         return load(os.path.join(datadir, 'downloads'))
 
     @staticmethod
     def clear_saved():
+        """ Remove references to all persisted downloads.
+        """
         if os.path.exists(os.path.join(datadir, 'downloads')):
             os.remove(os.path.join(datadir, 'downloads'))
 
@@ -171,9 +200,7 @@ class ADLDownloader(object):
         nthreads: int [None]
             Override default nthreads, if given
         monitor: bool [True]
-            To watch and wait (block) until completion. If False, `update()`
-            should be called manually, otherwise process runs as "fire and
-            forget".
+            To watch and wait (block) until completion.
         """
         def touch(self, src, dst):
             root = os.path.dirname(dst)
@@ -298,14 +325,43 @@ class ADLUploader(object):
             self.run()
 
     def save(self, keep=True):
+        """ Persist this upload
+
+        Saves a copy of this transfer process in its current state to disk.
+        This is done automatically for a running transfer, so that as a chunk
+        is completed, this is reflected. Thus, if a transfer is interrupted,
+        e.g., by user action, the transfer can be restarted at another time.
+        All chunks that were not already completed will be restarted at that
+        time.
+
+        See methods ``load`` to retrieved saved transfers and ``run`` to
+        resume a stopped transfer.
+
+        Parameters
+        ----------
+        keep: bool (True)
+            If True, transfer will be saved if some chunks remain to be
+            completed; the transfer will be sure to be removed otherwise.
+        """
         save(self, os.path.join(datadir, 'uploads'), keep)
 
     @staticmethod
     def load():
+        """ Load list of persisted transfers from disk, for possible resumption.
+
+        Returns
+        -------
+            A dictionary of upload instances. The hashes are auto-
+            generated unique. The state of the chunks completed, errored, etc.,
+            can be seen in the status attribute. Instances can be resumed with
+            ``run()``.
+        """
         return load(os.path.join(datadir, 'uploads'))
 
     @staticmethod
     def clear_saved():
+        """ Remove references to all persisted uploads.
+        """
         if os.path.exists(os.path.join(datadir, 'uploads')):
             os.remove(os.path.join(datadir, 'uploads'))
 
@@ -345,6 +401,15 @@ class ADLUploader(object):
             self.client.submit(lfile, rfile, fsize)
 
     def run(self, nthreads=None, monitor=True):
+        """ Populate transfer queue and execute downloads
+
+        Parameters
+        ----------
+        nthreads: int [None]
+            Override default nthreads, if given
+        monitor: bool [True]
+            To watch and wait (block) until completion.
+        """
         self.client.run(nthreads, monitor)
 
     def __str__(self):
