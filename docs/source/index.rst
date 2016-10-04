@@ -1,5 +1,5 @@
-adlfs
-====
+azure-datalake-store
+====================
 
 A pure-python interface to the Azure Data-lake Storage system, providing
 pythonic file-system and file objects, seamless transition between Windows and
@@ -12,7 +12,7 @@ Installation
 ------------
 Using ``pip``::
 
-    pip install adlfs
+    pip install azure-datalake-store
 
 Manually (bleeding edge):
 
@@ -90,7 +90,7 @@ forward slashes or backslashes.
     import pathlib  # only >= Python 3.4
     from pathlib2 import pathlib  # only <= Python 3.3
 
-    from adlfs.core import AzureDLPath
+    from azure.datalake.store.core import AzureDLPath
 
     # possible remote paths to use on API
     p1 = '\\foo\\bar'

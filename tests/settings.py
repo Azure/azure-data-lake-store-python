@@ -10,7 +10,7 @@ import base64
 import os
 import time
 
-from adlfs.lib import auth
+from azure.datalake.store.lib import auth
 from tests import fake_settings
 
 

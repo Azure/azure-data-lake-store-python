@@ -628,7 +628,7 @@ def test_chown(azure):
 
 @pytest.mark.skipif(sys.platform != 'win32', reason="requires windows")
 def test_backslash():
-    from adlfs.core import AzureDLPath
+    from azure.datalake.store.core import AzureDLPath
 
     posix_abspath = '/foo/bar'
     posix_relpath = 'foo/bar'
@@ -648,7 +648,7 @@ def test_backslash():
 
 
 def test_forward_slash():
-    from adlfs.core import AzureDLPath
+    from azure.datalake.store.core import AzureDLPath
 
     posix_abspath = '/foo/bar'
     posix_relpath = 'foo/bar'

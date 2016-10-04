@@ -74,6 +74,9 @@ class ADLDownloader(object):
     chunksize: int [2**28]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
+    buffersize: int [2**22]
+        Number of bytes for internal buffer. This block cannot be bigger than
+        a chunk and cannot be smaller than a block.
     blocksize: int [2**22]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
@@ -91,11 +94,11 @@ class ADLDownloader(object):
 
     See Also
     --------
-    adlfs.transfer.ADLTransferClient
+    azure.datalake.store.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**22, client=None, run=True, overwrite=False,
-                 verbose=True):
+                 buffersize=2**22, blocksize=2**22, client=None, run=True,
+                 overwrite=False, verbose=True):
         if not overwrite and os.path.exists(lpath):
             raise FileExistsError(lpath)
         if client:
@@ -106,6 +109,7 @@ class ADLDownloader(object):
                 transfer=get_chunk,
                 nthreads=nthreads,
                 chunksize=chunksize,
+                buffersize=buffersize,
                 blocksize=blocksize,
                 chunked=False,
                 verbose=verbose,
@@ -190,14 +194,14 @@ class ADLDownloader(object):
     __repr__ = __str__
 
 
-def get_chunk(adlfs, src, dst, offset, size, blocksize, shutdown_event=None):
+def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, shutdown_event=None):
     """ Download a piece of a remote file and write locally
 
     Internal function used by `download`.
     """
     nbytes = 0
     try:
-        with adlfs.open(src, 'rb') as fin:
+        with adlfs.open(src, 'rb', blocksize=buffersize) as fin:
             end = offset + size
             miniblock = min(size, blocksize)
             with open(dst, 'rb+') as fout:
@@ -240,7 +244,10 @@ class ADLUploader(object):
     chunksize: int [2**28]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
-    blocksize: int [2**25]
+    buffersize: int [2**22]
+        Number of bytes for internal buffer. This block cannot be bigger than
+        a chunk and cannot be smaller than a block.
+    blocksize: int [2**22]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
     client: ADLTransferClient [None]
@@ -260,11 +267,11 @@ class ADLUploader(object):
 
     See Also
     --------
-    adlfs.transfer.ADLTransferClient
+    azure.datalake.store.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**25, client=None, run=True, delimiter=None,
-                 overwrite=False, verbose=True):
+                 buffersize=2**22, blocksize=2**22, client=None, run=True,
+                 delimiter=None, overwrite=False, verbose=True):
         if not overwrite and adlfs.exists(rpath):
             raise FileExistsError(rpath)
         if client:
@@ -276,6 +283,7 @@ class ADLUploader(object):
                 merge=merge_chunks,
                 nthreads=nthreads,
                 chunksize=chunksize,
+                buffersize=buffersize,
                 blocksize=blocksize,
                 delimiter=delimiter,
                 parent=self,
@@ -346,7 +354,7 @@ class ADLUploader(object):
     __repr__ = __str__
 
 
-def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
+def put_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, delimiter=None,
               shutdown_event=None):
     """ Upload a piece of a local file
 
@@ -354,7 +362,7 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
     """
     nbytes = 0
     try:
-        with adlfs.open(dst, 'wb', delimiter=delimiter) as fout:
+        with adlfs.open(dst, 'wb', blocksize=buffersize, delimiter=delimiter) as fout:
             end = offset + size
             miniblock = min(size, blocksize)
             with open(src, 'rb') as fin:

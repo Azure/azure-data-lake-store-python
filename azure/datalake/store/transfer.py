@@ -136,6 +136,9 @@ class ADLTransferClient(object):
     chunksize: int [2**28]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
+    buffersize: int [2**25]
+        Number of bytes for internal buffer. This block cannot be bigger than
+        a chunk and cannot be smaller than a block.
     blocksize: int [2**25]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
@@ -217,8 +220,8 @@ class ADLTransferClient(object):
 
     See Also
     --------
-    adlfs.multithread.ADLDownloader
-    adlfs.multithread.ADLUploader
+    azure.datalake.store.multithread.ADLDownloader
+    azure.datalake.store.multithread.ADLUploader
     """
 
     def __init__(self, adlfs, transfer, merge=None, nthreads=None,
@@ -232,6 +235,7 @@ class ADLTransferClient(object):
         self._nthreads = max(1, nthreads or multiprocessing.cpu_count())
         self._chunksize = chunksize
         self._chunkretries = 5
+        self._buffersize = buffersize
         self._blocksize = blocksize
         self._chunked = chunked
         self._unique_temporary = unique_temporary
@@ -306,7 +310,7 @@ class ADLTransferClient(object):
             cs[obj] = 'running'
             future = self._submit(
                 self._transfer, self._adlfs, src, name, offset,
-                self._chunksize, self._blocksize)
+                self._chunksize, self._buffersize, self._blocksize)
             self._cfutures[future] = obj
 
     @property
