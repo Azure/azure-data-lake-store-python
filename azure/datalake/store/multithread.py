@@ -448,7 +448,9 @@ def put_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, delimiter=No
 
 def merge_chunks(adlfs, outfile, files, shutdown_event=None):
     try:
-        adlfs.concat(outfile, files)
+        # note that it is assumed that only temp files from this run are in the segment folder created.
+        # so this call is optimized to instantly delete the temp folder on concat.
+        adlfs.concat(outfile, files, delete_source=True)
     except Exception as e:
         exception = repr(e)
         logger.debug('Merged failed %s; %s', outfile, exception)
