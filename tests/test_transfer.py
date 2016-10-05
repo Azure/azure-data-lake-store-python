@@ -7,7 +7,6 @@
 # --------------------------------------------------------------------------
 
 import os
-import pytest
 import time
 
 from azure.datalake.store.core import AzureDLPath

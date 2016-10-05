@@ -15,8 +15,6 @@ from collections import namedtuple, Counter
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import multiprocessing
-import os
-import pickle
 import signal
 import sys
 import threading
