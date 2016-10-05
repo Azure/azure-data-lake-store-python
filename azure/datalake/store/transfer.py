@@ -105,8 +105,8 @@ class StateManager(object):
 
 
 # Named tuples used to serialize client progress
-File = namedtuple('File', 'src dst state length start stop chunks exception')
-Chunk = namedtuple('Chunk', 'name state offset retries expected actual exception')
+File = namedtuple('File', 'src dst state length chunks exception')
+Chunk = namedtuple('Chunk', 'name state offset expected actual exception')
 
 
 class ADLTransferClient(object):
@@ -176,18 +176,17 @@ class ADLTransferClient(object):
     merge step will be skipped.
 
     The `transfer` callable has the function signature,
-    `fn(adlfs, src, dst, offset, size, blocksize, retries, shutdown_event)`.
+    `fn(adlfs, src, dst, offset, size, buffersize, blocksize, shutdown_event)`.
     `adlfs` is the ADL filesystem instance. `src` and `dst` refer to the source
     and destination of the respective file transfer. `offset` is the location
-    in `src` to read `size` bytes from. `blocksize` is the number of bytes in a
-    chunk to write at one time. `retries` is the number of time an Azure query
-    will be tried. The callable should return an integer representing the
-    number of bytes written.
+    in `src` to read `size` bytes from. `buffersize` is the number of bytes
+    used for internal buffering before transfer. `blocksize` is the number of
+    bytes in a chunk to write at one time. The callable should return an
+    integer representing the number of bytes written.
 
     The `merge` callable has the function signature,
-    `fn(adlfs, outfile, files, delete_source, shutdown_event)`. `adlfs` is
-    the ADL filesystem instance. `outfile` is the result of merging `files`. If
-    True, `delete_source` will delete the whole directory containing `files`.
+    `fn(adlfs, outfile, files, shutdown_event)`. `adlfs` is the ADL filesystem
+    instance. `outfile` is the result of merging `files`.
 
     For both callables, `shutdown_event` is optional. In particular,
     `shutdown_event` is a `threading.Event` that is passed to the callable.
@@ -203,12 +202,12 @@ class ADLTransferClient(object):
         Using a tuple of the file source/destination as the key, this
         dictionary stores the file metadata and all chunk states. The
         dictionary key is `(src, dst)` and the value is
-        `dict(length, start, stop, cstates, exception)`.
+        `dict(length, cstates, exception)`.
     self._chunks: dict
         Using a tuple of the chunk name/offset as the key, this dictionary
         stores the chunk metadata and has a reference to the chunk's parent
         file. The dictionary key is `(name, offset)` and the value is
-        `dict(parent=(src, dst), retries, expected, actual, exception)`.
+        `dict(parent=(src, dst), expected, actual, exception)`.
     self._ffutures: dict
         Using a Future object as the key, this dictionary provides a reverse
         lookup for the file associated with the given future. The returned
@@ -278,7 +277,6 @@ class ADLTransferClient(object):
             cstates[(name, offset)] = 'pending'
             self._chunks[(name, offset)] = dict(
                 parent=(src, dst),
-                retries=self._chunkretries,
                 expected=min(length - offset, self._chunksize),
                 actual=0,
                 exception=None)
@@ -287,8 +285,6 @@ class ADLTransferClient(object):
         self._fstates[(src, dst)] = 'pending'
         self._files[(src, dst)] = dict(
             length=length,
-            start=None,
-            stop=None,
             cstates=cstates,
             exception=None)
 
@@ -301,7 +297,6 @@ class ADLTransferClient(object):
     def _start(self, src, dst):
         key = (src, dst)
         self._fstates[key] = 'transferring'
-        self._files[key]['start'] = self._files[key]['start'] or time.time()
         for obj in self._files[key]['cstates'].objects:
             name, offset = obj
             cs = self._files[key]['cstates']
@@ -326,7 +321,6 @@ class ADLTransferClient(object):
                     name=name,
                     offset=offset,
                     state=self._files[key]['cstates'][obj],
-                    retries=self._chunks[obj]['retries'],
                     expected=self._chunks[obj]['expected'],
                     actual=self._chunks[obj]['actual'],
                     exception=self._chunks[obj]['exception']))
@@ -335,8 +329,6 @@ class ADLTransferClient(object):
                 dst=dst,
                 state=self._fstates[key],
                 length=self._files[key]['length'],
-                start=self._files[key]['start'],
-                stop=self._files[key]['stop'],
                 chunks=chunks,
                 exception=self._files[key]['exception']))
         return files
@@ -376,7 +368,6 @@ class ADLTransferClient(object):
                     self._ffutures[merge_future] = parent
                 else:
                     self._fstates[parent] = 'finished'
-                    self._files[parent]['stop'] = time.time()
                     logger.info("Transferred %s -> %s", src, dst)
             elif cstates.contains_none('running'):
                 logger.debug("Transfer failed: %s", cstates)
@@ -396,7 +387,6 @@ class ADLTransferClient(object):
                     self._fstates[(src, dst)] = 'errored'
                 else:
                     self._fstates[(src, dst)] = 'finished'
-                    self._files[(src, dst)]['stop'] = time.time()
                     logger.info("Transferred %s -> %s", src, dst)
         self.save()
         if self.verbose:
