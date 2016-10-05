@@ -9,6 +9,8 @@
 import io
 import sys
 
+import pytest
+
 from tests.testing import azure, azure_teardown, my_vcr, posix, tmpfile, working_dir
 
 test_dir = working_dir()

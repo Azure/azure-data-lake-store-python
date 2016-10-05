@@ -216,18 +216,34 @@ class DatalakeRESTInterface:
             self.token = refresh_token(self.token)
             self.head = {'Authorization': 'Bearer ' + self.token['access']}
 
-    def _log_request(self, method, url, headers):
-        logger.debug("Request Method: %s", method.upper())
-        logger.debug("Request URL: %s", url)
-        for header in headers:
-            logger.debug("Request Header: %s='%s'", header, headers[header])
+    def _log_request(self, method, url, op, path, params, headers):
+        msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
+        msg += "{} '{}' {}\n\n".format(
+            op, path,
+            " ".join(["{}={}".format(key, params[key]) for key in params]))
+        msg += "\n".join(["{}: {}".format(header, headers[header])
+                          for header in headers])
+        logger.debug(msg)
 
     def _log_response(self, response, payload=False):
-        logger.debug("Response Status Code: %s", response.status_code)
-        for header in response.headers:
-            logger.debug("Response Header: %s='%s'", header, response.headers[header])
+        msg = "HTTP Response\n{}\n{}\n".format(
+            response.status_code,
+            "\n".join(["{}: {}".format(header, response.headers[header])
+                       for header in response.headers]))
         if payload:
-            logger.debug("Response Body: %s", pprint.pformat(response.content))
+            msg += "\n{}".format(pprint.pformat(response.content))
+        logger.debug(msg)
+
+    def log_response_and_raise(self, response, exception):
+        msg = "Exception " + repr(exception)
+        if response:
+            msg += "\n{}\n{}\n\n{}".format(
+                response.status_code,
+                "\n".join(["{}: {}".format(header, response.headers[header])
+                           for header in response.headers]),
+                pprint.pformat(response.content))
+        logger.error(msg)
+        raise exception
 
     def call(self, op, path='', **kwargs):
         """ Execute a REST call
@@ -260,21 +276,18 @@ class DatalakeRESTInterface:
         url = self.url + path
         try:
             self.head['x-ms-client-request-id'] = str(uuid.uuid1())
-            self._log_request(method, url, self.head)
+            self._log_request(method, url, op, path, kwargs, self.head)
             r = func(url, params=params, headers=self.head, data=data)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: %s', str(e))
 
         if r.status_code == 403:
-            self._log_response(r, payload=True)
-            raise PermissionError(path)
+            self.log_response_and_raise(r, PermissionError(path))
         elif r.status_code == 404:
-            self._log_response(r, payload=True)
-            raise FileNotFoundError(path)
+            self.log_response_and_raise(r, FileNotFoundError(path))
         elif r.status_code >= 400:
-            self._log_response(r, payload=True)
-            raise DatalakeRESTException("Data-lake REST exception: %s, %s, %s" %
-                                        (op, r.status_code, r.content.decode()))
+            err = DatalakeRESTException("Data-lake REST exception: %s", op)
+            self.log_response_and_raise(r, err)
         else:
             self._log_response(r)
 
@@ -283,8 +296,9 @@ class DatalakeRESTInterface:
                 try:
                     out = r.json()
                     if out.get('boolean', True) is False:
-                        raise DatalakeRESTException('Operation failed: %s, %s',
+                        err = DatalakeRESTException('Operation failed: %s, %s',
                                                     op, path)
+                        self.log_response_and_raise(r, err)
                 except ValueError:
                     out = r.content
             else:
