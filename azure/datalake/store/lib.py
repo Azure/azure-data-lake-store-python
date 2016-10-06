@@ -28,8 +28,6 @@ import azure
 
 from .exceptions import FileNotFoundError, PermissionError
 
-client_id = "1950a258-227b-4e31-a9cf-717495945fc2"
-
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +37,7 @@ class DatalakeRESTException(IOError):
 default_tenant = os.environ.get('azure_tenant_id', "common")
 default_username = os.environ.get('azure_username', None)
 default_password = os.environ.get('azure_password', None)
-default_client = os.environ.get('azure_client_id', None)
+default_client = os.environ.get('azure_client_id', "1950a258-227b-4e31-a9cf-717495945fc2")
 default_secret = os.environ.get('azure_client_secret', None)
 default_resource = "https://management.core.windows.net/"
 default_store = os.environ.get('azure_store_name', None)
