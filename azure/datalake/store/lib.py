@@ -238,14 +238,15 @@ class DatalakeRESTInterface:
         logger.debug(msg)
 
     def log_response_and_raise(self, response, exception):
-        msg = "Exception {}\n{}\n{}".format(
-            repr(exception),
-            response.status_code,
-            "\n".join(["{}: {}".format(header, response.headers[header])
-                       for header in response.headers]))
-        msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
-        if int(response.headers['content-length']) > MAX_CONTENT_LENGTH:
-            msg += "\n(Response body was truncated)"
+        msg = "Exception " + repr(exception)
+        if response is not None:
+            msg += "\n{}\n{}".format(
+                response.status_code,
+                "\n".join(["{}: {}".format(header, response.headers[header])
+                        for header in response.headers]))
+            msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
+            if int(response.headers['content-length']) > MAX_CONTENT_LENGTH:
+                msg += "\n(Response body was truncated)"
         logger.error(msg)
         raise exception
 
