@@ -17,7 +17,6 @@ and authentication code.
 import json
 import logging
 import os
-import pprint
 import requests
 import requests.exceptions
 import time
@@ -45,6 +44,8 @@ default_secret = os.environ.get('azure_client_secret', None)
 default_resource = "https://management.core.windows.net/"
 default_store = os.environ.get('azure_store_name', None)
 default_suffix = os.environ.get('azure_url_suffix', '')
+
+MAX_CONTENT_LENGTH = 2**16
 
 
 def refresh_token(token):
@@ -226,22 +227,25 @@ class DatalakeRESTInterface:
         logger.debug(msg)
 
     def _log_response(self, response, payload=False):
-        msg = "HTTP Response\n{}\n{}\n".format(
+        msg = "HTTP Response\n{}\n{}".format(
             response.status_code,
             "\n".join(["{}: {}".format(header, response.headers[header])
                        for header in response.headers]))
         if payload:
-            msg += "\n{}".format(pprint.pformat(response.content))
+            msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
+            if int(response.headers['content-length']) > MAX_CONTENT_LENGTH:
+                msg += "\n(Response body was truncated)"
         logger.debug(msg)
 
     def log_response_and_raise(self, response, exception):
-        msg = "Exception " + repr(exception)
-        if response:
-            msg += "\n{}\n{}\n\n{}".format(
-                response.status_code,
-                "\n".join(["{}: {}".format(header, response.headers[header])
-                           for header in response.headers]),
-                pprint.pformat(response.content))
+        msg = "Exception {}\n{}\n{}".format(
+            repr(exception),
+            response.status_code,
+            "\n".join(["{}: {}".format(header, response.headers[header])
+                       for header in response.headers]))
+        msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
+        if int(response.headers['content-length']) > MAX_CONTENT_LENGTH:
+            msg += "\n(Response body was truncated)"
         logger.error(msg)
         raise exception
 
