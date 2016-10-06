@@ -17,15 +17,12 @@ which is compatible with the built-in File.
 # standard imports
 import io
 import logging
-import os
-import re
 import sys
-import time
 
 # local imports
 from .exceptions import FileNotFoundError, PermissionError
-from .lib import DatalakeRESTInterface, auth, refresh_token
-from .utils import PY2, ensure_writable, read_block
+from .lib import DatalakeRESTInterface
+from .utils import ensure_writable, read_block
 
 if sys.version_info >= (3, 4):
     import pathlib
@@ -724,29 +721,35 @@ def _fetch_range(rest, path, start, end, max_attempts=10):
     logger.debug("Fetch: %s, %s-%s", path, start, end)
     if end <= start:
         return b''
+    resp = None
     for i in range(max_attempts):
         try:
             resp = rest.call('OPEN', path, offset=start, length=end-start,
                              read='true')
             return resp
         except Exception as e:
+            err = e
             logger.debug('Exception %s on ADL download, retrying', e,
                          exc_info=True)
-    raise RuntimeError("Max number of ADL retries exceeded")
+    exception = RuntimeError("Max number of ADL retries exceeded: exception %s", err)
+    rest.log_response_and_raise(resp, exception)
 
 
 def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
     logger.debug("Put: %s %s, %s", op, path, kwargs)
+    resp = None
     for i in range(max_attempts):
         try:
             resp = rest.call(op, path=path, data=data, **kwargs)
             return resp
-        except (PermissionError, FileNotFoundError):
-            raise
+        except (PermissionError, FileNotFoundError) as e:
+            rest.log_response_and_raise(resp, e)
         except Exception as e:
+            err = e
             logger.debug('Exception %s on ADL upload, retrying', e,
                          exc_info=True)
-    raise RuntimeError("Max number of ADL retries exceeded")
+    exception = RuntimeError("Max number of ADL retries exceeded: exception %s", err)
+    rest.log_response_and_raise(resp, exception)
 
 
 class AzureDLPath(type(pathlib.PurePath())):

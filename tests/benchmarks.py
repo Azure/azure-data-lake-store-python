@@ -26,8 +26,7 @@ def benchmark(f):
 
 
 def mock_client(adl, nthreads):
-    def transfer(adlfs, src, dst, offset, size, blocksize, retries=5,
-                 shutdown_event=None):
+    def transfer(adlfs, src, dst, offset, size, buffersize, blocksize, shutdown_event=None):
         pass
 
     def merge(adlfs, outfile, files, shutdown_event=None):

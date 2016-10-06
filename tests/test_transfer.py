@@ -7,7 +7,6 @@
 # --------------------------------------------------------------------------
 
 import os
-import pytest
 import time
 
 from azure.datalake.store.core import AzureDLPath
@@ -33,7 +32,7 @@ def test_shutdown(azure):
 
 
 def test_submit_and_run(azure):
-    def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, retries=5, shutdown_event=None):
+    def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, shutdown_event=None):
         time.sleep(0.1)
         return size, None
 
