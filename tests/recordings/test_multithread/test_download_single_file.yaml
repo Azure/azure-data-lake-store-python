@@ -207,28 +207,29 @@ interactions:
       Connection: [keep-alive]
       Content-Length: ['6000']
       User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e543ec86-9090-11e6-9891-acbc32b2789b]
     method: PUT
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?write=true&OP=CREATE&overwrite=true
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?overwrite=true&write=true&OP=CREATE
   response:
     body: {string: ''}
     headers:
       Cache-Control: [no-cache]
       Content-Length: ['0']
       ContentLength: ['0']
-      Date: ['Wed, 28 Sep 2016 19:43:21 GMT']
+      Date: ['Wed, 12 Oct 2016 15:31:08 GMT']
       Expires: ['-1']
-      Location: ['https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?write=true&OP=CREATE&overwrite=true']
+      Location: ['https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?overwrite=true&write=true&OP=CREATE']
       Pragma: [no-cache]
-      Server-Perf: ['[954bd25e-fe87-4a50-b51e-f16616d910e6][ AuthTime::909.191990899527::PostAuthTime::203.135557703328
-          ][S-HdfsGetFileStatusV2 :: 00:00:005 ms]%0a[S-HdfsCheckAccess :: 00:00:002
-          ms]%0a[S-FsDelete :: 00:00:006 ms]%0a[S-FsOpenStream :: 00:00:064 ms]%0a[S-FsAppendStream
-          :: 00:00:239 ms]%0a[BufferingTime :: 00:00:000 ms]%0a[WriteTime :: 00:00:239
+      Server-Perf: ['[9c0ccfd6-2ede-4ab3-90ae-9e8afcbda6f2][ AuthTime::944.26323732611::PostAuthTime::205.274616810024
+          ][S-HdfsGetFileStatusV2 :: 00:00:006 ms]%0a[S-HdfsCheckAccess :: 00:00:002
+          ms]%0a[S-FsDelete :: 00:00:005 ms]%0a[S-FsOpenStream :: 00:00:043 ms]%0a[S-FsAppendStream
+          :: 00:00:191 ms]%0a[BufferingTime :: 00:00:000 ms]%0a[WriteTime :: 00:00:191
           ms]%0a[S-FsAppendStream :: 00:00:033 ms]%0a[S-FsCloseHandle :: 00:00:001
-          ms]%0a[CREATE :: 00:00:361 ms]%0a']
+          ms]%0a[CREATE :: 00:00:294 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [954bd25e-fe87-4a50-b51e-f16616d910e6]
+      x-ms-request-id: [9c0ccfd6-2ede-4ab3-90ae-9e8afcbda6f2]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 201, message: Created}
 - request:
@@ -238,23 +239,24 @@ interactions:
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e5c46bfe-9090-11e6-8d72-acbc32b2789b]
     method: GET
     uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?OP=LISTSTATUS
   response:
-    body: {string: '{"FileStatuses":{"FileStatus":[{"length":6000,"pathSuffix":"","type":"FILE","blockSize":268435456,"accessTime":1475091801059,"modificationTime":1475091801303,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
+    body: {string: '{"FileStatuses":{"FileStatus":[{"length":6000,"pathSuffix":"","type":"FILE","blockSize":268435456,"accessTime":1476286269068,"modificationTime":1476286269226,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
     headers:
       Cache-Control: [no-cache]
       Content-Length: ['290']
       Content-Type: [application/json; charset=utf-8]
-      Date: ['Wed, 28 Sep 2016 19:43:20 GMT']
+      Date: ['Wed, 12 Oct 2016 15:31:08 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
-      Server-Perf: ['[24fe69e4-f891-4e60-8bfa-79ef93177886][ AuthTime::828.795910931382::PostAuthTime::161.226036337013
-          ][S-HdfsListStatus :: 00:00:010 ms]%0a[LISTSTATUS :: 00:00:010 ms]%0a']
+      Server-Perf: ['[f9cb1c08-2de6-4e47-896a-9137b4d79b3b][ AuthTime::1097.78919710427::PostAuthTime::233.927031872237
+          ][S-HdfsListStatus :: 00:00:011 ms]%0a[LISTSTATUS :: 00:00:011 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [24fe69e4-f891-4e60-8bfa-79ef93177886]
+      x-ms-request-id: [f9cb1c08-2de6-4e47-896a-9137b4d79b3b]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 200, message: OK}
 - request:
@@ -264,23 +266,24 @@ interactions:
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e6257730-9090-11e6-8e76-acbc32b2789b]
     method: GET
     uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir?OP=LISTSTATUS
   response:
-    body: {string: '{"FileStatuses":{"FileStatus":[{"length":6000,"pathSuffix":"remote.csv","type":"FILE","blockSize":268435456,"accessTime":1475091801059,"modificationTime":1475091801303,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
+    body: {string: '{"FileStatuses":{"FileStatus":[{"length":0,"pathSuffix":"foo","type":"DIRECTORY","blockSize":0,"accessTime":1476286256384,"modificationTime":1476286262033,"replication":0,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"},{"length":6000,"pathSuffix":"remote.csv","type":"FILE","blockSize":268435456,"accessTime":1476286269068,"modificationTime":1476286269226,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
     headers:
       Cache-Control: [no-cache]
-      Content-Length: ['300']
+      Content-Length: ['554']
       Content-Type: [application/json; charset=utf-8]
-      Date: ['Wed, 28 Sep 2016 19:43:20 GMT']
+      Date: ['Wed, 12 Oct 2016 15:31:10 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
-      Server-Perf: ['[75ea90a2-0365-4f61-beb2-e44b7168c1aa][ AuthTime::956.663608935418::PostAuthTime::217.676252547218
-          ][S-HdfsListStatus :: 00:00:011 ms]%0a[LISTSTATUS :: 00:00:012 ms]%0a']
+      Server-Perf: ['[731265c5-2abf-42e2-9415-5c5d5629b739][ AuthTime::881.396001259015::PostAuthTime::194.582814445828
+          ][S-HdfsListStatus :: 00:00:011 ms]%0a[LISTSTATUS :: 00:00:011 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [75ea90a2-0365-4f61-beb2-e44b7168c1aa]
+      x-ms-request-id: [731265c5-2abf-42e2-9415-5c5d5629b739]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 200, message: OK}
 - request:
@@ -290,8 +293,9 @@ interactions:
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e653a878-9090-11e6-b2b2-acbc32b2789b]
     method: GET
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&OP=OPEN&offset=0&length=6000
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&length=6000&offset=0&OP=OPEN
   response:
     body: {string: '00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
 
@@ -497,17 +501,17 @@ interactions:
     headers:
       Cache-Control: [no-cache]
       Content-Type: [application/octet-stream]
-      Date: ['Wed, 28 Sep 2016 19:43:21 GMT']
+      Date: ['Wed, 12 Oct 2016 15:31:10 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
-      Server-Perf: ['[4c7c73be-4b7e-4456-845a-d9a8100a24f9][ AuthTime::828.3671928958::PostAuthTime::173.627816373616
-          ][S-FsOpenStream :: 00:00:013 ms]%0a[S-FsReadStream :: 00:00:035 ms]%0a[OPEN
-          :: 00:00:049 ms]%0a']
+      Server-Perf: ['[29821d4a-4de8-4025-8404-91174f474fe6][ AuthTime::916.891327850232::PostAuthTime::206.557141488648
+          ][S-FsOpenStream :: 00:00:012 ms]%0a[S-FsReadStream :: 00:00:016 ms]%0a[OPEN
+          :: 00:00:029 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       Transfer-Encoding: [chunked]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [4c7c73be-4b7e-4456-845a-d9a8100a24f9]
+      x-ms-request-id: [29821d4a-4de8-4025-8404-91174f474fe6]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 200, message: OK}
 - request:
@@ -517,155 +521,9 @@ interactions:
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e69459e2-9090-11e6-a528-acbc32b2789b]
     method: GET
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&OP=OPEN&offset=2400&length=3600
-  response:
-    body: {string: '00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-'}
-    headers:
-      Cache-Control: [no-cache]
-      Content-Type: [application/octet-stream]
-      Date: ['Wed, 28 Sep 2016 19:43:21 GMT']
-      Expires: ['-1']
-      Pragma: [no-cache]
-      Server-Perf: ['[57939cf8-409d-4514-8094-743f575c65b7][ AuthTime::907.910582568117::PostAuthTime::170.634160360188
-          ][S-FsOpenStream :: 00:00:037 ms]%0a[S-FsReadStream :: 00:00:037 ms]%0a[OPEN
-          :: 00:00:075 ms]%0a']
-      Status: ['0x0']
-      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
-      Transfer-Encoding: [chunked]
-      X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [57939cf8-409d-4514-8094-743f575c65b7]
-      x-ms-webhdfs-version: [16.07.18.01]
-    status: {code: 200, message: OK}
-- request:
-    body: null
-    headers:
-      Accept: ['*/*']
-      Accept-Encoding: ['gzip, deflate']
-      Connection: [keep-alive]
-      User-Agent: [python-requests/2.11.1]
-    method: GET
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&OP=OPEN&offset=4800&length=1200
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&length=1200&offset=2400&OP=OPEN
   response:
     body: {string: '00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
 
@@ -711,17 +569,17 @@ interactions:
     headers:
       Cache-Control: [no-cache]
       Content-Type: [application/octet-stream]
-      Date: ['Wed, 28 Sep 2016 19:43:22 GMT']
+      Date: ['Wed, 12 Oct 2016 15:31:11 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
-      Server-Perf: ['[55631738-541e-48f9-8da1-68806b883048][ AuthTime::920.740218685424::PostAuthTime::211.261341398328
-          ][S-FsOpenStream :: 00:00:013 ms]%0a[S-FsReadStream :: 00:00:013 ms]%0a[OPEN
-          :: 00:00:027 ms]%0a']
+      Server-Perf: ['[f0d74fb7-39b2-4156-a76a-0a55070e2011][ AuthTime::1058.87218138361::PostAuthTime::253.599032132665
+          ][S-FsOpenStream :: 00:00:012 ms]%0a[S-FsReadStream :: 00:00:115 ms]%0a[OPEN
+          :: 00:00:128 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       Transfer-Encoding: [chunked]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [55631738-541e-48f9-8da1-68806b883048]
+      x-ms-request-id: [f0d74fb7-39b2-4156-a76a-0a55070e2011]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 200, message: OK}
 - request:
@@ -731,170 +589,11 @@ interactions:
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e6e09378-9090-11e6-824e-acbc32b2789b]
     method: GET
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&OP=OPEN&offset=0&length=6000
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&length=1200&offset=4800&OP=OPEN
   response:
     body: {string: '00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
 
         00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
 
@@ -938,17 +637,17 @@ interactions:
     headers:
       Cache-Control: [no-cache]
       Content-Type: [application/octet-stream]
-      Date: ['Wed, 28 Sep 2016 19:43:22 GMT']
+      Date: ['Wed, 12 Oct 2016 15:31:11 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
-      Server-Perf: ['[f9a8b5a4-d35b-4d50-ae1b-f7cbf9b88e34][ AuthTime::931.00392757927::PostAuthTime::221.525050292174
-          ][S-FsOpenStream :: 00:00:013 ms]%0a[S-FsReadStream :: 00:00:087 ms]%0a[OPEN
-          :: 00:00:101 ms]%0a']
+      Server-Perf: ['[ac9eb46c-7dd6-4e99-b41e-793d4952b302][ AuthTime::937.845598027317::PostAuthTime::231.78856093516
+          ][S-FsOpenStream :: 00:00:013 ms]%0a[S-FsReadStream :: 00:00:012 ms]%0a[OPEN
+          :: 00:00:026 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       Transfer-Encoding: [chunked]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [f9a8b5a4-d35b-4d50-ae1b-f7cbf9b88e34]
+      x-ms-request-id: [ac9eb46c-7dd6-4e99-b41e-793d4952b302]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 200, message: OK}
 - request:
@@ -958,50 +657,11 @@ interactions:
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e715c264-9090-11e6-ae47-acbc32b2789b]
     method: GET
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&OP=OPEN&offset=3600&length=2400
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&length=1200&offset=0&OP=OPEN
   response:
     body: {string: '00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
 
         00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
 
@@ -1045,17 +705,17 @@ interactions:
     headers:
       Cache-Control: [no-cache]
       Content-Type: [application/octet-stream]
-      Date: ['Wed, 28 Sep 2016 19:43:23 GMT']
+      Date: ['Wed, 12 Oct 2016 15:31:11 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
-      Server-Perf: ['[ff8d5373-51df-4919-92f3-91b53613789d][ AuthTime::932.713747969712::PostAuthTime::214.254739905009
-          ][S-FsOpenStream :: 00:00:014 ms]%0a[S-FsReadStream :: 00:00:018 ms]%0a[OPEN
-          :: 00:00:033 ms]%0a']
+      Server-Perf: ['[b3e62290-a6a4-4e7d-a602-650ba3febe17][ AuthTime::0::PostAuthTime::0
+          ][S-FsOpenStream :: 00:00:012 ms]%0a[S-FsReadStream :: 00:00:013 ms]%0a[OPEN
+          :: 00:00:025 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       Transfer-Encoding: [chunked]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [ff8d5373-51df-4919-92f3-91b53613789d]
+      x-ms-request-id: [b3e62290-a6a4-4e7d-a602-650ba3febe17]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 200, message: OK}
 - request:
@@ -1065,130 +725,11 @@ interactions:
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e73a305e-9090-11e6-a742-acbc32b2789b]
     method: GET
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&OP=OPEN&offset=1200&length=4800
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&length=1200&offset=1200&OP=OPEN
   response:
     body: {string: '00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
-
-        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
 
         00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
 
@@ -1232,17 +773,84 @@ interactions:
     headers:
       Cache-Control: [no-cache]
       Content-Type: [application/octet-stream]
-      Date: ['Wed, 28 Sep 2016 19:43:22 GMT']
+      Date: ['Wed, 12 Oct 2016 15:31:11 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
-      Server-Perf: ['[1dfad76f-4073-46f8-ace5-f15aebd9dbcf][ AuthTime::1074.69447329921::PostAuthTime::215.965264232432
-          ][S-FsOpenStream :: 00:00:013 ms]%0a[S-FsReadStream :: 00:00:025 ms]%0a[OPEN
-          :: 00:00:039 ms]%0a']
+      Server-Perf: ['[1d076574-3320-4e28-b9e2-578f01c2fa25][ AuthTime::1005.84218113798::PostAuthTime::217.248226198169
+          ][S-FsOpenStream :: 00:00:012 ms]%0a[S-FsReadStream :: 00:00:021 ms]%0a[OPEN
+          :: 00:00:034 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       Transfer-Encoding: [chunked]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [1dfad76f-4073-46f8-ace5-f15aebd9dbcf]
+      x-ms-request-id: [1d076574-3320-4e28-b9e2-578f01c2fa25]
+      x-ms-webhdfs-version: [16.07.18.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e773afdc-9090-11e6-9473-acbc32b2789b]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?read=true&length=1200&offset=3600&OP=OPEN
+  response:
+    body: {string: '00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+        00000,11111,22222,33333,44444,55555,66666,77777,88888,99999
+
+'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Type: [application/octet-stream]
+      Date: ['Wed, 12 Oct 2016 15:31:12 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[3abeac06-28c1-405d-8fb6-3e30a3901e44][ AuthTime::0::PostAuthTime::0
+          ][S-FsReadStream :: 00:00:009 ms]%0a[OPEN :: 00:00:009 ms]%0a']
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      Transfer-Encoding: [chunked]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [3abeac06-28c1-405d-8fb6-3e30a3901e44]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 200, message: OK}
 - request:
@@ -1253,23 +861,79 @@ interactions:
       Connection: [keep-alive]
       Content-Length: ['0']
       User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e7945426-9090-11e6-bd52-acbc32b2789b]
     method: DELETE
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?OP=DELETE&recursive=True
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/foo?recursive=True&OP=DELETE
   response:
     body: {string: '{"boolean":true}'}
     headers:
       Cache-Control: [no-cache]
       Content-Length: ['16']
       Content-Type: [application/json; charset=utf-8]
-      Date: ['Wed, 28 Sep 2016 19:43:23 GMT']
+      Date: ['Wed, 12 Oct 2016 15:31:12 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
-      Server-Perf: ['[56513560-b8b0-48bc-ba2c-e10bbd1376c4][ AuthTime::1161.9373776908::PostAuthTime::226.656904739097
-          ][S-FsDelete :: 00:00:105 ms]%0a[DELETE :: 00:00:113 ms]%0a']
+      Server-Perf: ['[2cd52bec-0ada-4e40-8bba-3d07e9d570b9][ AuthTime::920.312564148181::PostAuthTime::211.261341398328
+          ][S-FsDelete :: 00:00:038 ms]%0a[DELETE :: 00:00:053 ms]%0a']
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [56513560-b8b0-48bc-ba2c-e10bbd1376c4]
+      x-ms-request-id: [2cd52bec-0ada-4e40-8bba-3d07e9d570b9]
+      x-ms-webhdfs-version: [16.07.18.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e7d9281c-9090-11e6-a0d7-acbc32b2789b]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir?OP=LISTSTATUS
+  response:
+    body: {string: '{"FileStatuses":{"FileStatus":[{"length":6000,"pathSuffix":"remote.csv","type":"FILE","blockSize":268435456,"accessTime":1476286269068,"modificationTime":1476286269226,"replication":1,"permission":"770","owner":"49b2f9ec-818a-49ca-9424-249e1f19f7d7","group":"49b2f9ec-818a-49ca-9424-249e1f19f7d7"}]}}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['300']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Wed, 12 Oct 2016 15:31:12 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[fbabbe71-f097-44f1-9423-9c198aa6553a][ AuthTime::1184.60154836403::PostAuthTime::228.367229901225
+          ][S-HdfsListStatus :: 00:00:011 ms]%0a[LISTSTATUS :: 00:00:011 ms]%0a']
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [fbabbe71-f097-44f1-9423-9c198aa6553a]
+      x-ms-webhdfs-version: [16.07.18.01]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.11.1]
+      x-ms-client-request-id: [e8071a10-9090-11e6-a0e7-acbc32b2789b]
+    method: DELETE
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/remote.csv?recursive=True&OP=DELETE
+  response:
+    body: {string: '{"boolean":true}'}
+    headers:
+      Cache-Control: [no-cache]
+      Content-Length: ['16']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Wed, 12 Oct 2016 15:31:12 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Server-Perf: ['[2251a0de-7ca3-421b-9376-8d08f93cc23e][ AuthTime::0::PostAuthTime::0
+          ][S-FsDelete :: 00:00:061 ms]%0a[DELETE :: 00:00:069 ms]%0a']
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [2251a0de-7ca3-421b-9376-8d08f93cc23e]
       x-ms-webhdfs-version: [16.07.18.01]
     status: {code: 200, message: OK}
 version: 1
