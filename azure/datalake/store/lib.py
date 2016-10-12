@@ -266,6 +266,7 @@ class DatalakeRESTInterface:
         self._check_token()
         method, required, allowed = self.ends[op]
         data = kwargs.pop('data', b'')
+        stream = kwargs.pop('stream', False)
         keys = set(kwargs)
         if required > keys:
             raise ValueError("Required parameters missing: %s",
@@ -280,7 +281,7 @@ class DatalakeRESTInterface:
         try:
             self.head['x-ms-client-request-id'] = str(uuid.uuid1())
             self._log_request(method, url, op, path, kwargs, self.head)
-            r = func(url, params=params, headers=self.head, data=data)
+            r = func(url, params=params, headers=self.head, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: %s', str(e))
 
@@ -294,22 +295,15 @@ class DatalakeRESTInterface:
         else:
             self._log_response(r)
 
-        if r.content:
-            if r.content.startswith(b'{'):
-                try:
-                    out = r.json()
-                    if out.get('boolean', True) is False:
-                        err = DatalakeRESTException('Operation failed: %s, %s',
-                                                    op, path)
-                        self.log_response_and_raise(r, err)
-                except ValueError:
-                    out = r.content
-            else:
-                # because byte-strings can happen to look like json
-                out = r.content
-        else:
-            out = r
-        return out
+        if 'content-type' in r.headers:
+            if r.headers['content-type'].startswith('application/json'):
+                out = r.json()
+                if out.get('boolean', True) is False:
+                    err = DatalakeRESTException('Operation failed: %s, %s',
+                                                op, path)
+                    self.log_response_and_raise(r, err)
+                return out
+        return r
 
 """
 Not yet implemented (or not applicable)

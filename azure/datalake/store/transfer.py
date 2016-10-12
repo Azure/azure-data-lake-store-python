@@ -303,7 +303,8 @@ class ADLTransferClient(object):
             cs[obj] = 'running'
             future = self._submit(
                 self._transfer, self._adlfs, src, name, offset,
-                self._chunksize, self._buffersize, self._blocksize)
+                self._chunks[obj]['expected'], self._buffersize,
+                self._blocksize)
             self._cfutures[future] = obj
 
     @property

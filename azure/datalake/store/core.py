@@ -535,19 +535,22 @@ class AzureDLFile(object):
             # First read
             self.start = start
             self.end = min(end + self.blocksize, self.size)
-            self.cache = _fetch_range(self.azure.azure, self.path.as_posix(),
-                                      start, self.end)
+            response = _fetch_range(self.azure.azure, self.path.as_posix(),
+                                    start, self.end)
+            self.cache = getattr(response, 'content', response)
         if start < self.start:
-            new = _fetch_range(self.azure.azure, self.path.as_posix(), start,
-                               self.start)
+            response = _fetch_range(self.azure.azure, self.path.as_posix(),
+                                    start, self.start)
+            new = getattr(response, 'content', response)
             self.start = start
             self.cache = new + self.cache
         if end > self.end:
             if self.end >= self.size:
                 return
             newend = min(self.size, end + self.blocksize)
-            new = _fetch_range(self.azure.azure, self.path.as_posix(),
-                               self.end, newend)
+            response = _fetch_range(self.azure.azure, self.path.as_posix(),
+                                    self.end, newend)
+            new = getattr(response, 'content', response)
             self.end = newend
             self.cache = self.cache + new
 
@@ -717,16 +720,16 @@ class AzureDLFile(object):
         self.close()
 
 
-def _fetch_range(rest, path, start, end, max_attempts=10):
+def _fetch_range(rest, path, start, end, max_attempts=10, stream=False):
     logger.debug("Fetch: %s, %s-%s", path, start, end)
     if end <= start:
         return b''
     resp = None
     for i in range(max_attempts):
         try:
-            resp = rest.call('OPEN', path, offset=start, length=end-start,
-                             read='true')
-            return resp
+            return rest.call(
+                'OPEN', path, offset=start, length=end-start, read='true',
+                stream=stream)
         except Exception as e:
             err = e
             logger.debug('Exception %s on ADL download, retrying', e,

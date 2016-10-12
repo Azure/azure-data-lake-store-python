@@ -19,7 +19,7 @@ import logging
 import os
 import pickle
 
-from .core import AzureDLPath
+from .core import AzureDLPath, _fetch_range
 from .exceptions import FileExistsError
 from .transfer import ADLTransferClient
 from .utils import commonprefix, datadir, read_block, tokenize
@@ -228,19 +228,15 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, shutdown_eve
     """
     nbytes = 0
     try:
-        with adlfs.open(src, 'rb', blocksize=buffersize) as fin:
-            end = offset + size
-            miniblock = min(size, blocksize)
-            with open(dst, 'rb+') as fout:
-                fout.seek(offset)
-                fin.seek(offset)
-                for o in range(offset, end, miniblock):
-                    if shutdown_event and shutdown_event.is_set():
-                        return nbytes, None
-                    data = fin.read(miniblock)
-                    nwritten = fout.write(data)
-                    if nwritten:
-                        nbytes += nwritten
+        response = _fetch_range(adlfs.azure, src, start=offset, end=offset+size, stream=True)
+        with open(dst, 'rb+') as fout:
+            fout.seek(offset)
+            for chunk in response.iter_content(chunk_size=blocksize):
+                if shutdown_event and shutdown_event.is_set():
+                    return nbytes, None
+                nwritten = fout.write(chunk)
+                if nwritten:
+                    nbytes += nwritten
     except Exception as e:
         exception = repr(e)
         logger.debug('Download failed %s; %s', dst, exception)
