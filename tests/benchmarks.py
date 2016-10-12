@@ -175,7 +175,7 @@ if __name__ == '__main__':
             'bench_upload_50_1gb': {
                 'nthreads': 64,
                 'buffersize': 32 * 2**20,
-                'blocksize': 32 * 2**20
+                'blocksize': 4 * 2**20
             },
             'bench_download_1_50gb': {
                 'nthreads': 64,
