@@ -279,9 +279,10 @@ class DatalakeRESTInterface:
         func = getattr(requests, method)
         url = self.url + path
         try:
-            self.head['x-ms-client-request-id'] = str(uuid.uuid1())
-            self._log_request(method, url, op, path, kwargs, self.head)
-            r = func(url, params=params, headers=self.head, data=data, stream=stream)
+            headers = self.head
+            headers['x-ms-client-request-id'] = str(uuid.uuid1())
+            self._log_request(method, url, op, path, kwargs, headers)
+            r = func(url, params=params, headers=headers, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: %s', str(e))
 
