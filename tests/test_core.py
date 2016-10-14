@@ -488,12 +488,11 @@ def test_skip_existing_block(azure):
     with azure.open(a, mode='wb') as f:
         f.write(b'0' * 15)
 
-    f = azure.open(a, mode='ab')
-    assert f.tell() == 15
-    f.loc = 5  # not a user method
-    f.write(b'blah')
-    f.close()  # no error here
-    assert f.loc == 9
+    with pytest.raises((IOError, RuntimeError)):
+        with azure.open(a, mode='ab') as f:
+            assert f.tell() == 15
+            f.loc = 5  # not a user method
+            f.write(b'blah')
 
 
 @my_vcr.use_cassette
