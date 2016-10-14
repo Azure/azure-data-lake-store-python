@@ -752,7 +752,7 @@ def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
                 if i == 0:
                     # on first attempt: if data already exists, this is a
                     # true error
-                    raise
+                    rest.log_response_and_raise(resp, e)
                 # on any other attempt: previous attempt succeeded, continue
                 return
             err = e
