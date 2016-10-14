@@ -15,24 +15,12 @@ import sys
 
 PY2 = sys.version_info.major == 2
 
-try:
-    FileNotFoundError = FileNotFoundError
-except NameError:
-    class FileNotFoundError(IOError):
-        pass
-
-try:
-    PermissionError = PermissionError
-except NameError:
-    class PermissionError(OSError):
-        pass
-
-WIN = platform.platform() == 'Windows'
+WIN = platform.system() == 'Windows'
 
 if WIN:
-    datadir = os.path.join(os.environ['APPDATA'], 'adlfs')
+    datadir = os.path.join(os.environ['APPDATA'], 'azure-datalake-store')
 else:
-    datadir = os.sep.join([os.path.expanduser("~"), '.config', 'adlfs'])
+    datadir = os.sep.join([os.path.expanduser("~"), '.config', 'azure-datalake-store'])
 
 try:
     os.makedirs(datadir)

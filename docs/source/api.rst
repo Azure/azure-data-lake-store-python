@@ -1,7 +1,7 @@
 API
 ===
 
-.. currentmodule:: adlfs.core
+.. currentmodule:: azure.datalake.store.core
 
 .. autosummary::
    AzureDLFileSystem
@@ -31,18 +31,18 @@ API
    AzureDLFile.tell
    AzureDLFile.write
 
-.. currentmodule:: adlfs.multithread
+.. currentmodule:: azure.datalake.store.multithread
 
 .. autosummary::
    ADLUploader
    ADLDownloader
 
-.. currentmodule:: adlfs.core
+.. currentmodule:: azure.datalake.store.core
 
 .. autoclass:: AzureDLFileSystem
    :members:
 
-.. currentmodule:: adlfs.multithread
+.. currentmodule:: azure.datalake.store.multithread
 
 .. autoclass:: AzureDLFile
    :members:

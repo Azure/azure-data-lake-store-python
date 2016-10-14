@@ -24,10 +24,9 @@ import os
 import stat
 import sys
 
-from adlfs.core import AzureDLFileSystem
-from adlfs.lib import auth
-from adlfs.multithread import ADLDownloader, ADLUploader
-from adlfs.utils import write_stdout
+from azure.datalake.store.core import AzureDLFileSystem
+from azure.datalake.store.multithread import ADLDownloader, ADLUploader
+from azure.datalake.store.utils import write_stdout
 
 
 class AzureDataLakeFSCommand(cmd.Cmd, object):
@@ -181,10 +180,12 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser.add_argument('local_path', type=str, nargs='?', default='.')
         parser.add_argument('-b', '--chunksize', type=int, default=2**28)
         parser.add_argument('-c', '--threads', type=int, default=None)
+        parser.add_argument('-f', '--force', action='store_true')
         args = parser.parse_args(line.split())
 
         ADLDownloader(self._fs, args.remote_path, args.local_path,
-                      nthreads=args.threads, chunksize=args.chunksize)
+                      nthreads=args.threads, chunksize=args.chunksize,
+                      overwrite=args.force)
 
     def help_get(self):
         print("get [option]... remote-path [local-path]\n")
@@ -196,6 +197,9 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("    -c <int>")
         print("    --threads <int>")
         print("        Set number of multiple requests to perform at a time.")
+        print("    -f")
+        print("    --force")
+        print("        Overwrite an existing file or directory.")
 
     def do_head(self, line):
         parser = argparse.ArgumentParser(prog="head", add_help=False)
@@ -305,10 +309,12 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser.add_argument('remote_path', type=str, nargs='?', default='.')
         parser.add_argument('-b', '--chunksize', type=int, default=2**28)
         parser.add_argument('-c', '--threads', type=int, default=None)
+        parser.add_argument('-f', '--force', action='store_true')
         args = parser.parse_args(line.split())
 
         ADLUploader(self._fs, args.remote_path, args.local_path,
-                    nthreads=args.threads, chunksize=args.chunksize)
+                    nthreads=args.threads, chunksize=args.chunksize,
+                    overwrite=args.force)
 
     def help_put(self):
         print("put [option]... local-path [remote-path]\n")
@@ -320,6 +326,9 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         print("    -c <int>")
         print("    --threads <int>")
         print("        Set number of multiple requests to perform at a time.")
+        print("    -f")
+        print("    --force")
+        print("        Overwrite an existing file or directory.")
 
     def do_quit(self, line):
         return True
@@ -380,6 +389,54 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
 
     def do_EOF(self, line):
         return True
+
+    def do_list_uploads(self, line):
+        print(ADLUploader.load())
+
+    def help_list_uploads(self):
+        print("Shows interrupted but persisted downloads")
+
+    def do_clear_uploads(self, line):
+        ADLUploader.clear_saved()
+
+    def help_clear_uploads(self):
+        print("Forget all persisted uploads")
+
+    def do_resume_upload(self, line):
+        try:
+            up = ADLUploader.load()[line]
+            up.run()
+        except KeyError:
+            print("No such upload")
+
+    def help_resume_upload(self):
+        print("resume_upload name")
+        print()
+        print("Restart the upload designated by <name> and run until done.")
+
+    def do_list_downloads(self, line):
+        print(ADLDownloader.load())
+
+    def help_list_downloads(self):
+        print("Shows interrupted but persisted uploads")
+
+    def do_clear_downloads(self, line):
+        ADLDownloader.clear_saved()
+
+    def help_clear_downloads(self):
+        print("Forget all persisted downloads")
+
+    def do_resume_download(self, line):
+        try:
+            up = ADLDownloader.load()[line]
+            up.run()
+        except KeyError:
+            print("No such download")
+
+    def help_resume_download(self):
+        print("resume_download name")
+        print()
+        print("Restart the download designated by <name> and run until done.")
 
 
 def setup_logging(default_level='WARNING'):

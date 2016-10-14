@@ -9,13 +9,14 @@
 """
 Low-level classes for managing data transfer.
 """
+from __future__ import print_function
 
-from collections import namedtuple
+from collections import namedtuple, Counter
 from concurrent.futures import ThreadPoolExecutor
 import logging
 import multiprocessing
-import os
-import pickle
+import signal
+import sys
 import threading
 import time
 import uuid
@@ -102,8 +103,8 @@ class StateManager(object):
 
 
 # Named tuples used to serialize client progress
-File = namedtuple('File', 'src dst state length start stop chunks exception')
-Chunk = namedtuple('Chunk', 'name state offset retries expected actual exception')
+File = namedtuple('File', 'src dst state length chunks exception')
+Chunk = namedtuple('Chunk', 'name state offset expected actual exception')
 
 
 class ADLTransferClient(object):
@@ -133,33 +134,37 @@ class ADLTransferClient(object):
     chunksize: int [2**28]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
+    buffersize: int [2**25]
+        Number of bytes for internal buffer. This block cannot be bigger than
+        a chunk and cannot be smaller than a block.
     blocksize: int [2**25]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
-    tmp_path: str ['/tmp']
-        Path used for temporarily storing transferred chunks until chunks
-        are gathered into a single file. If None, then each chunk will be
-        written into the same file.
-    tmp_unique: bool [True]
-        If True, then a unique ID will be generated to create a subdirectory
-        containing the temporary chunks. Otherwise, all temporary chunks
-        will be placed in `tmp_path`.
+    chunked: bool [True]
+        If set, each transferred chunk is stored in a separate file until
+        chunks are gathered into a single file. Otherwise, each chunk will be
+        written into the same destination file.
+    unique_temporary: bool [True]
+        If set, transferred chunks are written into a unique temporary
+        directory.
     persist_path: str [None]
         Path used for persisting a client's state. If None, then `save()`
         and `load()` will be empty operations.
     delimiter: byte(s) or None
         If set, will transfer blocks using delimiters, as well as split
         files for transferring on that delimiter.
+    parent: ADLDownloader, ADLUploader or None
+        In typical usage, the transfer client is created in the context of an
+        upload or download, which can be persisted between sessions.
 
     Temporary Files
     ---------------
 
     When a merge step is available, the client will write chunks to temporary
-    files before merging. The exact temporary file is dependent upon on two
-    parameters (`tmp_path`, `tmp_unique`). Given those values, the full
-    temporary file looks like this in pseudo-BNF:
+    files before merging. The exact temporary file looks like this in
+    pseudo-BNF:
 
-    >>> # /{tmp_path}[/{unique_str}]/{basename}_{offset}
+    >>> # {dirname}/{basename}.segments[.{unique_str}]/{basename}_{offset}
 
     Function Signatures
     -------------------
@@ -169,18 +174,17 @@ class ADLTransferClient(object):
     merge step will be skipped.
 
     The `transfer` callable has the function signature,
-    `fn(adlfs, src, dst, offset, size, blocksize, retries, shutdown_event)`.
+    `fn(adlfs, src, dst, offset, size, buffersize, blocksize, shutdown_event)`.
     `adlfs` is the ADL filesystem instance. `src` and `dst` refer to the source
     and destination of the respective file transfer. `offset` is the location
-    in `src` to read `size` bytes from. `blocksize` is the number of bytes in a
-    chunk to write at one time. `retries` is the number of time an Azure query
-    will be tried. The callable should return an integer representing the
-    number of bytes written.
+    in `src` to read `size` bytes from. `buffersize` is the number of bytes
+    used for internal buffering before transfer. `blocksize` is the number of
+    bytes in a chunk to write at one time. The callable should return an
+    integer representing the number of bytes written.
 
     The `merge` callable has the function signature,
-    `fn(adlfs, outfile, files, delete_source, shutdown_event)`. `adlfs` is
-    the ADL filesystem instance. `outfile` is the result of merging `files`. If
-    True, `delete_source` will delete the whole directory containing `files`.
+    `fn(adlfs, outfile, files, shutdown_event)`. `adlfs` is the ADL filesystem
+    instance. `outfile` is the result of merging `files`.
 
     For both callables, `shutdown_event` is optional. In particular,
     `shutdown_event` is a `threading.Event` that is passed to the callable.
@@ -196,12 +200,12 @@ class ADLTransferClient(object):
         Using a tuple of the file source/destination as the key, this
         dictionary stores the file metadata and all chunk states. The
         dictionary key is `(src, dst)` and the value is
-        `dict(length, start, stop, cstates, exception)`.
+        `dict(length, cstates, exception)`.
     self._chunks: dict
         Using a tuple of the chunk name/offset as the key, this dictionary
         stores the chunk metadata and has a reference to the chunk's parent
         file. The dictionary key is `(name, offset)` and the value is
-        `dict(parent=(src, dst), retries, expected, actual, exception)`.
+        `dict(parent=(src, dst), expected, actual, exception)`.
     self._ffutures: dict
         Using a Future object as the key, this dictionary provides a reverse
         lookup for the file associated with the given future. The returned
@@ -213,28 +217,27 @@ class ADLTransferClient(object):
 
     See Also
     --------
-    adlfs.multithread.ADLDownloader
-    adlfs.multithread.ADLUploader
+    azure.datalake.store.multithread.ADLDownloader
+    azure.datalake.store.multithread.ADLUploader
     """
 
-    DEFAULT_TMP_PATH = 'tmp'
-
-    def __init__(self, adlfs, name, transfer, merge=None, nthreads=None,
-                 chunksize=2**28, blocksize=2**25, tmp_path=DEFAULT_TMP_PATH,
-                 tmp_unique=True, persist_path=None, delimiter=None):
+    def __init__(self, adlfs, transfer, merge=None, nthreads=None,
+                 chunksize=2**28, blocksize=2**25, chunked=True,
+                 unique_temporary=True, delimiter=None,
+                 parent=None, verbose=True, buffersize=2**25):
         self._adlfs = adlfs
-        self._name = name
+        self._parent = parent
         self._transfer = transfer
         self._merge = merge
         self._nthreads = max(1, nthreads or multiprocessing.cpu_count())
         self._chunksize = chunksize
         self._chunkretries = 5
+        self._buffersize = buffersize
         self._blocksize = blocksize
-        self._tmp_path = tmp_path
-        self._tmp_unique = tmp_unique
-        self._persist_path = persist_path
-        self._pool = ThreadPoolExecutor(self._nthreads)
-        self._shutdown_event = threading.Event()
+        self._chunked = chunked
+        self._unique_temporary = unique_temporary
+        self._unique_str = uuid.uuid4().hex
+        self.verbose = verbose
 
         # Internal state tracking files/chunks/futures
         self._files = {}
@@ -256,24 +259,22 @@ class ADLTransferClient(object):
             'pending', 'running', 'finished', 'cancelled', 'errored')
 
         # Create unique temporary directory for each file
-        if self._tmp_unique and self._tmp_path:
-            tmpdir = os.path.join(self._tmp_path, uuid.uuid4().hex)
+        if self._chunked and self._unique_temporary:
+            tmpdir = dst.parent / "{}.segments.{}".format(dst.name, self._unique_str)
+        elif self._chunked:
+            tmpdir = dst.parent / "{}.segments".format(dst.name)
         else:
-            tmpdir = self._tmp_path
+            tmpdir = None
 
         offsets = list(range(0, length, self._chunksize))
         for offset in offsets:
-            if self._tmp_path and len(offsets) > 1:
-                name = os.path.join(
-                    os.path.sep,
-                    tmpdir,
-                    dst.name + '_' + str(offset))
+            if tmpdir and len(offsets) > 1:
+                name = tmpdir / "{}_{}".format(dst.name, offset)
             else:
                 name = dst
             cstates[(name, offset)] = 'pending'
             self._chunks[(name, offset)] = dict(
                 parent=(src, dst),
-                retries=self._chunkretries,
                 expected=min(length - offset, self._chunksize),
                 actual=0,
                 exception=None)
@@ -282,8 +283,6 @@ class ADLTransferClient(object):
         self._fstates[(src, dst)] = 'pending'
         self._files[(src, dst)] = dict(
             length=length,
-            start=None,
-            stop=None,
             cstates=cstates,
             exception=None)
 
@@ -296,13 +295,16 @@ class ADLTransferClient(object):
     def _start(self, src, dst):
         key = (src, dst)
         self._fstates[key] = 'transferring'
-        self._files[key]['start'] = time.time()
         for obj in self._files[key]['cstates'].objects:
             name, offset = obj
-            self._files[key]['cstates'][obj] = 'running'
+            cs = self._files[key]['cstates']
+            if obj in cs.objects and cs[obj] == 'finished':
+                continue
+            cs[obj] = 'running'
             future = self._submit(
                 self._transfer, self._adlfs, src, name, offset,
-                self._chunksize, self._blocksize)
+                self._chunks[obj]['expected'], self._buffersize,
+                self._blocksize)
             self._cfutures[future] = obj
 
     @property
@@ -318,7 +320,6 @@ class ADLTransferClient(object):
                     name=name,
                     offset=offset,
                     state=self._files[key]['cstates'][obj],
-                    retries=self._chunks[obj]['retries'],
                     expected=self._chunks[obj]['expected'],
                     actual=self._chunks[obj]['actual'],
                     exception=self._chunks[obj]['exception']))
@@ -327,8 +328,6 @@ class ADLTransferClient(object):
                 dst=dst,
                 state=self._fstates[key],
                 length=self._files[key]['length'],
-                start=self._files[key]['start'],
-                stop=self._files[key]['stop'],
                 chunks=chunks,
                 exception=self._files[key]['exception']))
         return files
@@ -368,7 +367,6 @@ class ADLTransferClient(object):
                     self._ffutures[merge_future] = parent
                 else:
                     self._fstates[parent] = 'finished'
-                    self._files[parent]['stop'] = time.time()
                     logger.info("Transferred %s -> %s", src, dst)
             elif cstates.contains_none('running'):
                 logger.debug("Transfer failed: %s", cstates)
@@ -388,16 +386,29 @@ class ADLTransferClient(object):
                     self._fstates[(src, dst)] = 'errored'
                 else:
                     self._fstates[(src, dst)] = 'finished'
-                    self._files[(src, dst)]['stop'] = time.time()
                     logger.info("Transferred %s -> %s", src, dst)
         self.save()
+        if self.verbose:
+            print('\b' * 200, self.status, end='')
+            sys.stdout.flush()
+
+    @property
+    def status(self):
+        c = sum([Counter([c.state for c in f.chunks]) for f in
+                 self.progress], Counter())
+        return dict(c)
 
     def run(self, nthreads=None, monitor=True, before_start=None):
+        self._pool = ThreadPoolExecutor(self._nthreads)
+        self._shutdown_event = threading.Event()
         self._nthreads = nthreads or self._nthreads
+        self._ffutures = {}
+        self._cfutures = {}
         for src, dst in self._files:
             if before_start:
                 before_start(self._adlfs, src, dst)
             self._start(src, dst)
+        before_start = None
         if monitor:
             self.monitor()
 
@@ -414,8 +425,24 @@ class ADLTransferClient(object):
         self._pool = None
 
     def shutdown(self):
-        self._shutdown_event.set()
-        self._pool.shutdown(wait=True)
+        """
+        Shutdown task threads in an orderly fashion.
+
+        Within the context of this method, we disable Ctrl+C keystroke events
+        until all threads have exited. We re-enable Ctrl+C keystroke events
+        before leaving.
+        """
+        handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        try:
+            logger.debug("Shutting down worker threads")
+            self._shutdown_event.set()
+            self._pool.shutdown(wait=True)
+        except Exception as e:
+            logger.error("Unexpected exception occurred during shutdown: %s", repr(e));
+        else:
+            logger.debug("Shutdown complete")
+        finally:
+            signal.signal(signal.SIGINT, handler)
 
     def monitor(self, poll=0.1, timeout=0):
         """ Wait for download to happen """
@@ -431,8 +458,6 @@ class ADLTransferClient(object):
         dic2 = self.__dict__.copy()
         dic2.pop('_cfutures', None)
         dic2.pop('_ffutures', None)
-        dic2.pop('_transfer', None)
-        dic2.pop('_merge', None)
         dic2.pop('_pool', None)
         dic2.pop('_shutdown_event', None)
 
@@ -441,19 +466,6 @@ class ADLTransferClient(object):
 
         return dic2
 
-    @staticmethod
-    def load(filename):
-        try:
-            return pickle.load(open(filename, 'rb'))
-        except:
-            return {}
-
     def save(self, keep=True):
-        if self._persist_path:
-            all_downloads = self.load(self._persist_path)
-            if not self._fstates.contains_all('finished') and keep:
-                all_downloads[self._name] = self
-            else:
-                all_downloads.pop(self._name, None)
-            with open(self._persist_path, 'wb') as f:
-                pickle.dump(all_downloads, f)
+        if self._parent is not None:
+            self._parent.save(keep=keep)

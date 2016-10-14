@@ -20,14 +20,13 @@ import os
 import requests
 import requests.exceptions
 import time
+import uuid
 
 # 3rd party imports
 import adal
 import azure
 
-from .utils import FileNotFoundError, PermissionError
-
-client_id = "1950a258-227b-4e31-a9cf-717495945fc2"
+from .exceptions import FileNotFoundError, PermissionError
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +37,13 @@ class DatalakeRESTException(IOError):
 default_tenant = os.environ.get('azure_tenant_id', "common")
 default_username = os.environ.get('azure_username', None)
 default_password = os.environ.get('azure_password', None)
-default_client = os.environ.get('azure_client_id', None)
+default_client = os.environ.get('azure_client_id', "1950a258-227b-4e31-a9cf-717495945fc2")
 default_secret = os.environ.get('azure_client_secret', None)
 default_resource = "https://management.core.windows.net/"
 default_store = os.environ.get('azure_store_name', None)
 default_suffix = os.environ.get('azure_url_suffix', '')
+
+MAX_CONTENT_LENGTH = 2**16
 
 
 def refresh_token(token):
@@ -214,6 +215,38 @@ class DatalakeRESTInterface:
             self.token = refresh_token(self.token)
             self.head = {'Authorization': 'Bearer ' + self.token['access']}
 
+    def _log_request(self, method, url, op, path, params, headers):
+        msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
+        msg += "{} '{}' {}\n\n".format(
+            op, path,
+            " ".join(["{}={}".format(key, params[key]) for key in params]))
+        msg += "\n".join(["{}: {}".format(header, headers[header])
+                          for header in headers])
+        logger.debug(msg)
+
+    def _log_response(self, response, payload=False):
+        msg = "HTTP Response\n{}\n{}".format(
+            response.status_code,
+            "\n".join(["{}: {}".format(header, response.headers[header])
+                       for header in response.headers]))
+        if payload:
+            msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
+            if int(response.headers['content-length']) > MAX_CONTENT_LENGTH:
+                msg += "\n(Response body was truncated)"
+        logger.debug(msg)
+
+    def log_response_and_raise(self, response, exception):
+        msg = "Exception " + repr(exception)
+        if response is not None:
+            msg += "\n{}\n{}".format(
+                response.status_code,
+                "\n".join(["{}: {}".format(header, response.headers[header])
+                        for header in response.headers]))
+            msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
+            if int(response.headers['content-length']) > MAX_CONTENT_LENGTH:
+                msg += "\n(Response body was truncated)"
+        logger.error(msg)
+        raise exception
 
     def call(self, op, path='', **kwargs):
         """ Execute a REST call
@@ -233,6 +266,7 @@ class DatalakeRESTInterface:
         self._check_token()
         method, required, allowed = self.ends[op]
         data = kwargs.pop('data', b'')
+        stream = kwargs.pop('stream', False)
         keys = set(kwargs)
         if required > keys:
             raise ValueError("Required parameters missing: %s",
@@ -245,31 +279,31 @@ class DatalakeRESTInterface:
         func = getattr(requests, method)
         url = self.url + path
         try:
-            r = func(url, params=params, headers=self.head, data=data)
+            self.head['x-ms-client-request-id'] = str(uuid.uuid1())
+            self._log_request(method, url, op, path, kwargs, self.head)
+            r = func(url, params=params, headers=self.head, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: %s', str(e))
+
         if r.status_code == 403:
-            raise PermissionError(path)
+            self.log_response_and_raise(r, PermissionError(path))
         elif r.status_code == 404:
-            raise FileNotFoundError(path)
+            self.log_response_and_raise(r, FileNotFoundError(path))
         elif r.status_code >= 400:
-            raise DatalakeRESTException("Data-lake REST exception: %s, %s, %s" %
-                                        (op, r.status_code, r.content.decode()))
-        if r.content:
-            if r.content.startswith(b'{'):
-                try:
-                    out = r.json()
-                    if out.get('boolean', True) is False:
-                        raise DatalakeRESTException('Operation failed: %s, %s',
-                                                    op, path)
-                except ValueError:
-                    out = r.content
-            else:
-                # because byte-strings can happen to look like json
-                out = r.content
+            err = DatalakeRESTException("Data-lake REST exception: %s", op)
+            self.log_response_and_raise(r, err)
         else:
-            out = r
-        return out
+            self._log_response(r)
+
+        if 'content-type' in r.headers:
+            if r.headers['content-type'].startswith('application/json'):
+                out = r.json()
+                if out.get('boolean', True) is False:
+                    err = DatalakeRESTException('Operation failed: %s, %s',
+                                                op, path)
+                    self.log_response_and_raise(r, err)
+                return out
+        return r
 
 """
 Not yet implemented (or not applicable)

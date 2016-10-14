@@ -7,39 +7,37 @@
 # --------------------------------------------------------------------------
 
 import os
-import pytest
 import time
 
-from adlfs.core import AzureDLPath
-from adlfs.transfer import ADLTransferClient
+from azure.datalake.store.core import AzureDLPath
+from azure.datalake.store.transfer import ADLTransferClient
 from tests.testing import azure, posix
 
 
-@pytest.mark.skipif(True, reason="skip until resolve timing issue")
-def test_interrupt(azure):
-    def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
+def test_shutdown(azure):
+    def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, retries=5, shutdown_event=None):
+        time.sleep(1.0)
         while shutdown_event and not shutdown_event.is_set():
             time.sleep(0.1)
         return size, None
 
-    client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=1,
-                               tmp_path=None)
+    client = ADLTransferClient(azure, transfer=transfer, chunksize=1,
+                               chunked=False)
     client.submit('foo', 'bar', 16)
     client.run(monitor=False)
-    time.sleep(1)
+    time.sleep(0.1)
     client.shutdown()
-    client.monitor()
 
-    assert client.progress[0].state != 'finished'
+    assert client.progress[0].state == 'finished'
 
 
 def test_submit_and_run(azure):
-    def transfer(adlfs, src, dst, offset, size, retries=5, shutdown_event=None):
+    def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, shutdown_event=None):
         time.sleep(0.1)
         return size, None
 
-    client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=8,
-                               tmp_path=None)
+    client = ADLTransferClient(azure, transfer=transfer, chunksize=8,
+                               chunked=False)
 
     client.submit('foo', 'bar', 16)
     client.submit('abc', '123', 8)
@@ -66,12 +64,12 @@ def test_submit_and_run(azure):
 
 
 def test_temporary_path(azure):
-    def transfer(adlfs, src, dst, offset, size):
+    def transfer(adlfs, src, dst, offset, size, blocksize, buffersize):
         time.sleep(0.1)
         return size, None
 
-    client = ADLTransferClient(azure, 'foobar', transfer=transfer, chunksize=8,
-                               tmp_unique=False)
+    client = ADLTransferClient(azure, transfer=transfer, chunksize=8,
+                               unique_temporary=False)
     client.submit('foo', AzureDLPath('bar'), 16)
 
-    assert os.path.dirname(posix(client.progress[0].chunks[0].name)) == '/tmp'
+    assert os.path.dirname(posix(client.progress[0].chunks[0].name)) == 'bar.segments'

@@ -17,14 +17,12 @@ which is compatible with the built-in File.
 # standard imports
 import io
 import logging
-import os
-import re
 import sys
-import time
 
 # local imports
-from .lib import DatalakeRESTInterface, auth, refresh_token
-from .utils import FileNotFoundError, PermissionError, PY2, ensure_writable, read_block
+from .exceptions import FileNotFoundError, PermissionError
+from .lib import DatalakeRESTInterface
+from .utils import ensure_writable, read_block
 
 if sys.version_info >= (3, 4):
     import pathlib
@@ -537,19 +535,22 @@ class AzureDLFile(object):
             # First read
             self.start = start
             self.end = min(end + self.blocksize, self.size)
-            self.cache = _fetch_range(self.azure.azure, self.path.as_posix(),
-                                      start, self.end)
+            response = _fetch_range(self.azure.azure, self.path.as_posix(),
+                                    start, self.end)
+            self.cache = getattr(response, 'content', response)
         if start < self.start:
-            new = _fetch_range(self.azure.azure, self.path.as_posix(), start,
-                               self.start)
+            response = _fetch_range(self.azure.azure, self.path.as_posix(),
+                                    start, self.start)
+            new = getattr(response, 'content', response)
             self.start = start
             self.cache = new + self.cache
         if end > self.end:
             if self.end >= self.size:
                 return
             newend = min(self.size, end + self.blocksize)
-            new = _fetch_range(self.azure.azure, self.path.as_posix(),
-                               self.end, newend)
+            response = _fetch_range(self.azure.azure, self.path.as_posix(),
+                                    self.end, newend)
+            new = getattr(response, 'content', response)
             self.end = newend
             self.cache = self.cache + new
 
@@ -719,36 +720,46 @@ class AzureDLFile(object):
         self.close()
 
 
-def _fetch_range(rest, path, start, end, max_attempts=10):
+def _fetch_range(rest, path, start, end, max_attempts=10, stream=False):
     logger.debug("Fetch: %s, %s-%s", path, start, end)
     if end <= start:
         return b''
+    resp = None
     for i in range(max_attempts):
         try:
-            resp = rest.call('OPEN', path, offset=start, length=end-start,
-                             read='true')
-            return resp
+            return rest.call(
+                'OPEN', path, offset=start, length=end-start, read='true',
+                stream=stream)
         except Exception as e:
+            err = e
             logger.debug('Exception %s on ADL download, retrying', e,
                          exc_info=True)
-    raise RuntimeError("Max number of ADL retries exceeded")
+    exception = RuntimeError("Max number of ADL retries exceeded: exception %s", err)
+    rest.log_response_and_raise(resp, exception)
 
 
 def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
     logger.debug("Put: %s %s, %s", op, path, kwargs)
+    resp = None
     for i in range(max_attempts):
         try:
             resp = rest.call(op, path=path, data=data, **kwargs)
             return resp
-        except (PermissionError, FileNotFoundError):
-            raise
+        except (PermissionError, FileNotFoundError) as e:
+            rest.log_response_and_raise(resp, e)
         except Exception as e:
             if '"BadOffsetException"' in repr(e):
-                logger.debug("Writing to block that already exists - skipping")
+                if i == 0:
+                    # on first attempt: if data already exists, this is a
+                    # true error
+                    raise
+                # on any other attempt: previous attempt succeeded, continue
                 return
+            err = e
             logger.debug('Exception %s on ADL upload, retrying', e,
                          exc_info=True)
-    raise RuntimeError("Max number of ADL retries exceeded")
+    exception = RuntimeError("Max number of ADL retries exceeded: exception %s", err)
+    rest.log_response_and_raise(resp, exception)
 
 
 class AzureDLPath(type(pathlib.PurePath())):

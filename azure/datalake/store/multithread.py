@@ -17,12 +17,38 @@ Only implements upload and download of (massive) files and directory trees.
 import glob
 import logging
 import os
+import pickle
 
-from .core import AzureDLPath
+from .core import AzureDLPath, _fetch_range
+from .exceptions import FileExistsError
 from .transfer import ADLTransferClient
 from .utils import commonprefix, datadir, read_block, tokenize
 
 logger = logging.getLogger(__name__)
+
+
+def save(instance, filename, keep=True):
+    if os.path.exists(filename):
+        all_downloads = load(filename)
+    else:
+        all_downloads = {}
+    if not instance.client._fstates.contains_all('finished') and keep:
+        all_downloads[instance._name] = instance
+    else:
+        all_downloads.pop(instance._name, None)
+    try:
+        # persist failure should not halt things
+        with open(filename, 'wb') as f:
+            pickle.dump(all_downloads, f)
+    except IOError:
+        logger.debug("Persist failed: %s" % filename)
+
+
+def load(filename):
+    try:
+        return pickle.load(open(filename, 'rb'))
+    except:
+        return {}
 
 
 class ADLDownloader(object):
@@ -48,6 +74,9 @@ class ADLDownloader(object):
     chunksize: int [2**28]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
+    buffersize: int [2**22]
+        Number of bytes for internal buffer. This block cannot be bigger than
+        a chunk and cannot be smaller than a block.
     blocksize: int [2**22]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
@@ -57,34 +86,86 @@ class ADLDownloader(object):
         by constructor.
     run: bool [True]
         Whether to begin executing immediately.
+    overwrite: bool [False]
+        Whether to forcibly overwrite existing files/directories. If False and
+        local path is a directory, will quit regardless if any files would be
+        overwritten or not. If True, only matching filenames are actually
+        overwritten.
 
     See Also
     --------
-    adlfs.transfer.ADLTransferClient
+    azure.datalake.store.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**22, client=None, run=True):
+                 buffersize=2**22, blocksize=2**22, client=None, run=True,
+                 overwrite=False, verbose=True):
+        if not overwrite and os.path.exists(lpath):
+            raise FileExistsError(lpath)
         if client:
             self.client = client
         else:
             self.client = ADLTransferClient(
                 adlfs,
-                name=tokenize(adlfs, rpath, lpath, chunksize, blocksize),
                 transfer=get_chunk,
                 nthreads=nthreads,
                 chunksize=chunksize,
+                buffersize=buffersize,
                 blocksize=blocksize,
-                tmp_path=None,
-                persist_path=os.path.join(datadir, 'downloads'))
+                chunked=False,
+                verbose=verbose,
+                parent=self)
+        self._name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = rpath
         self.lpath = lpath
+        self._overwrite = overwrite
         self._setup()
         if run:
             self.run()
 
+    def save(self, keep=True):
+        """ Persist this download
+
+        Saves a copy of this transfer process in its current state to disk.
+        This is done automatically for a running transfer, so that as a chunk
+        is completed, this is reflected. Thus, if a transfer is interrupted,
+        e.g., by user action, the transfer can be restarted at another time.
+        All chunks that were not already completed will be restarted at that
+        time.
+
+        See methods ``load`` to retrieved saved transfers and ``run`` to
+        resume a stopped transfer.
+
+        Parameters
+        ----------
+        keep: bool (True)
+            If True, transfer will be saved if some chunks remain to be
+            completed; the transfer will be sure to be removed otherwise.
+        """
+        save(self, os.path.join(datadir, 'downloads'), keep)
+
+    @staticmethod
+    def load():
+        """ Load list of persisted transfers from disk, for possible resumption.
+
+        Returns
+        -------
+            A dictionary of download instances. The hashes are auto-
+            generated unique. The state of the chunks completed, errored, etc.,
+            can be seen in the status attribute. Instances can be resumed with
+            ``run()``.
+        """
+        return load(os.path.join(datadir, 'downloads'))
+
+    @staticmethod
+    def clear_saved():
+        """ Remove references to all persisted downloads.
+        """
+        if os.path.exists(os.path.join(datadir, 'downloads')):
+            os.remove(os.path.join(datadir, 'downloads'))
+
     @property
     def hash(self):
-        return self.client._name
+        return self._name
 
     def _setup(self):
         """ Create set of parameters to loop over
@@ -119,9 +200,7 @@ class ADLDownloader(object):
         nthreads: int [None]
             Override default nthreads, if given
         monitor: bool [True]
-            To watch and wait (block) until completion. If False, `update()`
-            should be called manually, otherwise process runs as "fire and
-            forget".
+            To watch and wait (block) until completion.
         """
         def touch(self, src, dst):
             root = os.path.dirname(dst)
@@ -135,41 +214,29 @@ class ADLDownloader(object):
 
         self.client.run(nthreads, monitor, before_start=touch)
 
-    @staticmethod
-    def load():
-        return ADLTransferClient.load(os.path.join(datadir, 'downloads'))
-
-    def save(self, keep=True):
-        self.client.save(keep)
-
     def __str__(self):
-        progress = self.client.progress
-        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
-        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
-        return "<ADL Download: %s -> %s (%s of %s chunks remain)>" % (
-            self.rpath, self.lpath, nchunks, nchunks_orig)
+        return "<ADL Download: %s -> %s (%s)>" % (self.rpath, self.lpath,
+                                                  self.client.status)
 
     __repr__ = __str__
 
 
-def get_chunk(adlfs, src, dst, offset, size, blocksize, shutdown_event=None):
+def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, shutdown_event=None):
     """ Download a piece of a remote file and write locally
 
     Internal function used by `download`.
     """
     nbytes = 0
     try:
-        with adlfs.open(src, 'rb') as fin:
-            end = offset + size
-            miniblock = min(size, blocksize)
-            with open(dst, 'rb+') as fout:
-                fout.seek(offset)
-                fin.seek(offset)
-                for o in range(offset, end, miniblock):
-                    if shutdown_event and shutdown_event.is_set():
-                        return nbytes, None
-                    data = fin.read(miniblock)
-                    nbytes += fout.write(data)
+        response = _fetch_range(adlfs.azure, src, start=offset, end=offset+size, stream=True)
+        with open(dst, 'rb+') as fout:
+            fout.seek(offset)
+            for chunk in response.iter_content(chunk_size=blocksize):
+                if shutdown_event and shutdown_event.is_set():
+                    return nbytes, None
+                nwritten = fout.write(chunk)
+                if nwritten:
+                    nbytes += nwritten
     except Exception as e:
         exception = repr(e)
         logger.debug('Download failed %s; %s', dst, exception)
@@ -200,7 +267,10 @@ class ADLUploader(object):
     chunksize: int [2**28]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
-    blocksize: int [2**25]
+    buffersize: int [2**22]
+        Number of bytes for internal buffer. This block cannot be bigger than
+        a chunk and cannot be smaller than a block.
+    blocksize: int [2**22]
         Number of bytes for a block. Within each chunk, we write a smaller
         block for each API call. This block cannot be bigger than a chunk.
     client: ADLTransferClient [None]
@@ -212,35 +282,88 @@ class ADLUploader(object):
     delimiter: byte(s) or None
         If set, will write blocks using delimiters in the backend, as well as
         split files for uploading on that delimiter.
+    overwrite: bool [False]
+        Whether to forcibly overwrite existing files/directories. If False and
+        remote path is a directory, will quit regardless if any files would be
+        overwritten or not. If True, only matching filenames are actually
+        overwritten.
 
     See Also
     --------
-    adlfs.transfer.ADLTransferClient
+    azure.datalake.store.transfer.ADLTransferClient
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
-                 blocksize=2**25, client=None, run=True, delimiter=None):
+                 buffersize=2**22, blocksize=2**22, client=None, run=True,
+                 delimiter=None, overwrite=False, verbose=True):
+        if not overwrite and adlfs.exists(rpath):
+            raise FileExistsError(rpath)
         if client:
             self.client = client
         else:
             self.client = ADLTransferClient(
                 adlfs,
-                name=tokenize(adlfs, rpath, lpath, chunksize, blocksize),
                 transfer=put_chunk,
                 merge=merge_chunks,
                 nthreads=nthreads,
                 chunksize=chunksize,
+                buffersize=buffersize,
                 blocksize=blocksize,
-                persist_path=os.path.join(datadir, 'uploads'),
-                delimiter=delimiter)
+                delimiter=delimiter,
+                parent=self,
+                verbose=verbose,
+                unique_temporary=True)
+        self._name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
+        self._overwrite = overwrite
         self._setup()
         if run:
             self.run()
 
+    def save(self, keep=True):
+        """ Persist this upload
+
+        Saves a copy of this transfer process in its current state to disk.
+        This is done automatically for a running transfer, so that as a chunk
+        is completed, this is reflected. Thus, if a transfer is interrupted,
+        e.g., by user action, the transfer can be restarted at another time.
+        All chunks that were not already completed will be restarted at that
+        time.
+
+        See methods ``load`` to retrieved saved transfers and ``run`` to
+        resume a stopped transfer.
+
+        Parameters
+        ----------
+        keep: bool (True)
+            If True, transfer will be saved if some chunks remain to be
+            completed; the transfer will be sure to be removed otherwise.
+        """
+        save(self, os.path.join(datadir, 'uploads'), keep)
+
+    @staticmethod
+    def load():
+        """ Load list of persisted transfers from disk, for possible resumption.
+
+        Returns
+        -------
+            A dictionary of upload instances. The hashes are auto-
+            generated unique. The state of the chunks completed, errored, etc.,
+            can be seen in the status attribute. Instances can be resumed with
+            ``run()``.
+        """
+        return load(os.path.join(datadir, 'uploads'))
+
+    @staticmethod
+    def clear_saved():
+        """ Remove references to all persisted uploads.
+        """
+        if os.path.exists(os.path.join(datadir, 'uploads')):
+            os.remove(os.path.join(datadir, 'uploads'))
+
     @property
     def hash(self):
-        return self.client._name
+        return self._name
 
     def _setup(self):
         """ Create set of parameters to loop over
@@ -274,26 +397,25 @@ class ADLUploader(object):
             self.client.submit(lfile, rfile, fsize)
 
     def run(self, nthreads=None, monitor=True):
+        """ Populate transfer queue and execute downloads
+
+        Parameters
+        ----------
+        nthreads: int [None]
+            Override default nthreads, if given
+        monitor: bool [True]
+            To watch and wait (block) until completion.
+        """
         self.client.run(nthreads, monitor)
 
-    @staticmethod
-    def load():
-        return ADLTransferClient.load(os.path.join(datadir, 'uploads'))
-
-    def save(self, keep=True):
-        self.client.save(keep)
-
     def __str__(self):
-        progress = self.client.progress
-        nchunks_orig = sum([1 for f in progress for chunk in f.chunks])
-        nchunks = sum([1 for f in progress for chunk in f.chunks if chunk.state != 'finished'])
-        return "<ADL Upload: %s -> %s (%s of %s chunks remain)>" % (
-            self.lpath, self.rpath, nchunks, nchunks_orig)
+        return "<ADL Upload: %s -> %s (%s)>" % (self.lpath, self.rpath,
+                                                self.client.status)
 
     __repr__ = __str__
 
 
-def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
+def put_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, delimiter=None,
               shutdown_event=None):
     """ Upload a piece of a local file
 
@@ -301,7 +423,7 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
     """
     nbytes = 0
     try:
-        with adlfs.open(dst, 'wb', delimiter=delimiter) as fout:
+        with adlfs.open(dst, 'wb', blocksize=buffersize, delimiter=delimiter) as fout:
             end = offset + size
             miniblock = min(size, blocksize)
             with open(src, 'rb') as fin:
@@ -309,7 +431,9 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
                     if shutdown_event and shutdown_event.is_set():
                         return nbytes, None
                     data = read_block(fin, o, miniblock, delimiter)
-                    nbytes += fout.write(data)
+                    nwritten = fout.write(data)
+                    if nwritten:
+                        nbytes += nwritten
     except Exception as e:
         exception = repr(e)
         logger.debug('Upload failed %s; %s', src, exception)
@@ -320,7 +444,9 @@ def put_chunk(adlfs, src, dst, offset, size, blocksize, delimiter=None,
 
 def merge_chunks(adlfs, outfile, files, shutdown_event=None):
     try:
-        adlfs.concat(outfile, files)
+        # note that it is assumed that only temp files from this run are in the segment folder created.
+        # so this call is optimized to instantly delete the temp folder on concat.
+        adlfs.concat(outfile, files, delete_source=True)
     except Exception as e:
         exception = repr(e)
         logger.debug('Merged failed %s; %s', outfile, exception)

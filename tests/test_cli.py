@@ -13,7 +13,7 @@ import os
 
 import pytest
 
-from adlfs.cli import AzureDataLakeFSCommand
+from azure.datalake.store.cli import AzureDataLakeFSCommand
 from tests.testing import azure, my_vcr, working_dir
 
 
@@ -117,7 +117,7 @@ def test_get(tmpdir, azure, client):
         f = os.path.basename(azurefile)
         localfile = tmpdir.dirname + '/' + f
 
-        client.onecmd(' '.join(['get', azurefile, tmpdir.dirname]))
+        client.onecmd(' '.join(['get', '-f', azurefile, tmpdir.dirname]))
 
         assert os.path.exists(localfile)
 
@@ -215,10 +215,10 @@ def test_put(capsys, tmpdir, azure, client):
         lf.write(b'123456')
 
     with setup_dir(azure) as azuredir:
-        client.onecmd(' '.join(['put', localfile, azuredir]))
+        client.onecmd(' '.join(['put', '-f', localfile, azuredir]))
 
         client.onecmd('head ' + azuredir + '/foo')
-        assert read_stdout(capsys) == '123456'
+        assert read_stdout(capsys).endswith('123456')
 
         client.onecmd('rm ' + azuredir + '/foo')
         assert not read_stdout(capsys)
