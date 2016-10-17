@@ -748,6 +748,13 @@ def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
         except (PermissionError, FileNotFoundError) as e:
             rest.log_response_and_raise(resp, e)
         except Exception as e:
+            if '"BadOffsetException"' in repr(e):
+                if i == 0:
+                    # on first attempt: if data already exists, this is a
+                    # true error
+                    rest.log_response_and_raise(resp, e)
+                # on any other attempt: previous attempt succeeded, continue
+                return
             err = e
             logger.debug('Exception %s on ADL upload, retrying', e,
                          exc_info=True)
