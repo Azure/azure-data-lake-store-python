@@ -9,9 +9,9 @@
 import pytest
 import time
 
+from azure.datalake.store.exceptions import DatalakeRESTException
 from azure.datalake.store.lib import (
-    refresh_token, DatalakeRESTInterface, DatalakeRESTException,
-    ManagementRESTInterface)
+    refresh_token, DatalakeRESTInterface, ManagementRESTInterface)
 
 from tests import settings
 from tests.testing import my_vcr

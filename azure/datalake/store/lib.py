@@ -26,13 +26,11 @@ import uuid
 import adal
 import azure
 
+from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
 
 logger = logging.getLogger(__name__)
 
-
-class DatalakeRESTException(IOError):
-    pass
 
 default_tenant = os.environ.get('azure_tenant_id', "common")
 default_username = os.environ.get('azure_username', None)
@@ -248,6 +246,11 @@ class DatalakeRESTInterface:
         logger.error(msg)
         raise exception
 
+    def _is_json_response(self, response):
+        if not 'content-type' in response.headers:
+            return False
+        return response.headers['content-type'].startswith('application/json')
+
     def call(self, op, path='', **kwargs):
         """ Execute a REST call
 
@@ -292,18 +295,24 @@ class DatalakeRESTInterface:
             self.log_response_and_raise(r, FileNotFoundError(path))
         elif r.status_code >= 400:
             err = DatalakeRESTException("Data-lake REST exception: %s", op)
+            if self._is_json_response(r):
+                out = r.json()
+                if 'RemoteException' in out:
+                    exception = out['RemoteException']['exception']
+                    message = out['RemoteException']['message']
+                    if exception == 'BadOffsetException':
+                        err = DatalakeBadOffsetException(message)
             self.log_response_and_raise(r, err)
         else:
             self._log_response(r)
 
-        if 'content-type' in r.headers:
-            if r.headers['content-type'].startswith('application/json'):
-                out = r.json()
-                if out.get('boolean', True) is False:
-                    err = DatalakeRESTException('Operation failed: %s, %s',
-                                                op, path)
-                    self.log_response_and_raise(r, err)
-                return out
+        if self._is_json_response(r):
+            out = r.json()
+            if out.get('boolean', True) is False:
+                err = DatalakeRESTException('Operation failed: %s, %s',
+                                            op, path)
+                self.log_response_and_raise(r, err)
+            return out
         return r
 
 """
