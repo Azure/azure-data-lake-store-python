@@ -20,7 +20,7 @@ import logging
 import sys
 
 # local imports
-from .exceptions import FileNotFoundError, PermissionError
+from .exceptions import ConnectionError, FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
 
@@ -745,7 +745,7 @@ def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
         try:
             resp = rest.call(op, path=path, data=data, **kwargs)
             return resp
-        except (PermissionError, FileNotFoundError) as e:
+        except (ConnectionError, PermissionError, FileNotFoundError) as e:
             rest.log_response_and_raise(resp, e)
         except Exception as e:
             err = e

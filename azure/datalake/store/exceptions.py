@@ -23,3 +23,15 @@ try:
 except NameError:
     class PermissionError(OSError):
         pass
+
+try:
+    ConnectionError = ConnectionError
+except NameError:
+    class ConnectionError(Exception):
+        pass
+
+try:
+    ConnectionResetError = ConnectionResetError
+except NameError:
+    class ConnectionResetError(ConnectionError):
+        pass
