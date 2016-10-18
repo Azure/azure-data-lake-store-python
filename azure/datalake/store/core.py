@@ -20,7 +20,7 @@ import logging
 import sys
 
 # local imports
-from .exceptions import FileNotFoundError, PermissionError
+from .exceptions import ConnectionError, FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
 
