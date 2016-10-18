@@ -745,7 +745,7 @@ def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
         try:
             resp = rest.call(op, path=path, data=data, **kwargs)
             return resp
-        except (PermissionError, FileNotFoundError) as e:
+        except (ConnectionError, PermissionError, FileNotFoundError) as e:
             rest.log_response_and_raise(resp, e)
         except Exception as e:
             err = e
