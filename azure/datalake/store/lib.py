@@ -282,7 +282,7 @@ class DatalakeRESTInterface:
         func = getattr(requests, method)
         url = self.url + path
         try:
-            headers = self.head
+            headers = self.head.copy()
             headers['x-ms-client-request-id'] = str(uuid.uuid1())
             self._log_request(method, url, op, path, kwargs, headers)
             r = func(url, params=params, headers=headers, data=data, stream=stream)
