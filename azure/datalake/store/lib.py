@@ -238,7 +238,7 @@ class DatalakeRESTInterface:
                 msg += "\n(Response body was truncated)"
         logger.debug(msg)
 
-    def log_response_and_raise(self, response, exception):
+    def log_response_and_raise(self, response, exception, level=logging.ERROR):
         msg = "Exception " + repr(exception)
         if response is not None:
             msg += "\n{}\n{}".format(
@@ -248,7 +248,7 @@ class DatalakeRESTInterface:
             msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
             if self._content_truncated(response):
                 msg += "\n(Response body was truncated)"
-        logger.error(msg)
+        logger.log(level, msg)
         raise exception
 
     def _is_json_response(self, response):
@@ -307,6 +307,7 @@ class DatalakeRESTInterface:
                     exception = out['RemoteException']['exception']
                     if exception == 'BadOffsetException':
                         err = DatalakeBadOffsetException(path)
+                        self.log_response_and_raise(r, err, level=logging.DEBUG)
             self.log_response_and_raise(r, err)
         else:
             self._log_response(r)
