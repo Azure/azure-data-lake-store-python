@@ -287,21 +287,21 @@ class DatalakeRESTInterface:
             self._log_request(method, url, op, path, kwargs, headers)
             r = func(url, params=params, headers=headers, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
-            raise DatalakeRESTException('HTTP error: %s', str(e))
+            raise DatalakeRESTException('HTTP error: ' + repr(e))
 
         if r.status_code == 403:
             self.log_response_and_raise(r, PermissionError(path))
         elif r.status_code == 404:
             self.log_response_and_raise(r, FileNotFoundError(path))
         elif r.status_code >= 400:
-            err = DatalakeRESTException("Data-lake REST exception: %s", op)
+            err = DatalakeRESTException(
+                'Data-lake REST exception: %s, %s' % (op, path))
             if self._is_json_response(r):
                 out = r.json()
                 if 'RemoteException' in out:
                     exception = out['RemoteException']['exception']
-                    message = out['RemoteException']['message']
                     if exception == 'BadOffsetException':
-                        err = DatalakeBadOffsetException(message)
+                        err = DatalakeBadOffsetException(path)
             self.log_response_and_raise(r, err)
         else:
             self._log_response(r)
@@ -309,8 +309,8 @@ class DatalakeRESTInterface:
         if self._is_json_response(r):
             out = r.json()
             if out.get('boolean', True) is False:
-                err = DatalakeRESTException('Operation failed: %s, %s',
-                                            op, path)
+                err = DatalakeRESTException(
+                    'Operation failed: %s, %s' % (op, path))
                 self.log_response_and_raise(r, err)
             return out
         return r
