@@ -234,9 +234,10 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, shutdown_eve
             for chunk in response.iter_content(chunk_size=blocksize):
                 if shutdown_event and shutdown_event.is_set():
                     return nbytes, None
-                nwritten = fout.write(chunk)
-                if nwritten:
-                    nbytes += nwritten
+                if chunk:
+                    nwritten = fout.write(chunk)
+                    if nwritten:
+                        nbytes += nwritten
     except Exception as e:
         exception = repr(e)
         logger.error('Download failed %s; %s', dst, exception)
