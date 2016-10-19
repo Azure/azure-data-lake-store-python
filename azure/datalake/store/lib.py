@@ -222,6 +222,11 @@ class DatalakeRESTInterface:
                           for header in headers])
         logger.debug(msg)
 
+    def _content_truncated(self, response):
+        if 'content-length' not in response.headers:
+            return False
+        return int(response.headers['content-length']) > MAX_CONTENT_LENGTH
+
     def _log_response(self, response, payload=False):
         msg = "HTTP Response\n{}\n{}".format(
             response.status_code,
@@ -229,7 +234,7 @@ class DatalakeRESTInterface:
                        for header in response.headers]))
         if payload:
             msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
-            if int(response.headers['content-length']) > MAX_CONTENT_LENGTH:
+            if self._content_truncated(response):
                 msg += "\n(Response body was truncated)"
         logger.debug(msg)
 
@@ -241,7 +246,7 @@ class DatalakeRESTInterface:
                 "\n".join(["{}: {}".format(header, response.headers[header])
                         for header in response.headers]))
             msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
-            if int(response.headers['content-length']) > MAX_CONTENT_LENGTH:
+            if self._content_truncated(response):
                 msg += "\n(Response body was truncated)"
         logger.error(msg)
         raise exception
