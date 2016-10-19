@@ -617,7 +617,7 @@ class AzureDLFile(object):
         If force=True, flushes all data in the buffer, even if it doesn't end
         with a delimiter; appropriate when closing the file.
         """
-        if not self.writable() and self.closed:
+        if not self.writable() or self.closed:
             return
 
         if self.buffer.tell() == 0:
