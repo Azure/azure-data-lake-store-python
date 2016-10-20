@@ -222,6 +222,11 @@ class DatalakeRESTInterface:
                           for header in headers])
         logger.debug(msg)
 
+    def _content_truncated(self, response):
+        if 'content-length' not in response.headers:
+            return False
+        return int(response.headers['content-length']) > MAX_CONTENT_LENGTH
+
     def _log_response(self, response, payload=False):
         msg = "HTTP Response\n{}\n{}".format(
             response.status_code,
@@ -229,11 +234,11 @@ class DatalakeRESTInterface:
                        for header in response.headers]))
         if payload:
             msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
-            if int(response.headers['content-length']) > MAX_CONTENT_LENGTH:
+            if self._content_truncated(response):
                 msg += "\n(Response body was truncated)"
         logger.debug(msg)
 
-    def log_response_and_raise(self, response, exception):
+    def log_response_and_raise(self, response, exception, level=logging.ERROR):
         msg = "Exception " + repr(exception)
         if response is not None:
             msg += "\n{}\n{}".format(
@@ -241,9 +246,9 @@ class DatalakeRESTInterface:
                 "\n".join(["{}: {}".format(header, response.headers[header])
                         for header in response.headers]))
             msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
-            if int(response.headers['content-length']) > MAX_CONTENT_LENGTH:
+            if self._content_truncated(response):
                 msg += "\n(Response body was truncated)"
-        logger.error(msg)
+        logger.log(level, msg)
         raise exception
 
     def _is_json_response(self, response):
@@ -282,26 +287,27 @@ class DatalakeRESTInterface:
         func = getattr(requests, method)
         url = self.url + path
         try:
-            headers = self.head
+            headers = self.head.copy()
             headers['x-ms-client-request-id'] = str(uuid.uuid1())
             self._log_request(method, url, op, path, kwargs, headers)
             r = func(url, params=params, headers=headers, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
-            raise DatalakeRESTException('HTTP error: %s', str(e))
+            raise DatalakeRESTException('HTTP error: ' + repr(e))
 
         if r.status_code == 403:
             self.log_response_and_raise(r, PermissionError(path))
         elif r.status_code == 404:
             self.log_response_and_raise(r, FileNotFoundError(path))
         elif r.status_code >= 400:
-            err = DatalakeRESTException("Data-lake REST exception: %s", op)
+            err = DatalakeRESTException(
+                'Data-lake REST exception: %s, %s' % (op, path))
             if self._is_json_response(r):
                 out = r.json()
                 if 'RemoteException' in out:
                     exception = out['RemoteException']['exception']
-                    message = out['RemoteException']['message']
                     if exception == 'BadOffsetException':
-                        err = DatalakeBadOffsetException(message)
+                        err = DatalakeBadOffsetException(path)
+                        self.log_response_and_raise(r, err, level=logging.DEBUG)
             self.log_response_and_raise(r, err)
         else:
             self._log_response(r)
@@ -309,8 +315,8 @@ class DatalakeRESTInterface:
         if self._is_json_response(r):
             out = r.json()
             if out.get('boolean', True) is False:
-                err = DatalakeRESTException('Operation failed: %s, %s',
-                                            op, path)
+                err = DatalakeRESTException(
+                    'Operation failed: %s, %s' % (op, path))
                 self.log_response_and_raise(r, err)
             return out
         return r

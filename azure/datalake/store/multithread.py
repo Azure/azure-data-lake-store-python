@@ -234,12 +234,13 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, shutdown_eve
             for chunk in response.iter_content(chunk_size=blocksize):
                 if shutdown_event and shutdown_event.is_set():
                     return nbytes, None
-                nwritten = fout.write(chunk)
-                if nwritten:
-                    nbytes += nwritten
+                if chunk:
+                    nwritten = fout.write(chunk)
+                    if nwritten:
+                        nbytes += nwritten
     except Exception as e:
         exception = repr(e)
-        logger.debug('Download failed %s; %s', dst, exception)
+        logger.error('Download failed %s; %s', dst, exception)
         return nbytes, exception
     logger.debug('Downloaded to %s, byte offset %s', dst, offset)
     return nbytes, None
@@ -436,7 +437,7 @@ def put_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, delimiter=No
                         nbytes += nwritten
     except Exception as e:
         exception = repr(e)
-        logger.debug('Upload failed %s; %s', src, exception)
+        logger.error('Upload failed %s; %s', src, exception)
         return nbytes, exception
     logger.debug('Uploaded from %s, byte offset %s', src, offset)
     return nbytes, None
@@ -449,7 +450,7 @@ def merge_chunks(adlfs, outfile, files, shutdown_event=None):
         adlfs.concat(outfile, files, delete_source=True)
     except Exception as e:
         exception = repr(e)
-        logger.debug('Merged failed %s; %s', outfile, exception)
+        logger.error('Merged failed %s; %s', outfile, exception)
         return exception
     logger.debug('Merged %s', outfile)
     return None

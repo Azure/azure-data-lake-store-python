@@ -617,69 +617,73 @@ class AzureDLFile(object):
         If force=True, flushes all data in the buffer, even if it doesn't end
         with a delimiter; appropriate when closing the file.
         """
-        if self.mode in {'wb', 'ab'} and not self.closed:
-            if self.buffer.tell() == 0:
-                if force and self.first_write:
+        if not self.writable() or self.closed:
+            return
+
+        if self.buffer.tell() == 0:
+            if force and self.first_write:
+                _put_data(self.azure.azure,
+                          'CREATE',
+                          path=self.path.as_posix(),
+                          data=None,
+                          overwrite='true',
+                          write='true')
+                self.first_write = False
+            return
+
+        self.buffer.seek(0)
+        data = self.buffer.read()
+
+        if self.delimiter:
+            while len(data) >= self.blocksize:
+                place = data[:self.blocksize].rfind(self.delimiter)
+                if place < 0:
+                    # not found - write whole block
+                    limit = self.blocksize
+                else:
+                    limit = place + len(self.delimiter)
+                if self.first_write:
                     _put_data(self.azure.azure,
                               'CREATE',
                               path=self.path.as_posix(),
-                              data=None,
+                              data=data[:limit],
                               overwrite='true',
                               write='true')
                     self.first_write = False
-                return
-            self.buffer.seek(0)
-            data = self.buffer.read()
-            if self.delimiter:
-                while len(data) >= self.blocksize:
-                    place = data[:self.blocksize].rfind(self.delimiter)
-                    if place < 0:
-                        # not found - write whole block
-                        limit = self.blocksize
-                    else:
-                        limit = place + len(self.delimiter)
-                    if self.first_write:
-                        out = _put_data(self.azure.azure,
-                                        'CREATE',
-                                        path=self.path.as_posix(),
-                                        data=data[:limit],
-                                        overwrite='true',
-                                        write='true')
-                        self.first_write = False
-                    else:
-                        out = _put_data(self.azure.azure,
-                                        'APPEND',
-                                        path=self.path.as_posix(),
-                                        data=data[:limit],
-                                        append='true')
-                    logger.debug('Wrote %d bytes to %s' % (limit, self))
-                    data = data[limit:]
-                self.buffer = io.BytesIO(data)
-                self.buffer.seek(0, 2)
-            if not self.delimiter or force:
-                zero_offset = self.tell() - len(data)
-                offsets = range(0, len(data), self.blocksize)
-                for o in offsets:
-                    offset = zero_offset + o
-                    d2 = data[o:o+self.blocksize]
-                    if self.first_write:
-                        out = _put_data(self.azure.azure,
-                                        'CREATE',
-                                        path=self.path.as_posix(),
-                                        data=d2,
-                                        overwrite='true',
-                                        write='true')
-                        self.first_write = False
-                    else:
-                        out = _put_data(self.azure.azure,
-                                        'APPEND',
-                                        path=self.path.as_posix(),
-                                        data=d2,
-                                        offset=offset,
-                                        append='true')
-                    logger.debug('Wrote %d bytes to %s' % (len(d2), self))
-                self.buffer = io.BytesIO()
-            return out
+                else:
+                    _put_data(self.azure.azure,
+                              'APPEND',
+                              path=self.path.as_posix(),
+                              data=data[:limit],
+                              append='true')
+                logger.debug('Wrote %d bytes to %s' % (limit, self))
+                data = data[limit:]
+            self.buffer = io.BytesIO(data)
+            self.buffer.seek(0, 2)
+
+        if not self.delimiter or force:
+            zero_offset = self.tell() - len(data)
+            offsets = range(0, len(data), self.blocksize)
+            for o in offsets:
+                offset = zero_offset + o
+                d2 = data[o:o+self.blocksize]
+                if self.first_write:
+                    _put_data(self.azure.azure,
+                              'CREATE',
+                              path=self.path.as_posix(),
+                              data=d2,
+                              overwrite='true',
+                              write='true')
+                    self.first_write = False
+                else:
+                    _put_data(self.azure.azure,
+                              'APPEND',
+                              path=self.path.as_posix(),
+                              data=d2,
+                              offset=offset,
+                              append='true')
+                logger.debug('Wrote %d bytes to %s' % (len(d2), self))
+            self.buffer = io.BytesIO()
 
     def close(self):
         """ Close file
@@ -688,7 +692,7 @@ class AzureDLFile(object):
         """
         if self.closed:
             return
-        if self.mode in {'wb', 'ab'}:
+        if self.writable():
             self.flush(force=True)
             self.azure.invalidate_cache(self.path.as_posix())
         self.closed = True
