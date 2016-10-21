@@ -21,6 +21,7 @@ import sys
 import time
 
 # local imports
+from .exceptions import DatalakeBadOffsetException
 from .exceptions import FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
@@ -770,6 +771,13 @@ def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=2
             return _put_data(rest, op, path, data, **kwargs)
         except (PermissionError, FileNotFoundError) as e:
             rest.log_response_and_raise(None, e)
+        except DatalakeBadOffsetException as e:
+            if i == 0:
+                # on first attempt: if data already exists, this is a
+                # true error
+                rest.log_response_and_raise(None, e)
+            # on any other attempt: previous attempt succeeded, continue
+            return
         except Exception as e:
             err = e
             logger.debug('Exception %s on ADL upload, retrying in %s seconds',
