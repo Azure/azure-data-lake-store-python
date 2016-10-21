@@ -227,7 +227,7 @@ def test_df(azure):
         with azure.open(b, 'wb') as f:
             f.write(b'a' * 10)
 
-        result = azure.df()
+        result = azure.df(test_dir)
         assert result['fileCount'] > 0
         assert result['spaceConsumed'] > 0
 
