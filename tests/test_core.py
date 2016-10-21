@@ -589,7 +589,7 @@ def test_chmod(azure):
         azure.chmod(a, '0555')
         assert azure.info(a)['permission'] == '555'
 
-        with pytest.raises(Exception):
+        with pytest.raises((OSError, IOError)):
             with azure.open(a, 'ab') as f:
                 f.write(b'data')
 
