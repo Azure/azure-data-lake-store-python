@@ -21,6 +21,7 @@ import requests
 import requests.exceptions
 import time
 import uuid
+import platform
 
 # 3rd party imports
 import adal
@@ -28,6 +29,7 @@ import azure
 
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
+from . import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +209,10 @@ class DatalakeRESTInterface:
         self.token = token
         self.head = {'Authorization': 'Bearer ' + token['access']}
         self.url = 'https://%s.%s/webhdfs/v1/' % (store_name, url_suffix)
+        self.user_agent = "python/{} ({}) {}/{} Azure-Data-Lake-Store-SDK-For-Python".format(platform.python_version(), 
+                                                       platform.platform(),
+                                                       __name__,
+                                                       __version__)
 
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
@@ -289,6 +295,7 @@ class DatalakeRESTInterface:
         try:
             headers = self.head.copy()
             headers['x-ms-client-request-id'] = str(uuid.uuid1())
+            headers['User-Agent'] = self.user_agent
             self._log_request(method, url, op, path, kwargs, headers)
             r = func(url, params=params, headers=headers, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
