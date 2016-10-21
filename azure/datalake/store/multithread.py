@@ -14,6 +14,7 @@ is used to its maximum throughput.
 
 Only implements upload and download of (massive) files and directory trees.
 """
+from contextlib import closing
 import glob
 import logging
 import os
@@ -232,17 +233,17 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
     for i in range(retries):
         try:
             nbytes = 0
-            response = _fetch_range(adlfs.azure, src, start=offset,
-                                    end=offset+size, stream=True)
-            with open(dst, 'rb+') as fout:
-                fout.seek(offset)
-                for chunk in response.iter_content(chunk_size=blocksize):
-                    if shutdown_event and shutdown_event.is_set():
-                        return nbytes
-                    if chunk:
-                        nwritten = fout.write(chunk)
-                        if nwritten:
-                            nbytes += nwritten
+            with closing(_fetch_range(adlfs.azure, src, start=offset,
+                                      end=offset+size, stream=True)) as response:
+                with open(dst, 'rb+') as fout:
+                    fout.seek(offset)
+                    for chunk in response.iter_content(chunk_size=blocksize):
+                        if shutdown_event and shutdown_event.is_set():
+                            return nbytes
+                        if chunk:
+                            nwritten = fout.write(chunk)
+                            if nwritten:
+                                nbytes += nwritten
             logger.debug('Downloaded to %s, byte offset %s', dst, offset)
             return nbytes, None
         except Exception as e:
