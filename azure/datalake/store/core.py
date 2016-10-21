@@ -716,7 +716,10 @@ class AzureDLFile(object):
         return self.mode in {'wb', 'ab'}
 
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except:
+            pass
 
     def __str__(self):
         return "<ADL file: %s>" % (self.path.as_posix())
