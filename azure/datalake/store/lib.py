@@ -29,6 +29,7 @@ import azure
 
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
+from . import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +212,7 @@ class DatalakeRESTInterface:
         self.user_agent = "python/{} ({}) {}/{} Azure-Data-Lake-Store-SDK-For-Python".format(platform.python_version(), 
                                                        platform.platform(),
                                                        __name__,
-                                                       __init__.__version__)
+                                                       __version__)
 
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
