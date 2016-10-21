@@ -18,6 +18,7 @@ which is compatible with the built-in File.
 import io
 import logging
 import sys
+import time
 
 # local imports
 from .exceptions import DatalakeBadOffsetException
@@ -536,12 +537,12 @@ class AzureDLFile(object):
             # First read
             self.start = start
             self.end = min(end + self.blocksize, self.size)
-            response = _fetch_range(self.azure.azure, self.path.as_posix(),
-                                    start, self.end)
+            response = _fetch_range_with_retry(
+                self.azure.azure, self.path.as_posix(), start, self.end)
             self.cache = getattr(response, 'content', response)
         if start < self.start:
-            response = _fetch_range(self.azure.azure, self.path.as_posix(),
-                                    start, self.start)
+            response = _fetch_range_with_retry(
+                self.azure.azure, self.path.as_posix(), start, self.start)
             new = getattr(response, 'content', response)
             self.start = start
             self.cache = new + self.cache
@@ -549,8 +550,8 @@ class AzureDLFile(object):
             if self.end >= self.size:
                 return
             newend = min(self.size, end + self.blocksize)
-            response = _fetch_range(self.azure.azure, self.path.as_posix(),
-                                    self.end, newend)
+            response = _fetch_range_with_retry(
+                self.azure.azure, self.path.as_posix(), self.end, newend)
             new = getattr(response, 'content', response)
             self.end = newend
             self.cache = self.cache + new
@@ -623,12 +624,13 @@ class AzureDLFile(object):
 
         if self.buffer.tell() == 0:
             if force and self.first_write:
-                _put_data(self.azure.azure,
-                          'CREATE',
-                          path=self.path.as_posix(),
-                          data=None,
-                          overwrite='true',
-                          write='true')
+                _put_data_with_retry(
+                    self.azure.azure,
+                    'CREATE',
+                    path=self.path.as_posix(),
+                    data=None,
+                    overwrite='true',
+                    write='true')
                 self.first_write = False
             return
 
@@ -644,19 +646,21 @@ class AzureDLFile(object):
                 else:
                     limit = place + len(self.delimiter)
                 if self.first_write:
-                    _put_data(self.azure.azure,
-                              'CREATE',
-                              path=self.path.as_posix(),
-                              data=data[:limit],
-                              overwrite='true',
-                              write='true')
+                    _put_data_with_retry(
+                        self.azure.azure,
+                        'CREATE',
+                        path=self.path.as_posix(),
+                        data=data[:limit],
+                        overwrite='true',
+                        write='true')
                     self.first_write = False
                 else:
-                    _put_data(self.azure.azure,
-                              'APPEND',
-                              path=self.path.as_posix(),
-                              data=data[:limit],
-                              append='true')
+                    _put_data_with_retry(
+                        self.azure.azure,
+                        'APPEND',
+                        path=self.path.as_posix(),
+                        data=data[:limit],
+                        append='true')
                 logger.debug('Wrote %d bytes to %s' % (limit, self))
                 data = data[limit:]
             self.buffer = io.BytesIO(data)
@@ -669,20 +673,22 @@ class AzureDLFile(object):
                 offset = zero_offset + o
                 d2 = data[o:o+self.blocksize]
                 if self.first_write:
-                    _put_data(self.azure.azure,
-                              'CREATE',
-                              path=self.path.as_posix(),
-                              data=d2,
-                              overwrite='true',
-                              write='true')
+                    _put_data_with_retry(
+                        self.azure.azure,
+                        'CREATE',
+                        path=self.path.as_posix(),
+                        data=d2,
+                        overwrite='true',
+                        write='true')
                     self.first_write = False
                 else:
-                    _put_data(self.azure.azure,
-                              'APPEND',
-                              path=self.path.as_posix(),
-                              data=d2,
-                              offset=offset,
-                              append='true')
+                    _put_data_with_retry(
+                        self.azure.azure,
+                        'APPEND',
+                        path=self.path.as_posix(),
+                        data=d2,
+                        offset=offset,
+                        append='true')
                 logger.debug('Wrote %d bytes to %s' % (len(d2), self))
             self.buffer = io.BytesIO()
 
@@ -711,7 +717,10 @@ class AzureDLFile(object):
         return self.mode in {'wb', 'ab'}
 
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except:
+            pass
 
     def __str__(self):
         return "<ADL file: %s>" % (self.path.as_posix())
@@ -725,46 +734,58 @@ class AzureDLFile(object):
         self.close()
 
 
-def _fetch_range(rest, path, start, end, max_attempts=10, stream=False):
-    logger.debug("Fetch: %s, %s-%s", path, start, end)
+def _fetch_range(rest, path, start, end, stream=False):
+    logger.debug('Fetch: %s, %s-%s', path, start, end)
     if end <= start:
         return b''
-    resp = None
-    for i in range(max_attempts):
+    return rest.call(
+        'OPEN', path, offset=start, length=end-start, read='true', stream=stream)
+
+
+def _fetch_range_with_retry(rest, path, start, end, stream=False, retries=10,
+                            delay=0.01, backoff=1):
+    err = None
+    for i in range(retries):
         try:
-            return rest.call(
-                'OPEN', path, offset=start, length=end-start, read='true',
-                stream=stream)
+            return _fetch_range(rest, path, start, end, stream=False)
         except Exception as e:
             err = e
-            logger.debug('Exception %s on ADL download, retrying', e,
-                         exc_info=True)
-    exception = RuntimeError("Max number of ADL retries exceeded: exception %s", err)
-    rest.log_response_and_raise(resp, exception)
+            logger.debug('Exception %s on ADL download, retrying in %s seconds',
+                         repr(err), delay, exc_info=True)
+        time.sleep(delay)
+        delay *= backoff
+    exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
+    rest.log_response_and_raise(None, exception)
 
 
-def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
-    logger.debug("Put: %s %s, %s", op, path, kwargs)
-    resp = None
-    for i in range(max_attempts):
+def _put_data(rest, op, path, data, **kwargs):
+    logger.debug('Put: %s %s, %s', op, path, kwargs)
+    return rest.call(op, path=path, data=data, **kwargs)
+
+
+def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=1,
+                         **kwargs):
+    err = None
+    for i in range(retries):
         try:
-            resp = rest.call(op, path=path, data=data, **kwargs)
-            return resp
+            return _put_data(rest, op, path, data, **kwargs)
         except (PermissionError, FileNotFoundError) as e:
-            rest.log_response_and_raise(resp, e)
+            rest.log_response_and_raise(None, e)
         except DatalakeBadOffsetException as e:
             if i == 0:
                 # on first attempt: if data already exists, this is a
                 # true error
-                rest.log_response_and_raise(resp, e)
+                rest.log_response_and_raise(None, e)
             # on any other attempt: previous attempt succeeded, continue
             return
         except Exception as e:
             err = e
-            logger.debug('Exception %s on ADL upload, retrying', e,
-                         exc_info=True)
-    exception = RuntimeError("Max number of ADL retries exceeded: exception %s", err)
-    rest.log_response_and_raise(resp, exception)
+            logger.debug('Exception %s on ADL upload, retrying in %s seconds',
+                         repr(err), delay, exc_info=True)
+        time.sleep(delay)
+        delay *= backoff
+    exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
+    rest.log_response_and_raise(None, exception)
 
 
 class AzureDLPath(type(pathlib.PurePath())):

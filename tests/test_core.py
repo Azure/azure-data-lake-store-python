@@ -591,6 +591,7 @@ def test_delimiters_dash(azure):
 
 
 @my_vcr.use_cassette
+@pytest.mark.skipif(sys.version_info[0:2] == (3, 3), reason="takes too long on Python 3.3")
 def test_chmod(azure):
     with azure_teardown(azure):
         azure.touch(a)

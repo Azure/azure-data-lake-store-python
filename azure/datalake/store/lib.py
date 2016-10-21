@@ -258,7 +258,7 @@ class DatalakeRESTInterface:
         raise exception
 
     def _is_json_response(self, response):
-        if not 'content-type' in response.headers:
+        if 'content-type' not in response.headers:
             return False
         return response.headers['content-type'].startswith('application/json')
 
