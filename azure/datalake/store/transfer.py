@@ -438,7 +438,7 @@ class ADLTransferClient(object):
             self._shutdown_event.set()
             self._pool.shutdown(wait=True)
         except Exception as e:
-            logger.error("Unexpected exception occurred during shutdown: %s", repr(e));
+            logger.error("Unexpected exception occurred during shutdown: %s", repr(e))
         else:
             logger.debug("Shutdown complete")
         finally:
