@@ -743,7 +743,7 @@ def _fetch_range(rest, path, start, end, stream=False):
 
 
 def _fetch_range_with_retry(rest, path, start, end, stream=False, retries=10,
-                            delay=0.01, backoff=2):
+                            delay=0.01, backoff=1):
     err = None
     for i in range(retries):
         try:
@@ -763,7 +763,7 @@ def _put_data(rest, op, path, data, **kwargs):
     return rest.call(op, path=path, data=data, **kwargs)
 
 
-def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=2,
+def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=1,
                          **kwargs):
     err = None
     for i in range(retries):
