@@ -169,10 +169,10 @@ class AzureDLFileSystem(object):
         else:
             return {p['name']: p['length'] for p in files}
 
-    def df(self):
-        """ Resource summary
-        """
-        return self.azure.call('GETCONTENTSUMMARY')['ContentSummary']
+    def df(self, path):
+        """ Resource summary of path """
+        path = AzureDLPath(path).trim()
+        return self.azure.call('GETCONTENTSUMMARY', path.as_posix())['ContentSummary']
 
     def chmod(self, path, mod):
         """  Change access mode of path

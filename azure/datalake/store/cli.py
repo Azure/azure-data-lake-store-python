@@ -120,11 +120,15 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
             print("{0:{width}} = {1}".format(k, v, width=width))
 
     def do_df(self, line):
-        self._display_dict(self._fs.df())
+        parser = argparse.ArgumentParser(prog="df", add_help=False)
+        parser.add_argument('path', type=str, nargs='?', default='.')
+        args = parser.parse_args(line.split())
+
+        self._display_dict(self._fs.df(args.path))
 
     def help_df(self):
-        print("df\n")
-        print("Display Azure account statistics")
+        print("df [path]\n")
+        print("Display Azure account statistics of a path")
 
     def _truncate(self, num, fmt):
         return '{:{fmt}}'.format(num, fmt=fmt).rstrip('0').rstrip('.')
