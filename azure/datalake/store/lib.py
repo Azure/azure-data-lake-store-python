@@ -29,6 +29,7 @@ import azure
 
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
+from store import __version__
 
 logger = logging.getLogger(__name__)
 
