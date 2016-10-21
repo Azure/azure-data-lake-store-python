@@ -21,6 +21,7 @@ import requests
 import requests.exceptions
 import time
 import uuid
+import platform
 
 # 3rd party imports
 import adal
