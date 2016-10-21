@@ -251,7 +251,7 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
                          repr(err), delay, exc_info=True)
         time.sleep(delay)
         delay *= backoff
-    exception = RuntimeError('Max number of ADL retries exceeded: exception %s', err)
+    exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
     logger.error('Download failed %s; %s', dst, repr(exception))
     return nbytes, exception
 

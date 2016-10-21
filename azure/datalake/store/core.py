@@ -750,7 +750,7 @@ def _fetch_range_with_retry(rest, path, start, end, stream=False, retries=10,
                          repr(err), delay, exc_info=True)
         time.sleep(delay)
         delay *= backoff
-    exception = RuntimeError('Max number of ADL retries exceeded: exception %s', err)
+    exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
     rest.log_response_and_raise(None, exception)
 
 
@@ -773,7 +773,7 @@ def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=2
                          repr(err), delay, exc_info=True)
         time.sleep(delay)
         delay *= backoff
-    exception = RuntimeError('Max number of ADL retries exceeded: exception %s', err)
+    exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
     rest.log_response_and_raise(None, exception)
 
 
