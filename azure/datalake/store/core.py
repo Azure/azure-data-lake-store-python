@@ -18,8 +18,10 @@ which is compatible with the built-in File.
 import io
 import logging
 import sys
+import time
 
 # local imports
+from .exceptions import DatalakeBadOffsetException
 from .exceptions import FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
@@ -103,12 +105,13 @@ class AzureDLFileSystem(object):
     def _ls(self, path):
         """ List files at given path """
         path = AzureDLPath(path).trim()
+        key = path.as_posix()
         if path not in self.dirs:
             out = self.azure.call('LISTSTATUS', path.as_posix())
-            self.dirs[path] = out['FileStatuses']['FileStatus']
-            for f in self.dirs[path]:
+            self.dirs[key] = out['FileStatuses']['FileStatus']
+            for f in self.dirs[key]:
                 f['name'] = (path / f['pathSuffix']).as_posix()
-        return self.dirs[path]
+        return self.dirs[key]
 
     def ls(self, path="", detail=False):
         """ List single directory with or without details """
@@ -168,10 +171,10 @@ class AzureDLFileSystem(object):
         else:
             return {p['name']: p['length'] for p in files}
 
-    def df(self):
-        """ Resource summary
-        """
-        return self.azure.call('GETCONTENTSUMMARY')['ContentSummary']
+    def df(self, path):
+        """ Resource summary of path """
+        path = AzureDLPath(path).trim()
+        return self.azure.call('GETCONTENTSUMMARY', path.as_posix())['ContentSummary']
 
     def chmod(self, path, mod):
         """  Change access mode of path
@@ -333,7 +336,7 @@ class AzureDLFileSystem(object):
         self.azure.call('DELETE', path.as_posix(), recursive=recursive)
         self.invalidate_cache(path)
         if recursive:
-            matches = [p for p in self.dirs if p.startswith(path)]
+            matches = [p for p in self.dirs if p.startswith(path.as_posix())]
             [self.invalidate_cache(m) for m in matches]
 
     def invalidate_cache(self, path=None):
@@ -341,9 +344,10 @@ class AzureDLFileSystem(object):
         if path is None:
             self.dirs.clear()
         else:
-            path = AzureDLPath(path)
-            self.dirs.pop(path, None)
-            self.dirs.pop(path.parent, None)
+            path = AzureDLPath(path).trim()
+            self.dirs.pop(path.as_posix(), None)
+            parent = AzureDLPath(path.parent).trim()
+            self.dirs.pop(parent.as_posix(), None)
 
     def touch(self, path):
         """
@@ -535,12 +539,12 @@ class AzureDLFile(object):
             # First read
             self.start = start
             self.end = min(end + self.blocksize, self.size)
-            response = _fetch_range(self.azure.azure, self.path.as_posix(),
-                                    start, self.end)
+            response = _fetch_range_with_retry(
+                self.azure.azure, self.path.as_posix(), start, self.end)
             self.cache = getattr(response, 'content', response)
         if start < self.start:
-            response = _fetch_range(self.azure.azure, self.path.as_posix(),
-                                    start, self.start)
+            response = _fetch_range_with_retry(
+                self.azure.azure, self.path.as_posix(), start, self.start)
             new = getattr(response, 'content', response)
             self.start = start
             self.cache = new + self.cache
@@ -548,8 +552,8 @@ class AzureDLFile(object):
             if self.end >= self.size:
                 return
             newend = min(self.size, end + self.blocksize)
-            response = _fetch_range(self.azure.azure, self.path.as_posix(),
-                                    self.end, newend)
+            response = _fetch_range_with_retry(
+                self.azure.azure, self.path.as_posix(), self.end, newend)
             new = getattr(response, 'content', response)
             self.end = newend
             self.cache = self.cache + new
@@ -617,69 +621,78 @@ class AzureDLFile(object):
         If force=True, flushes all data in the buffer, even if it doesn't end
         with a delimiter; appropriate when closing the file.
         """
-        if self.mode in {'wb', 'ab'} and not self.closed:
-            if self.buffer.tell() == 0:
-                if force and self.first_write:
-                    _put_data(self.azure.azure,
-                              'CREATE',
-                              path=self.path.as_posix(),
-                              data=None,
-                              overwrite='true',
-                              write='true')
+        if not self.writable() or self.closed:
+            return
+
+        if self.buffer.tell() == 0:
+            if force and self.first_write:
+                _put_data_with_retry(
+                    self.azure.azure,
+                    'CREATE',
+                    path=self.path.as_posix(),
+                    data=None,
+                    overwrite='true',
+                    write='true')
+                self.first_write = False
+            return
+
+        self.buffer.seek(0)
+        data = self.buffer.read()
+
+        if self.delimiter:
+            while len(data) >= self.blocksize:
+                place = data[:self.blocksize].rfind(self.delimiter)
+                if place < 0:
+                    # not found - write whole block
+                    limit = self.blocksize
+                else:
+                    limit = place + len(self.delimiter)
+                if self.first_write:
+                    _put_data_with_retry(
+                        self.azure.azure,
+                        'CREATE',
+                        path=self.path.as_posix(),
+                        data=data[:limit],
+                        overwrite='true',
+                        write='true')
                     self.first_write = False
-                return
-            self.buffer.seek(0)
-            data = self.buffer.read()
-            if self.delimiter:
-                while len(data) >= self.blocksize:
-                    place = data[:self.blocksize].rfind(self.delimiter)
-                    if place < 0:
-                        # not found - write whole block
-                        limit = self.blocksize
-                    else:
-                        limit = place + len(self.delimiter)
-                    if self.first_write:
-                        out = _put_data(self.azure.azure,
-                                        'CREATE',
-                                        path=self.path.as_posix(),
-                                        data=data[:limit],
-                                        overwrite='true',
-                                        write='true')
-                        self.first_write = False
-                    else:
-                        out = _put_data(self.azure.azure,
-                                        'APPEND',
-                                        path=self.path.as_posix(),
-                                        data=data[:limit],
-                                        append='true')
-                    logger.debug('Wrote %d bytes to %s' % (limit, self))
-                    data = data[limit:]
-                self.buffer = io.BytesIO(data)
-                self.buffer.seek(0, 2)
-            if not self.delimiter or force:
-                zero_offset = self.tell() - len(data)
-                offsets = range(0, len(data), self.blocksize)
-                for o in offsets:
-                    offset = zero_offset + o
-                    d2 = data[o:o+self.blocksize]
-                    if self.first_write:
-                        out = _put_data(self.azure.azure,
-                                        'CREATE',
-                                        path=self.path.as_posix(),
-                                        data=d2,
-                                        overwrite='true',
-                                        write='true')
-                        self.first_write = False
-                    else:
-                        out = _put_data(self.azure.azure,
-                                        'APPEND',
-                                        path=self.path.as_posix(),
-                                        data=d2,
-                                        offset=offset,
-                                        append='true')
-                    logger.debug('Wrote %d bytes to %s' % (len(d2), self))
-                self.buffer = io.BytesIO()
-            return out
+                else:
+                    _put_data_with_retry(
+                        self.azure.azure,
+                        'APPEND',
+                        path=self.path.as_posix(),
+                        data=data[:limit],
+                        append='true')
+                logger.debug('Wrote %d bytes to %s' % (limit, self))
+                data = data[limit:]
+            self.buffer = io.BytesIO(data)
+            self.buffer.seek(0, 2)
+
+        if not self.delimiter or force:
+            zero_offset = self.tell() - len(data)
+            offsets = range(0, len(data), self.blocksize)
+            for o in offsets:
+                offset = zero_offset + o
+                d2 = data[o:o+self.blocksize]
+                if self.first_write:
+                    _put_data_with_retry(
+                        self.azure.azure,
+                        'CREATE',
+                        path=self.path.as_posix(),
+                        data=d2,
+                        overwrite='true',
+                        write='true')
+                    self.first_write = False
+                else:
+                    _put_data_with_retry(
+                        self.azure.azure,
+                        'APPEND',
+                        path=self.path.as_posix(),
+                        data=d2,
+                        offset=offset,
+                        append='true')
+                logger.debug('Wrote %d bytes to %s' % (len(d2), self))
+            self.buffer = io.BytesIO()
 
     def close(self):
         """ Close file
@@ -688,7 +701,7 @@ class AzureDLFile(object):
         """
         if self.closed:
             return
-        if self.mode in {'wb', 'ab'}:
+        if self.writable():
             self.flush(force=True)
             self.azure.invalidate_cache(self.path.as_posix())
         self.closed = True
@@ -706,7 +719,10 @@ class AzureDLFile(object):
         return self.mode in {'wb', 'ab'}
 
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except:
+            pass
 
     def __str__(self):
         return "<ADL file: %s>" % (self.path.as_posix())
@@ -720,39 +736,58 @@ class AzureDLFile(object):
         self.close()
 
 
-def _fetch_range(rest, path, start, end, max_attempts=10, stream=False):
-    logger.debug("Fetch: %s, %s-%s", path, start, end)
+def _fetch_range(rest, path, start, end, stream=False):
+    logger.debug('Fetch: %s, %s-%s', path, start, end)
     if end <= start:
         return b''
-    resp = None
-    for i in range(max_attempts):
+    return rest.call(
+        'OPEN', path, offset=start, length=end-start, read='true', stream=stream)
+
+
+def _fetch_range_with_retry(rest, path, start, end, stream=False, retries=10,
+                            delay=0.01, backoff=1):
+    err = None
+    for i in range(retries):
         try:
-            return rest.call(
-                'OPEN', path, offset=start, length=end-start, read='true',
-                stream=stream)
+            return _fetch_range(rest, path, start, end, stream=False)
         except Exception as e:
             err = e
-            logger.debug('Exception %s on ADL download, retrying', e,
-                         exc_info=True)
-    exception = RuntimeError("Max number of ADL retries exceeded: exception %s", err)
-    rest.log_response_and_raise(resp, exception)
+            logger.debug('Exception %s on ADL download, retrying in %s seconds',
+                         repr(err), delay, exc_info=True)
+        time.sleep(delay)
+        delay *= backoff
+    exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
+    rest.log_response_and_raise(None, exception)
 
 
-def _put_data(rest, op, path, data, max_attempts=10, **kwargs):
-    logger.debug("Put: %s %s, %s", op, path, kwargs)
-    resp = None
-    for i in range(max_attempts):
+def _put_data(rest, op, path, data, **kwargs):
+    logger.debug('Put: %s %s, %s', op, path, kwargs)
+    return rest.call(op, path=path, data=data, **kwargs)
+
+
+def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=1,
+                         **kwargs):
+    err = None
+    for i in range(retries):
         try:
-            resp = rest.call(op, path=path, data=data, **kwargs)
-            return resp
+            return _put_data(rest, op, path, data, **kwargs)
         except (PermissionError, FileNotFoundError) as e:
-            rest.log_response_and_raise(resp, e)
+            rest.log_response_and_raise(None, e)
+        except DatalakeBadOffsetException as e:
+            if i == 0:
+                # on first attempt: if data already exists, this is a
+                # true error
+                rest.log_response_and_raise(None, e)
+            # on any other attempt: previous attempt succeeded, continue
+            return
         except Exception as e:
             err = e
-            logger.debug('Exception %s on ADL upload, retrying', e,
-                         exc_info=True)
-    exception = RuntimeError("Max number of ADL retries exceeded: exception %s", err)
-    rest.log_response_and_raise(resp, exception)
+            logger.debug('Exception %s on ADL upload, retrying in %s seconds',
+                         repr(err), delay, exc_info=True)
+        time.sleep(delay)
+        delay *= backoff
+    exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
+    rest.log_response_and_raise(None, exception)
 
 
 class AzureDLPath(type(pathlib.PurePath())):

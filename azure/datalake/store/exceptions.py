@@ -24,8 +24,10 @@ except NameError:
     class PermissionError(OSError):
         pass
 
+
 class DatalakeBadOffsetException(IOError):
     pass
+
 
 class DatalakeRESTException(IOError):
     pass
