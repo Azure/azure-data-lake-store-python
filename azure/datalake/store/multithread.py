@@ -18,6 +18,7 @@ import glob
 import logging
 import os
 import pickle
+import time
 
 from .core import AzureDLPath, _fetch_range
 from .exceptions import FileExistsError
@@ -221,29 +222,38 @@ class ADLDownloader(object):
     __repr__ = __str__
 
 
-def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, shutdown_event=None):
+def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
+              shutdown_event=None, retries=10, delay=0.01, backoff=2):
     """ Download a piece of a remote file and write locally
 
     Internal function used by `download`.
     """
-    nbytes = 0
-    try:
-        response = _fetch_range(adlfs.azure, src, start=offset, end=offset+size, stream=True)
-        with open(dst, 'rb+') as fout:
-            fout.seek(offset)
-            for chunk in response.iter_content(chunk_size=blocksize):
-                if shutdown_event and shutdown_event.is_set():
-                    return nbytes, None
-                if chunk:
-                    nwritten = fout.write(chunk)
-                    if nwritten:
-                        nbytes += nwritten
-    except Exception as e:
-        exception = repr(e)
-        logger.error('Download failed %s; %s', dst, exception)
-        return nbytes, exception
-    logger.debug('Downloaded to %s, byte offset %s', dst, offset)
-    return nbytes, None
+    err = None
+    for i in range(retries):
+        try:
+            nbytes = 0
+            response = _fetch_range(adlfs.azure, src, start=offset,
+                                    end=offset+size, stream=True)
+            with open(dst, 'rb+') as fout:
+                fout.seek(offset)
+                for chunk in response.iter_content(chunk_size=blocksize):
+                    if shutdown_event and shutdown_event.is_set():
+                        return nbytes
+                    if chunk:
+                        nwritten = fout.write(chunk)
+                        if nwritten:
+                            nbytes += nwritten
+            logger.debug('Downloaded to %s, byte offset %s', dst, offset)
+            return nbytes, None
+        except Exception as e:
+            err = e
+            logger.debug('Exception %s on ADL download, retrying in %d seconds',
+                         repr(err), delay, exc_info=True)
+        time.sleep(delay)
+        delay *= backoff
+    exception = RuntimeError('Max number of ADL retries exceeded: exception %s', err)
+    logger.error('Download failed %s; %s', dst, repr(exception))
+    return nbytes, exception
 
 
 class ADLUploader(object):
