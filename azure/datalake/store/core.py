@@ -746,7 +746,7 @@ def _fetch_range_with_retry(rest, path, start, end, stream=False, retries=10,
             return _fetch_range(rest, path, start, end, stream=False)
         except Exception as e:
             err = e
-            logger.debug('Exception %s on ADL download, retrying in %d seconds',
+            logger.debug('Exception %s on ADL download, retrying in %s seconds',
                          repr(err), delay, exc_info=True)
         time.sleep(delay)
         delay *= backoff
@@ -769,7 +769,7 @@ def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=2
             rest.log_response_and_raise(None, e)
         except Exception as e:
             err = e
-            logger.debug('Exception %s on ADL upload, retrying in %d seconds',
+            logger.debug('Exception %s on ADL upload, retrying in %s seconds',
                          repr(err), delay, exc_info=True)
         time.sleep(delay)
         delay *= backoff

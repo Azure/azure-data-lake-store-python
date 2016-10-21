@@ -247,7 +247,7 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
             return nbytes, None
         except Exception as e:
             err = e
-            logger.debug('Exception %s on ADL download, retrying in %d seconds',
+            logger.debug('Exception %s on ADL download, retrying in %s seconds',
                          repr(err), delay, exc_info=True)
         time.sleep(delay)
         delay *= backoff
