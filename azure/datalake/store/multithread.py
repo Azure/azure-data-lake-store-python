@@ -453,4 +453,5 @@ def merge_chunks(adlfs, outfile, files, shutdown_event=None):
         logger.error('Merged failed %s; %s', outfile, exception)
         return exception
     logger.debug('Merged %s', outfile)
+    adlfs.invalidate_cache(outfile)
     return None

@@ -104,12 +104,13 @@ class AzureDLFileSystem(object):
     def _ls(self, path):
         """ List files at given path """
         path = AzureDLPath(path).trim()
+        key = path.as_posix()
         if path not in self.dirs:
             out = self.azure.call('LISTSTATUS', path.as_posix())
-            self.dirs[path] = out['FileStatuses']['FileStatus']
-            for f in self.dirs[path]:
+            self.dirs[key] = out['FileStatuses']['FileStatus']
+            for f in self.dirs[key]:
                 f['name'] = (path / f['pathSuffix']).as_posix()
-        return self.dirs[path]
+        return self.dirs[key]
 
     def ls(self, path="", detail=False):
         """ List single directory with or without details """
@@ -334,7 +335,7 @@ class AzureDLFileSystem(object):
         self.azure.call('DELETE', path.as_posix(), recursive=recursive)
         self.invalidate_cache(path)
         if recursive:
-            matches = [p for p in self.dirs if p.startswith(path)]
+            matches = [p for p in self.dirs if p.startswith(path.as_posix())]
             [self.invalidate_cache(m) for m in matches]
 
     def invalidate_cache(self, path=None):
@@ -342,9 +343,10 @@ class AzureDLFileSystem(object):
         if path is None:
             self.dirs.clear()
         else:
-            path = AzureDLPath(path)
-            self.dirs.pop(path, None)
-            self.dirs.pop(path.parent, None)
+            path = AzureDLPath(path).trim()
+            self.dirs.pop(path.as_posix(), None)
+            parent = AzureDLPath(path.parent).trim()
+            self.dirs.pop(parent.as_posix(), None)
 
     def touch(self, path):
         """
