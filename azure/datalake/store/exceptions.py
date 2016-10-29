@@ -29,5 +29,9 @@ class DatalakeBadOffsetException(IOError):
     pass
 
 
+class DatalakeIncompleteTransferException(IOError):
+    pass
+
+
 class DatalakeRESTException(IOError):
     pass

@@ -21,6 +21,8 @@ import threading
 import time
 import uuid
 
+from .exceptions import DatalakeIncompleteTransferException
+
 logger = logging.getLogger(__name__)
 
 
@@ -349,7 +351,11 @@ class ADLTransferClient(object):
                 if exception:
                     cstates[obj] = 'errored'
                 elif self._chunks[obj]['expected'] != nbytes:
+                    src, dst = parent
                     cstates[obj] = 'errored'
+                    self._chunks[obj]['exception'] = DatalakeIncompleteTransferException(
+                        '%s -> %s: expected %s bytes, transferred %s bytes', src, dst,
+                        self._chunks[obj]['expected'], self._chunks[obj]['actual'])
                 else:
                     cstates[obj] = 'finished'
 
