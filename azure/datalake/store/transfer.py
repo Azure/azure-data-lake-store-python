@@ -231,7 +231,6 @@ class ADLTransferClient(object):
         self._merge = merge
         self._nthreads = max(1, nthreads or multiprocessing.cpu_count())
         self._chunksize = chunksize
-        self._chunkretries = 5
         self._buffersize = buffersize
         self._blocksize = blocksize
         self._chunked = chunked
