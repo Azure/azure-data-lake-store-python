@@ -353,6 +353,7 @@ class ADLTransferClient(object):
             obj = self._cfutures[future]
             parent = self._chunks[obj]['parent']
             cstates = self._files[parent]['cstates']
+            src, dst = parent
 
             if future.cancelled():
                 cstates[obj] = 'cancelled'
@@ -366,30 +367,33 @@ class ADLTransferClient(object):
                 if exception:
                     cstates[obj] = 'errored'
                 elif self._chunks[obj]['expected'] != nbytes:
-                    src, dst = parent
+                    name, offset = obj
                     cstates[obj] = 'errored'
-                    self._chunks[obj]['exception'] = DatalakeIncompleteTransferException(
-                        '%s -> %s: expected %s bytes, transferred %s bytes', src, dst,
-                        self._chunks[obj]['expected'], self._chunks[obj]['actual'])
+                    exception = DatalakeIncompleteTransferException(
+                        'chunk {}, offset {}: expected {} bytes, transferred {} bytes'.format(
+                            name, offset, self._chunks[obj]['expected'],
+                            self._chunks[obj]['actual']))
+                    self._chunks[obj]['exception'] = exception
+                    logger.error("Incomplete transfer: %s -> %s, %s",
+                                 src, dst, repr(exception))
                 else:
                     cstates[obj] = 'finished'
 
             if cstates.contains_all('finished'):
                 logger.debug("Chunks transferred")
-                src, dst = parent
                 if self._merge and len(cstates.objects) > 1:
                     logger.debug("Merging file: %s", self._fstates[parent])
                     self._fstates[parent] = 'merging'
                     merge_future = self._submit(
                         self._merge, self._adlfs, dst,
-                        [name for name, _ in sorted(cstates.objects,
-                                                    key=lambda obj: obj[1])])
+                        [chunk for chunk, _ in sorted(cstates.objects,
+                                                      key=lambda obj: obj[1])])
                     self._ffutures[merge_future] = parent
                 else:
                     self._fstates[parent] = 'finished'
                     logger.info("Transferred %s -> %s", src, dst)
             elif cstates.contains_none('running'):
-                logger.debug("Transfer failed: %s", cstates)
+                logger.error("Transfer failed: %s -> %s", src, dst)
                 self._fstates[parent] = 'errored'
         elif future in self._ffutures:
             src, dst = self._ffutures[future]
@@ -433,11 +437,13 @@ class ADLTransferClient(object):
             self.monitor()
             for f in self.progress:
                 for chunk in f.chunks:
+                    if chunk.state == 'finished':
+                        continue
                     if chunk.exception:
                         logger.error('{} -> {}, chunk {} {}: {}, {}'.format(
                             f.src, f.dst, chunk.name, chunk.offset,
-                            chunk.state, chunk.exception))
-                    elif chunk.state != 'finished':
+                            chunk.state, repr(chunk.exception)))
+                    else:
                         logger.error('{} -> {}, chunk {} {}: {}'.format(
                             f.src, f.dst, chunk.name, chunk.offset,
                             chunk.state))
