@@ -394,8 +394,8 @@ class ADLUploader(object):
             rfiles = [self.rpath / AzureDLPath(f).relative_to(prefix)
                       for f in lfiles]
         elif lfiles:
-            if (self.client._adlfs.exists(self.rpath) and
-                        self.client._adlfs.info(self.rpath)['type'] == "DIRECTORY"):
+            if self.client._adlfs.exists(self.rpath) and \
+               self.client._adlfs.info(self.rpath)['type'] == "DIRECTORY":
                 rfiles = [self.rpath / AzureDLPath(lfiles[0]).name]
             else:
                 rfiles = [self.rpath]

@@ -209,10 +209,11 @@ class DatalakeRESTInterface:
         self.token = token
         self.head = {'Authorization': 'Bearer ' + token['access']}
         self.url = 'https://%s.%s/webhdfs/v1/' % (store_name, url_suffix)
-        self.user_agent = "python/{} ({}) {}/{} Azure-Data-Lake-Store-SDK-For-Python".format(platform.python_version(), 
-                                                       platform.platform(),
-                                                       __name__,
-                                                       __version__)
+        self.user_agent = "python/{} ({}) {}/{} Azure-Data-Lake-Store-SDK-For-Python".format(
+            platform.python_version(),
+            platform.platform(),
+            __name__,
+            __version__)
 
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
@@ -249,8 +250,9 @@ class DatalakeRESTInterface:
         if response is not None:
             msg += "\n{}\n{}".format(
                 response.status_code,
-                "\n".join(["{}: {}".format(header, response.headers[header])
-                        for header in response.headers]))
+                "\n".join([
+                    "{}: {}".format(header, response.headers[header])
+                    for header in response.headers]))
             msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
             if self._content_truncated(response):
                 msg += "\n(Response body was truncated)"
