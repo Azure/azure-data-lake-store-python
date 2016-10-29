@@ -72,7 +72,7 @@ def verify(instance):
     lfile = instance.lpath
     rfile = instance.rpath
 
-    print("transfer status :", instance.successful())
+    print("finish w/o error:", instance.successful())
     print("local file      :", lfile)
     if os.path.exists(lfile):
         print("local file size :", du(lfile))
@@ -116,7 +116,7 @@ def bench_download_1_50gb(adl, lpath, rpath, config):
         rpath=rpath,
         **config[bench_download_1_50gb.__name__])
 
-    verify(up)
+    verify(down)
 
 
 @benchmark
@@ -127,7 +127,7 @@ def bench_download_50_1gb(adl, lpath, rpath, config):
         rpath=rpath,
         **config[bench_download_50_1gb.__name__])
 
-    verify(up)
+    verify(down)
 
 
 if __name__ == '__main__':
