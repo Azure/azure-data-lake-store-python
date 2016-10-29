@@ -431,6 +431,16 @@ class ADLTransferClient(object):
         before_start = None
         if monitor:
             self.monitor()
+            for f in self.progress:
+                for chunk in f.chunks:
+                    if chunk.exception:
+                        logger.error('{} -> {}, chunk {} {}: {}, {}'.format(
+                            f.src, f.dst, chunk.name, chunk.offset,
+                            chunk.state, chunk.exception))
+                    elif chunk.state != 'finished':
+                        logger.error('{} -> {}, chunk {} {}: {}'.format(
+                            f.src, f.dst, chunk.name, chunk.offset,
+                            chunk.state))
 
     def _wait(self, poll=0.1, timeout=0):
         start = time.time()

@@ -66,8 +66,13 @@ def du(path):
     return size
 
 
-def verify(adl, progress, lfile, rfile):
+def verify(instance):
     """ Confirm whether target file matches source file """
+    adl = instance.client._adlfs
+    lfile = instance.lpath
+    rfile = instance.rpath
+
+    print("transfer status :", instance.successful())
     print("local file      :", lfile)
     if os.path.exists(lfile):
         print("local file size :", du(lfile))
@@ -80,25 +85,6 @@ def verify(adl, progress, lfile, rfile):
     else:
         print("remote file size:", None)
 
-    for f in progress:
-        chunks_finished = 0
-        for chunk in f.chunks:
-            if chunk.state == 'finished':
-                chunks_finished += 1
-            elif chunk.exception:
-                print("[{}] file {} -> {}, chunk {} {}: {}".format(
-                    chunk.state, f.src, f.dst, chunk.name, chunk.offset,
-                    chunk.exception))
-            else:
-                print("[{}] file {} -> {}, chunk {} {}".format(
-                    chunk.state, f.src, f.dst, chunk.name, chunk.offset))
-        if f.exception:
-            print("[{:4d}/{:4d} chunks] {} -> {}: {}".format(
-                chunks_finished, len(f.chunks), f.src, f.dst, f.exception))
-        else:
-            print("[{:4d}/{:4d} chunks] {} -> {}".format(
-                chunks_finished, len(f.chunks), f.src, f.dst))
-
 
 @benchmark
 def bench_upload_1_50gb(adl, lpath, rpath, config):
@@ -108,7 +94,7 @@ def bench_upload_1_50gb(adl, lpath, rpath, config):
         rpath=rpath,
         **config[bench_upload_1_50gb.__name__])
 
-    verify(adl, up.client.progress, lpath, rpath)
+    verify(up)
 
 
 @benchmark
@@ -119,7 +105,7 @@ def bench_upload_50_1gb(adl, lpath, rpath, config):
         rpath=rpath,
         **config[bench_upload_50_1gb.__name__])
 
-    verify(adl, up.client.progress, lpath, rpath)
+    verify(up)
 
 
 @benchmark
@@ -130,7 +116,7 @@ def bench_download_1_50gb(adl, lpath, rpath, config):
         rpath=rpath,
         **config[bench_download_1_50gb.__name__])
 
-    verify(adl, down.client.progress, lpath, rpath)
+    verify(up)
 
 
 @benchmark
@@ -141,7 +127,7 @@ def bench_download_50_1gb(adl, lpath, rpath, config):
         rpath=rpath,
         **config[bench_download_50_1gb.__name__])
 
-    verify(adl, down.client.progress, lpath, rpath)
+    verify(up)
 
 
 if __name__ == '__main__':
