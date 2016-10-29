@@ -309,6 +309,21 @@ class ADLTransferClient(object):
             self._cfutures[future] = obj
 
     @property
+    def active(self):
+        """ Return whether the transfer is active """
+        return not self._fstates.contains_none('pending', 'transferring', 'merging')
+
+    @property
+    def successful(self):
+        """
+        Return whether the transfer completed successfully.
+
+        It will raise AssertionError if the transfer is active.
+        """
+        assert not self.active
+        return self._fstates.contains_all('finished')
+
+    @property
     def progress(self):
         """ Return a summary of all transferred file/chunks """
         files = []
@@ -419,7 +434,7 @@ class ADLTransferClient(object):
 
     def _wait(self, poll=0.1, timeout=0):
         start = time.time()
-        while not self._fstates.contains_none('pending', 'transferring', 'merging'):
+        while self.active:
             if timeout > 0 and time.time() - start > timeout:
                 break
             time.sleep(poll)
