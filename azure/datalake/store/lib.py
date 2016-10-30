@@ -25,7 +25,6 @@ import platform
 
 # 3rd party imports
 import adal
-import azure
 
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
