@@ -9,8 +9,7 @@
 """
 Low-level calls to REST end-points.
 
-Specific interfaces to the Data-lake Store file- and management layers,
-and authentication code.
+Specific interfaces to the Data-lake Store filesystem layer and authentication code.
 """
 
 # standard imports
@@ -112,58 +111,6 @@ def auth(tenant_id=default_tenant, username=default_username,
                 'refresh': out.get('refreshToken', False),
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
     return out
-
-
-class ManagementRESTInterface:
-    """ Call factory for account-level activities
-    """
-    ends = {}
-
-    def __init__(self, subscription_id, resource_group_name, token=None,
-                 **kwargs):
-        self.subscription_id = subscription_id
-        self.resource_group_name = resource_group_name
-        self.token = token or auth(**kwargs)
-        self.params = {'api-version': '2015-10-01-preview'}
-        self.head = {
-            'Authorization': 'Bearer ' + token['access'],
-            'Content-Type': 'application/json'
-        }
-        self.url = ('https://management.azure.com/subscriptions/%s/'
-                    'resourceGroups/%s/providers/Microsoft.DataLakeStore/' % (
-                     subscription_id, resource_group_name))
-
-    def create(self, account, location='eastus2', tags={}):
-        body = json.dumps({
-            "location": location,
-            "tags": tags,
-            "properties": {"configuration": {}}
-        })
-        url = self.url + 'accounts/' + account
-        r = requests.put(url, headers=self.head, params=self.params, data=body)
-        return r.status_code, r.json()
-
-    def delete(self, account):
-        url = self.url + 'accounts/' + account
-        r = requests.delete(url, headers=self.head, params=self.params)
-        return r.status_code, r.json()
-
-    def list_in_sub(self):
-        url = ('https://management.azure.com/subscriptions/%s/providers/'
-               'Microsoft.DataLakeStore/accounts' % self.subscription_id)
-        r = requests.get(url, headers=self.head, params=self.params)
-        return r.status_code, r.json()
-
-    def list_in_res(self):
-        url = self.url + 'accounts'
-        r = requests.get(url, headers=self.head, params=self.params)
-        return r.status_code, r.json()
-
-    def info(self, account):
-        url = self.url + 'accounts/' + account
-        r = requests.get(url, headers=self.head, params=self.params)
-        return r.status_code, r.json()
-
 
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
