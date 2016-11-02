@@ -227,7 +227,7 @@ def test_df(azure):
         with azure.open(b, 'wb') as f:
             f.write(b'a' * 10)
 
-        result = azure.df()
+        result = azure.df(test_dir)
         assert result['fileCount'] > 0
         assert result['spaceConsumed'] > 0
 
@@ -484,6 +484,18 @@ def test_write_blocks(azure):
 
 
 @my_vcr.use_cassette
+def test_skip_existing_block(azure):
+    with azure.open(a, mode='wb') as f:
+        f.write(b'0' * 15)
+
+    with pytest.raises((IOError, RuntimeError)):
+        with azure.open(a, mode='ab') as f:
+            assert f.tell() == 15
+            f.loc = 5  # not a user method
+            f.write(b'blah')
+
+
+@my_vcr.use_cassette
 def test_gzip(azure):
     import gzip
     data = b'name,amount\nAlice,100\nBob,200'
@@ -579,6 +591,7 @@ def test_delimiters_dash(azure):
 
 
 @my_vcr.use_cassette
+@pytest.mark.skipif(sys.version_info[0:2] == (3, 3), reason="takes too long on Python 3.3")
 def test_chmod(azure):
     with azure_teardown(azure):
         azure.touch(a)
