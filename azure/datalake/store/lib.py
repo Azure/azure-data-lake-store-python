@@ -163,6 +163,8 @@ class DatalakeRESTInterface:
         # Note that this is not complete as is. Sessions ARE NOT thread safe.
         # The complete fix is to have a session per thread.
         self.global_session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_connections=1024, pool_maxsize=1024)
+        self.global_session.mount('https://', adapter)
 
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
