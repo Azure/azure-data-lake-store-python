@@ -19,8 +19,9 @@ def benchmark(f):
         start = time.time()
         result = f(*args, **kwargs)
         stop = time.time()
-        print('[%s] finished in %2.4fs' % (f.__name__, stop - start))
-        return result
+        elapsed = stop - start
+        print('[%s] finished in %2.4fs' % (f.__name__, elapsed))
+        return result, elapsed
 
     return wrapped
 
@@ -88,66 +89,90 @@ def verify(instance):
 
 @benchmark
 def bench_upload_1_50gb(adl, lpath, rpath, config):
-    up = multithread.ADLUploader(
+    return multithread.ADLUploader(
         adl,
         lpath=lpath,
         rpath=rpath,
         **config[bench_upload_1_50gb.__name__])
 
-    verify(up)
-
 
 @benchmark
 def bench_upload_50_1gb(adl, lpath, rpath, config):
-    up = multithread.ADLUploader(
+    return multithread.ADLUploader(
         adl,
         lpath=lpath,
         rpath=rpath,
         **config[bench_upload_50_1gb.__name__])
 
-    verify(up)
-
 
 @benchmark
 def bench_download_1_50gb(adl, lpath, rpath, config):
-    down = multithread.ADLDownloader(
+    return multithread.ADLDownloader(
         adl,
         lpath=lpath,
         rpath=rpath,
         **config[bench_download_1_50gb.__name__])
 
-    verify(down)
-
 
 @benchmark
 def bench_download_50_1gb(adl, lpath, rpath, config):
-    down = multithread.ADLDownloader(
+    return multithread.ADLDownloader(
         adl,
         lpath=lpath,
         rpath=rpath,
         **config[bench_download_50_1gb.__name__])
 
-    verify(down)
 
+def setup_logging(level='INFO'):
+    """ Log only Azure messages, ignoring 3rd-party libraries """
+    levels = dict(
+        CRITICAL=logging.CRITICAL,
+        ERROR=logging.ERROR,
+        WARNING=logging.WARNING,
+        INFO=logging.INFO,
+        DEBUG=logging.DEBUG)
 
-if __name__ == '__main__':
-    if len(sys.argv) <= 2:
-        print("Usage: benchmarks.py local_path remote_path")
-        sys.exit(1)
+    if level in levels:
+        level = levels[level]
+    else:
+        raise ValueError('invalid log level: {}'.format(level))
 
-    localdir = sys.argv[1]
-    remoteFolderName = sys.argv[2]
-
-    adl = core.AzureDLFileSystem()
-
-    # Log only Azure messages, ignoring 3rd-party libraries
     logging.basicConfig(
         format='%(asctime)s %(name)-17s %(levelname)-8s %(message)s')
     logger = logging.getLogger('azure.datalake.store')
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level)
+
+
+def print_summary_statistics(stats):
+    from statistics import mean, median, pstdev
+
+    print("benchmark min mean sd median max")
+    for benchmark, samples in stats.items():
+        metrics = [int(round(fn(samples), 0)) for fn in [min, mean, pstdev, median, max]]
+        print(benchmark, *metrics)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('local_path', type=str)
+    parser.add_argument('remote_path', type=str)
+    parser.add_argument('-l', '--log-level', default='INFO')
+    parser.add_argument('-n', '--iterations', default=1, type=int)
+    parser.add_argument('-q', '--quiet', dest='verbose', action='store_false')
+    parser.add_argument('-s', '--statistics', action='store_true')
+    parser.add_argument('--no-verify', dest='verify', action='store_false')
+    parser.add_argument('--no-checksum', dest='validate', action='store_false')
+
+    args = parser.parse_args(sys.argv[1:])
+
+    setup_logging(level=args.log_level)
+
+    adl = core.AzureDLFileSystem()
 
     # Required setup until outstanding issues are resolved
-    adl.mkdir(remoteFolderName)
+    adl.mkdir(args.remote_path)
 
     # OS-specific settings
 
@@ -198,34 +223,61 @@ if __name__ == '__main__':
             }
         }
 
-    # Upload/download 1 50GB files
+    for benchmark in config:
+        config[benchmark]['verbose'] = args.verbose
 
-    lpath_up = os.path.join(localdir, '50gbfile.txt')
-    lpath_down = os.path.join(localdir, '50gbfile.txt.out')
-    rpath = remoteFolderName + '/50gbfile.txt'
+    stats = {}
 
-    if adl.exists(rpath):
-        adl.rm(rpath)
-    if os.path.exists(lpath_down):
-        os.remove(lpath_down)
+    for _ in range(args.iterations):
+        # Upload/download 1 50GB files
 
-    bench_upload_1_50gb(adl, lpath_up, rpath, config)
-    bench_download_1_50gb(adl, lpath_down, rpath, config)
-    print(checksum(lpath_up), lpath_up)
-    print(checksum(lpath_down), lpath_down)
+        lpath_up = os.path.join(args.local_path, '50gbfile.txt')
+        lpath_down = os.path.join(args.local_path, '50gbfile.txt.out')
+        rpath = args.remote_path + '/50gbfile.txt'
 
-    # Upload/download 50 1GB files
+        if adl.exists(rpath):
+            adl.rm(rpath)
+        if os.path.exists(lpath_down):
+            os.remove(lpath_down)
 
-    lpath_up = os.path.join(localdir, '50_1GB_Files')
-    lpath_down = os.path.join(localdir, '50_1GB_Files.out')
-    rpath = remoteFolderName + '/50_1GB_Files'
+        result, elapsed = bench_upload_1_50gb(adl, lpath_up, rpath, config)
+        if args.verify:
+            verify(result)
+        stats.setdefault('up-1-50gb', []).append(elapsed)
 
-    if adl.exists(rpath):
-        adl.rm(rpath, recursive=True)
-    if os.path.exists(lpath_down):
-        shutil.rmtree(lpath_down)
+        result, elapsed = bench_download_1_50gb(adl, lpath_down, rpath, config)
+        if args.verify:
+            verify(result)
+        stats.setdefault('down-1-50gb', []).append(elapsed)
 
-    bench_upload_50_1gb(adl, lpath_up, rpath, config)
-    bench_download_50_1gb(adl, lpath_down, rpath, config)
-    print(checksum(lpath_up), lpath_up)
-    print(checksum(lpath_down), lpath_down)
+        if args.validate:
+            print(checksum(lpath_up), lpath_up)
+            print(checksum(lpath_down), lpath_down)
+
+        # Upload/download 50 1GB files
+
+        lpath_up = os.path.join(args.local_path, '50_1GB_Files')
+        lpath_down = os.path.join(args.local_path, '50_1GB_Files.out')
+        rpath = args.remote_path + '/50_1GB_Files'
+
+        if adl.exists(rpath):
+            adl.rm(rpath, recursive=True)
+        if os.path.exists(lpath_down):
+            shutil.rmtree(lpath_down)
+
+        result, elapsed = bench_upload_50_1gb(adl, lpath_up, rpath, config)
+        if args.verify:
+            verify(result)
+        stats.setdefault('up-50-1gb', []).append(elapsed)
+
+        result, elapsed = bench_download_50_1gb(adl, lpath_down, rpath, config)
+        if args.verify:
+            verify(result)
+        stats.setdefault('down-50-1gb', []).append(elapsed)
+
+        if args.validate:
+            print(checksum(lpath_up), lpath_up)
+            print(checksum(lpath_down), lpath_down)
+
+    if args.statistics:
+        print_summary_statistics(stats)
