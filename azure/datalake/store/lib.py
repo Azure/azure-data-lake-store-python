@@ -112,6 +112,13 @@ def auth(tenant_id=default_tenant, username=default_username,
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
     return out
 
+
+def init_session():
+    s = requests.Session()
+    s.mount('https://', requests.adapters.HTTPAdapter(pool_connections=64, pool_maxsize=64))
+    return s
+
+
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
 
@@ -150,6 +157,7 @@ class DatalakeRESTInterface:
     def __init__(self, store_name=default_store, token=None,
                  url_suffix=default_suffix, **kwargs):
         url_suffix = url_suffix or "azuredatalakestore.net"
+        self.session = init_session()
         if token is None:
             token = auth(**kwargs)
         self.token = token
@@ -163,6 +171,7 @@ class DatalakeRESTInterface:
 
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
+            self.session = init_session()
             self.token = refresh_token(self.token)
             self.head = {'Authorization': 'Bearer ' + self.token['access']}
 
@@ -238,7 +247,7 @@ class DatalakeRESTInterface:
                              keys - allowed)
         params = {'OP': op}
         params.update(kwargs)
-        func = getattr(requests, method)
+        func = getattr(self.session, method)
         url = self.url + path
         try:
             headers = self.head.copy()
