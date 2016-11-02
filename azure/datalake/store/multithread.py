@@ -216,6 +216,18 @@ class ADLDownloader(object):
 
         self.client.run(nthreads, monitor, before_start=touch)
 
+    def active(self):
+        """ Return whether the downloader is active """
+        return self.client.active
+
+    def successful(self):
+        """
+        Return whether the downloader completed successfully.
+
+        It will raise AssertionError if the downloader is active.
+        """
+        return self.client.successful
+
     def __str__(self):
         return "<ADL Download: %s -> %s (%s)>" % (self.rpath, self.lpath,
                                                   self.client.status)
@@ -394,8 +406,8 @@ class ADLUploader(object):
             rfiles = [self.rpath / AzureDLPath(f).relative_to(prefix)
                       for f in lfiles]
         elif lfiles:
-            if (self.client._adlfs.exists(self.rpath) and
-                        self.client._adlfs.info(self.rpath)['type'] == "DIRECTORY"):
+            if self.client._adlfs.exists(self.rpath) and \
+               self.client._adlfs.info(self.rpath)['type'] == "DIRECTORY":
                 rfiles = [self.rpath / AzureDLPath(lfiles[0]).name]
             else:
                 rfiles = [self.rpath]
@@ -419,6 +431,18 @@ class ADLUploader(object):
             To watch and wait (block) until completion.
         """
         self.client.run(nthreads, monitor)
+
+    def active(self):
+        """ Return whether the uploader is active """
+        return self.client.active
+
+    def successful(self):
+        """
+        Return whether the uploader completed successfully.
+
+        It will raise AssertionError if the uploader is active.
+        """
+        return self.client.successful
 
     def __str__(self):
         return "<ADL Upload: %s -> %s (%s)>" % (self.lpath, self.rpath,

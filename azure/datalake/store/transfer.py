@@ -21,6 +21,8 @@ import threading
 import time
 import uuid
 
+from .exceptions import DatalakeIncompleteTransferException
+
 logger = logging.getLogger(__name__)
 
 
@@ -231,7 +233,6 @@ class ADLTransferClient(object):
         self._merge = merge
         self._nthreads = max(1, nthreads or multiprocessing.cpu_count())
         self._chunksize = chunksize
-        self._chunkretries = 5
         self._buffersize = buffersize
         self._blocksize = blocksize
         self._chunked = chunked
@@ -308,6 +309,21 @@ class ADLTransferClient(object):
             self._cfutures[future] = obj
 
     @property
+    def active(self):
+        """ Return whether the transfer is active """
+        return not self._fstates.contains_none('pending', 'transferring', 'merging')
+
+    @property
+    def successful(self):
+        """
+        Return whether the transfer completed successfully.
+
+        It will raise AssertionError if the transfer is active.
+        """
+        assert not self.active
+        return self._fstates.contains_all('finished')
+
+    @property
     def progress(self):
         """ Return a summary of all transferred file/chunks """
         files = []
@@ -337,6 +353,7 @@ class ADLTransferClient(object):
             obj = self._cfutures[future]
             parent = self._chunks[obj]['parent']
             cstates = self._files[parent]['cstates']
+            src, dst = parent
 
             if future.cancelled():
                 cstates[obj] = 'cancelled'
@@ -350,26 +367,33 @@ class ADLTransferClient(object):
                 if exception:
                     cstates[obj] = 'errored'
                 elif self._chunks[obj]['expected'] != nbytes:
+                    name, offset = obj
                     cstates[obj] = 'errored'
+                    exception = DatalakeIncompleteTransferException(
+                        'chunk {}, offset {}: expected {} bytes, transferred {} bytes'.format(
+                            name, offset, self._chunks[obj]['expected'],
+                            self._chunks[obj]['actual']))
+                    self._chunks[obj]['exception'] = exception
+                    logger.error("Incomplete transfer: %s -> %s, %s",
+                                 src, dst, repr(exception))
                 else:
                     cstates[obj] = 'finished'
 
             if cstates.contains_all('finished'):
                 logger.debug("Chunks transferred")
-                src, dst = parent
                 if self._merge and len(cstates.objects) > 1:
                     logger.debug("Merging file: %s", self._fstates[parent])
                     self._fstates[parent] = 'merging'
                     merge_future = self._submit(
                         self._merge, self._adlfs, dst,
-                        [name for name, _ in sorted(cstates.objects,
-                                                    key=lambda obj: obj[1])])
+                        [chunk for chunk, _ in sorted(cstates.objects,
+                                                      key=lambda obj: obj[1])])
                     self._ffutures[merge_future] = parent
                 else:
                     self._fstates[parent] = 'finished'
                     logger.info("Transferred %s -> %s", src, dst)
             elif cstates.contains_none('running'):
-                logger.debug("Transfer failed: %s", cstates)
+                logger.error("Transfer failed: %s -> %s", src, dst)
                 self._fstates[parent] = 'errored'
         elif future in self._ffutures:
             src, dst = self._ffutures[future]
@@ -411,10 +435,22 @@ class ADLTransferClient(object):
         before_start = None
         if monitor:
             self.monitor()
+            for f in self.progress:
+                for chunk in f.chunks:
+                    if chunk.state == 'finished':
+                        continue
+                    if chunk.exception:
+                        logger.error('{} -> {}, chunk {} {}: {}, {}'.format(
+                            f.src, f.dst, chunk.name, chunk.offset,
+                            chunk.state, repr(chunk.exception)))
+                    else:
+                        logger.error('{} -> {}, chunk {} {}: {}'.format(
+                            f.src, f.dst, chunk.name, chunk.offset,
+                            chunk.state))
 
     def _wait(self, poll=0.1, timeout=0):
         start = time.time()
-        while not self._fstates.contains_none('pending', 'transferring', 'merging'):
+        while self.active:
             if timeout > 0 and time.time() - start > timeout:
                 break
             time.sleep(poll)

@@ -9,8 +9,7 @@
 """
 Low-level calls to REST end-points.
 
-Specific interfaces to the Data-lake Store file- and management layers,
-and authentication code.
+Specific interfaces to the Data-lake Store filesystem layer and authentication code.
 """
 
 # standard imports
@@ -25,7 +24,6 @@ import platform
 
 # 3rd party imports
 import adal
-import azure
 
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
@@ -114,58 +112,6 @@ def auth(tenant_id=default_tenant, username=default_username,
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
     return out
 
-
-class ManagementRESTInterface:
-    """ Call factory for account-level activities
-    """
-    ends = {}
-
-    def __init__(self, subscription_id, resource_group_name, token=None,
-                 **kwargs):
-        self.subscription_id = subscription_id
-        self.resource_group_name = resource_group_name
-        self.token = token or auth(**kwargs)
-        self.params = {'api-version': '2015-10-01-preview'}
-        self.head = {
-            'Authorization': 'Bearer ' + token['access'],
-            'Content-Type': 'application/json'
-        }
-        self.url = ('https://management.azure.com/subscriptions/%s/'
-                    'resourceGroups/%s/providers/Microsoft.DataLakeStore/' % (
-                     subscription_id, resource_group_name))
-
-    def create(self, account, location='eastus2', tags={}):
-        body = json.dumps({
-            "location": location,
-            "tags": tags,
-            "properties": {"configuration": {}}
-        })
-        url = self.url + 'accounts/' + account
-        r = requests.put(url, headers=self.head, params=self.params, data=body)
-        return r.status_code, r.json()
-
-    def delete(self, account):
-        url = self.url + 'accounts/' + account
-        r = requests.delete(url, headers=self.head, params=self.params)
-        return r.status_code, r.json()
-
-    def list_in_sub(self):
-        url = ('https://management.azure.com/subscriptions/%s/providers/'
-               'Microsoft.DataLakeStore/accounts' % self.subscription_id)
-        r = requests.get(url, headers=self.head, params=self.params)
-        return r.status_code, r.json()
-
-    def list_in_res(self):
-        url = self.url + 'accounts'
-        r = requests.get(url, headers=self.head, params=self.params)
-        return r.status_code, r.json()
-
-    def info(self, account):
-        url = self.url + 'accounts/' + account
-        r = requests.get(url, headers=self.head, params=self.params)
-        return r.status_code, r.json()
-
-
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
 
@@ -209,10 +155,14 @@ class DatalakeRESTInterface:
         self.token = token
         self.head = {'Authorization': 'Bearer ' + token['access']}
         self.url = 'https://%s.%s/webhdfs/v1/' % (store_name, url_suffix)
-        self.user_agent = "python/{} ({}) {}/{} Azure-Data-Lake-Store-SDK-For-Python".format(platform.python_version(), 
-                                                       platform.platform(),
-                                                       __name__,
-                                                       __version__)
+        self.user_agent = "python/{} ({}) {}/{} Azure-Data-Lake-Store-SDK-For-Python".format(
+            platform.python_version(),
+            platform.platform(),
+            __name__,
+            __version__)
+        # Note that this is not complete as is. Sessions ARE NOT thread safe.
+        # The complete fix is to have a session per thread.
+        self.global_session = requests.Session()
 
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
@@ -249,8 +199,9 @@ class DatalakeRESTInterface:
         if response is not None:
             msg += "\n{}\n{}".format(
                 response.status_code,
-                "\n".join(["{}: {}".format(header, response.headers[header])
-                        for header in response.headers]))
+                "\n".join([
+                    "{}: {}".format(header, response.headers[header])
+                    for header in response.headers]))
             msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
             if self._content_truncated(response):
                 msg += "\n(Response body was truncated)"
@@ -290,7 +241,7 @@ class DatalakeRESTInterface:
                              keys - allowed)
         params = {'OP': op}
         params.update(kwargs)
-        func = getattr(requests, method)
+        func = getattr(self.global_session, method)
         url = self.url + path
         try:
             headers = self.head.copy()

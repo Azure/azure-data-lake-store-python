@@ -355,7 +355,8 @@ class AzureDLFileSystem(object):
 
         If path is a bucket only, attempt to create bucket.
         """
-        self.open(path, 'wb')
+        with self.open(path, 'wb'):
+            pass
 
     def read_block(self, fn, offset, length, delimiter=None):
         """ Read a block of bytes from an ADL file
@@ -717,12 +718,6 @@ class AzureDLFile(object):
     def writable(self):
         """Return whether the AzureDLFile was opened for writing"""
         return self.mode in {'wb', 'ab'}
-
-    def __del__(self):
-        try:
-            self.close()
-        except:
-            pass
 
     def __str__(self):
         return "<ADL file: %s>" % (self.path.as_posix())
