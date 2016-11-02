@@ -160,6 +160,9 @@ class DatalakeRESTInterface:
             platform.platform(),
             __name__,
             __version__)
+        # Note that this is not complete as is. Sessions ARE NOT thread safe.
+        # The complete fix is to have a session per thread.
+        self.global_session = requests.Session()
 
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
@@ -238,7 +241,7 @@ class DatalakeRESTInterface:
                              keys - allowed)
         params = {'OP': op}
         params.update(kwargs)
-        func = getattr(requests, method)
+        func = getattr(self.global_session, method)
         url = self.url + path
         try:
             headers = self.head.copy()
