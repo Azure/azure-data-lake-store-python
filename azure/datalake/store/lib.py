@@ -43,6 +43,10 @@ default_suffix = os.environ.get('azure_data_lake_store_url_suffix', 'azuredatala
 
 MAX_CONTENT_LENGTH = 2**16
 
+# This is the maximum number of active pool connections
+# that are supported during a single operation (such as upload or download of a file).
+# This ensures that no connections are prematurely evicted, which has negative performance implications.
+MAX_POOL_CONNECTIONS = 1024
 
 def refresh_token(token):
     """ Refresh an expired authorization token
@@ -169,11 +173,12 @@ class DatalakeRESTInterface:
             platform.platform(),
             __name__,
             __version__)
-        # Note that this is not complete as is. Sessions ARE NOT thread safe.
-        # The complete fix is to have a session per thread.
+        
+        # Based on this issue: https://github.com/kennethreitz/requests/issues/1871
+        # Explicitly limiting requests to a single host should limit the risks of thread safety.
         self.global_session = requests.Session()
-        adapter = requests.adapters.HTTPAdapter(pool_connections=1024, pool_maxsize=1024)
-        self.global_session.mount('https://', adapter)
+        adapter = requests.adapters.HTTPAdapter(pool_connections=MAX_POOL_CONNECTIONS, pool_maxsize=MAX_POOL_CONNECTIONS)
+        self.global_session.mount('https://{}.{}'.format(store_name, url_suffix), adapter)
 
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
