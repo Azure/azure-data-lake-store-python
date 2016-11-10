@@ -16,14 +16,15 @@ Specific interfaces to the Data-lake Store filesystem layer and authentication c
 import json
 import logging
 import os
-import requests
-import requests.exceptions
+import threading
 import time
 import uuid
 import platform
 
 # 3rd party imports
 import adal
+import requests
+import requests.exceptions
 
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
@@ -115,7 +116,7 @@ def auth(tenant_id=default_tenant, username=default_username,
 
 def init_session():
     s = requests.Session()
-    s.mount('https://', requests.adapters.HTTPAdapter(pool_connections=64, pool_maxsize=64))
+    s.mount('https://', requests.adapters.HTTPAdapter())
     return s
 
 
@@ -157,7 +158,7 @@ class DatalakeRESTInterface:
     def __init__(self, store_name=default_store, token=None,
                  url_suffix=default_suffix, **kwargs):
         url_suffix = url_suffix or "azuredatalakestore.net"
-        self.session = init_session()
+        self.local = threading.local()
         if token is None:
             token = auth(**kwargs)
         self.token = token
@@ -169,9 +170,16 @@ class DatalakeRESTInterface:
             __name__,
             __version__)
 
+    @property
+    def session(self):
+        s = getattr(self.local, 'session', None)
+        if s is None:
+            s = init_session()
+            setattr(self.local, 'session', s)
+        return s
+
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
-            self.session = init_session()
             self.token = refresh_token(self.token)
             self.head = {'Authorization': 'Bearer ' + self.token['access']}
 
