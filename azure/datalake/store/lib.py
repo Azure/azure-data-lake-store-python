@@ -13,7 +13,6 @@ Specific interfaces to the Data-lake Store filesystem layer and authentication c
 """
 
 # standard imports
-import json
 import logging
 import os
 import threading
