@@ -13,17 +13,17 @@ Specific interfaces to the Data-lake Store filesystem layer and authentication c
 """
 
 # standard imports
-import json
 import logging
 import os
-import requests
-import requests.exceptions
+import threading
 import time
 import uuid
 import platform
 
 # 3rd party imports
 import adal
+import requests
+import requests.exceptions
 
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
@@ -42,6 +42,7 @@ default_store = os.environ.get('azure_data_lake_store_name', None)
 default_suffix = os.environ.get('azure_data_lake_store_url_suffix', 'azuredatalakestore.net')
 
 MAX_CONTENT_LENGTH = 2**16
+MAX_POOL_CONNECTIONS = 1024
 
 # This is the maximum number of active pool connections
 # that are supported during a single operation (such as upload or download of a file).
@@ -124,6 +125,7 @@ def auth(tenant_id=default_tenant, username=default_username,
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
     return out
 
+
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
 
@@ -163,6 +165,7 @@ class DatalakeRESTInterface:
                  url_suffix=default_suffix, **kwargs):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
         url_suffix = url_suffix or default_suffix
+        self.local = threading.local()
         if token is None:
             token = auth(**kwargs)
         self.token = token
@@ -173,17 +176,24 @@ class DatalakeRESTInterface:
             platform.platform(),
             __name__,
             __version__)
-        
-        # Based on this issue: https://github.com/kennethreitz/requests/issues/1871
-        # Explicitly limiting requests to a single host should limit the risks of thread safety.
-        self.global_session = requests.Session()
-        adapter = requests.adapters.HTTPAdapter(pool_connections=MAX_POOL_CONNECTIONS, pool_maxsize=MAX_POOL_CONNECTIONS)
-        self.global_session.mount('https://{}.{}'.format(store_name, url_suffix), adapter)
+
+    @property
+    def session(self):
+        s = getattr(self.local, 'session', None)
+        if s is None:
+            adapter = requests.adapters.HTTPAdapter(
+                pool_connections=MAX_POOL_CONNECTIONS,
+                pool_maxsize=MAX_POOL_CONNECTIONS)
+            s = requests.Session()
+            s.mount(self.url, adapter)
+            setattr(self.local, 'session', s)
+        return s
 
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.token = refresh_token(self.token)
             self.head = {'Authorization': 'Bearer ' + self.token['access']}
+            setattr(self.local, 'session', None)
 
     def _log_request(self, method, url, op, path, params, headers):
         msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
@@ -257,7 +267,7 @@ class DatalakeRESTInterface:
                              keys - allowed)
         params = {'OP': op}
         params.update(kwargs)
-        func = getattr(self.global_session, method)
+        func = getattr(self.session, method)
         url = self.url + path
         try:
             headers = self.head.copy()
@@ -294,6 +304,11 @@ class DatalakeRESTInterface:
                 self.log_response_and_raise(r, err)
             return out
         return r
+
+    def __getstate__(self):
+        dic2 = self.__dict__.copy()
+        dic2.pop('local', None)
+        return dic2
 
 """
 Not yet implemented (or not applicable)
