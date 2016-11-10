@@ -42,6 +42,7 @@ default_store = os.environ.get('azure_store_name', None)
 default_suffix = os.environ.get('azure_url_suffix', '')
 
 MAX_CONTENT_LENGTH = 2**16
+MAX_POOL_CONNECTIONS = 1024
 
 
 def refresh_token(token):
@@ -113,12 +114,6 @@ def auth(tenant_id=default_tenant, username=default_username,
     return out
 
 
-def init_session():
-    s = requests.Session()
-    s.mount('https://', requests.adapters.HTTPAdapter())
-    return s
-
-
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
 
@@ -173,7 +168,11 @@ class DatalakeRESTInterface:
     def session(self):
         s = getattr(self.local, 'session', None)
         if s is None:
-            s = init_session()
+            adapter = requests.adapters.HTTPAdapter(
+                pool_connections=MAX_POOL_CONNECTIONS,
+                pool_maxsize=MAX_POOL_CONNECTIONS)
+            s = requests.Session()
+            s.mount(self.url, adapter)
             setattr(self.local, 'session', s)
         return s
 
@@ -181,6 +180,7 @@ class DatalakeRESTInterface:
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.token = refresh_token(self.token)
             self.head = {'Authorization': 'Bearer ' + self.token['access']}
+            setattr(self.local, 'session', None)
 
     def _log_request(self, method, url, op, path, params, headers):
         msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
