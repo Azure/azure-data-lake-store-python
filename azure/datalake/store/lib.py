@@ -293,6 +293,11 @@ class DatalakeRESTInterface:
             return out
         return r
 
+    def __getstate__(self):
+        dic2 = self.__dict__.copy()
+        dic2.pop('local', None)
+        return dic2
+
 """
 Not yet implemented (or not applicable)
 http://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/WebHDFS.html
