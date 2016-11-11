@@ -169,6 +169,8 @@ class DatalakeRESTInterface:
         try:
             s = self.local.session
         except AttributeError:
+            s = None
+        if not s:
             adapter = requests.adapters.HTTPAdapter(
                 pool_connections=MAX_POOL_CONNECTIONS,
                 pool_maxsize=MAX_POOL_CONNECTIONS)
