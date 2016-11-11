@@ -245,12 +245,14 @@ if __name__ == '__main__':
         result, elapsed = bench_upload_1_50gb(adl, lpath_up, rpath, config)
         if args.verify:
             verify(result)
-        stats.setdefault('up-1-50gb', []).append(elapsed)
+        if result.successful:
+            stats.setdefault('up-1-50gb', []).append(elapsed)
 
         result, elapsed = bench_download_1_50gb(adl, lpath_down, rpath, config)
         if args.verify:
             verify(result)
-        stats.setdefault('down-1-50gb', []).append(elapsed)
+        if result.successful:
+            stats.setdefault('down-1-50gb', []).append(elapsed)
 
         if args.validate:
             print(checksum(lpath_up), lpath_up)
@@ -270,12 +272,14 @@ if __name__ == '__main__':
         result, elapsed = bench_upload_50_1gb(adl, lpath_up, rpath, config)
         if args.verify:
             verify(result)
-        stats.setdefault('up-50-1gb', []).append(elapsed)
+        if result.successful:
+            stats.setdefault('up-50-1gb', []).append(elapsed)
 
         result, elapsed = bench_download_50_1gb(adl, lpath_down, rpath, config)
         if args.verify:
             verify(result)
-        stats.setdefault('down-50-1gb', []).append(elapsed)
+        if result.successful:
+            stats.setdefault('down-50-1gb', []).append(elapsed)
 
         if args.validate:
             print(checksum(lpath_up), lpath_up)
