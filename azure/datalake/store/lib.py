@@ -179,21 +179,22 @@ class DatalakeRESTInterface:
 
     @property
     def session(self):
-        s = getattr(self.local, 'session', None)
-        if s is None:
+        try:
+            s = self.local.session
+        except AttributeError:
             adapter = requests.adapters.HTTPAdapter(
                 pool_connections=MAX_POOL_CONNECTIONS,
                 pool_maxsize=MAX_POOL_CONNECTIONS)
             s = requests.Session()
             s.mount(self.url, adapter)
-            setattr(self.local, 'session', s)
+            self.local.session = s
         return s
 
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.token = refresh_token(self.token)
             self.head = {'Authorization': 'Bearer ' + self.token['access']}
-            setattr(self.local, 'session', None)
+            self.local.session = None
 
     def _log_request(self, method, url, op, path, params, headers):
         msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
@@ -306,9 +307,9 @@ class DatalakeRESTInterface:
         return r
 
     def __getstate__(self):
-        dic2 = self.__dict__.copy()
-        dic2.pop('local', None)
-        return dic2
+        state = self.__dict__.copy()
+        state.pop('local', None)
+        return state
 
 """
 Not yet implemented (or not applicable)
