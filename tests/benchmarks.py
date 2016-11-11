@@ -150,7 +150,10 @@ def print_summary_statistics(stats):
 
     print("benchmark min mean sd median max")
     for benchmark, samples in stats.items():
-        metrics = [int(round(fn(samples), 0)) for fn in [min, mean, pstdev, median, max]]
+        if samples:
+            metrics = [int(round(fn(samples), 0)) for fn in [min, mean, pstdev, median, max]]
+        else:
+            metrics = [0, 0, 0, 0, 0]
         print(benchmark, *metrics)
 
 
