@@ -42,7 +42,6 @@ default_store = os.environ.get('azure_data_lake_store_name', None)
 default_suffix = os.environ.get('azure_data_lake_store_url_suffix', 'azuredatalakestore.net')
 
 MAX_CONTENT_LENGTH = 2**16
-MAX_POOL_CONNECTIONS = 1024
 
 # This is the maximum number of active pool connections
 # that are supported during a single operation (such as upload or download of a file).
@@ -104,10 +103,12 @@ def auth(tenant_id=default_tenant, username=default_username,
     context = adal.AuthenticationContext('https://login.microsoftonline.com/' +
                                          tenant_id)
 
-    if tenant_id is None:
-        raise ValueError("tenant_id must be supplied for authentication")
+    if tenant_id is None or client_id is None:
+        raise ValueError("tenant_id and client_id must be supplied for authentication")
 
-    if require_2fa or (username is None and client_secret is None and password is None):
+    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call and 
+    # and the user will be prompted to login interactively through a browser.
+    if require_2fa or (username is None and password is None and client_secret is None):
         code = context.acquire_user_code(resource, client_id)
         print(code['message'])
         out = context.acquire_token_with_device_code(resource, code, client_id)
