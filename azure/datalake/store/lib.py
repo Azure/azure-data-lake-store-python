@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 
 default_tenant = os.environ.get('azure_tenant_id', "common")
 default_username = os.environ.get('azure_username', None)
-default_password = os.environ.get('azure_password', None)
 default_client = os.environ.get('azure_client_id', "04b07795-8ddb-461a-bbee-02f9e1bf7b46")
 default_secret = os.environ.get('azure_client_secret', None)
 default_resource = "https://management.core.windows.net/"
@@ -48,17 +47,23 @@ MAX_CONTENT_LENGTH = 2**16
 # This ensures that no connections are prematurely evicted, which has negative performance implications.
 MAX_POOL_CONNECTIONS = 1024
 
-def refresh_token(token):
+def refresh_token(token, authority=None):
     """ Refresh an expired authorization token
 
     Parameters
     ----------
     token : dict
         Produced by `auth()` or `refresh_token`.
+    authority: string
+        The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
     """
     if token.get('refresh', False) is False:
         raise ValueError("Token cannot be auto-refreshed.")
-    context = adal.AuthenticationContext('https://login.microsoftonline.com/' +
+
+    if not authority:
+        authority = 'https://login.microsoftonline.com/'
+
+    context = adal.AuthenticationContext(authority +
                                          token['tenant'])
     out = context.acquire_token_with_refresh_token(token['refresh'],
                                                    client_id=token['client'],
@@ -70,9 +75,9 @@ def refresh_token(token):
 
 
 def auth(tenant_id=default_tenant, username=default_username,
-         password=default_password, client_id=default_client,
+         password=None, client_id=default_client,
          client_secret=default_secret, resource=default_resource,
-         require_2fa=False, **kwargs):
+         require_2fa=False, authority=None, **kwargs):
     """ User/password authentication
 
     Parameters
@@ -92,6 +97,8 @@ def auth(tenant_id=default_tenant, username=default_username,
         resource for auth (e.g., https://management.core.windows.net/)
     require_2fa : bool
         indicates this authentication attempt requires two-factor authentication
+    authority: string
+        The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
     kwargs : key/values
         Other parameters, see http://msrestazure.readthedocs.io/en/latest/msrestazure.html#module-msrestazure.azure_active_directory
         Examples: auth_uri, token_uri, keyring
@@ -100,11 +107,17 @@ def auth(tenant_id=default_tenant, username=default_username,
     -------
     auth dict
     """
-    context = adal.AuthenticationContext('https://login.microsoftonline.com/' +
+    if not authority:
+        authority = 'https://login.microsoftonline.com/'
+
+    context = adal.AuthenticationContext(authority +
                                          tenant_id)
 
     if tenant_id is None or client_id is None:
         raise ValueError("tenant_id and client_id must be supplied for authentication")
+    
+    if not password:
+        password = os.environ.get('azure_password', None)
 
     # You can explicitly authenticate with 2fa, or pass in nothing to the auth call and 
     # and the user will be prompted to login interactively through a browser.
