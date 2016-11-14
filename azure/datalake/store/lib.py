@@ -13,17 +13,17 @@ Specific interfaces to the Data-lake Store filesystem layer and authentication c
 """
 
 # standard imports
-import json
 import logging
 import os
-import requests
-import requests.exceptions
+import threading
 import time
 import uuid
 import platform
 
 # 3rd party imports
 import adal
+import requests
+import requests.exceptions
 
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
@@ -42,6 +42,7 @@ default_store = os.environ.get('azure_store_name', None)
 default_suffix = os.environ.get('azure_url_suffix', '')
 
 MAX_CONTENT_LENGTH = 2**16
+MAX_POOL_CONNECTIONS = 1024
 
 
 def refresh_token(token):
@@ -112,6 +113,7 @@ def auth(tenant_id=default_tenant, username=default_username,
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
     return out
 
+
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
 
@@ -150,6 +152,7 @@ class DatalakeRESTInterface:
     def __init__(self, store_name=default_store, token=None,
                  url_suffix=default_suffix, **kwargs):
         url_suffix = url_suffix or "azuredatalakestore.net"
+        self.local = threading.local()
         if token is None:
             token = auth(**kwargs)
         self.token = token
@@ -161,10 +164,26 @@ class DatalakeRESTInterface:
             __name__,
             __version__)
 
+    @property
+    def session(self):
+        try:
+            s = self.local.session
+        except AttributeError:
+            s = None
+        if not s:
+            adapter = requests.adapters.HTTPAdapter(
+                pool_connections=MAX_POOL_CONNECTIONS,
+                pool_maxsize=MAX_POOL_CONNECTIONS)
+            s = requests.Session()
+            s.mount(self.url, adapter)
+            self.local.session = s
+        return s
+
     def _check_token(self):
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.token = refresh_token(self.token)
             self.head = {'Authorization': 'Bearer ' + self.token['access']}
+            self.local.session = None
 
     def _log_request(self, method, url, op, path, params, headers):
         msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
@@ -238,7 +257,7 @@ class DatalakeRESTInterface:
                              keys - allowed)
         params = {'OP': op}
         params.update(kwargs)
-        func = getattr(requests, method)
+        func = getattr(self.session, method)
         url = self.url + path
         try:
             headers = self.head.copy()
@@ -275,6 +294,11 @@ class DatalakeRESTInterface:
                 self.log_response_and_raise(r, err)
             return out
         return r
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop('local', None)
+        return state
 
 """
 Not yet implemented (or not applicable)
