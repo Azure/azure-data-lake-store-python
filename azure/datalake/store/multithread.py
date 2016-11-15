@@ -251,7 +251,7 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
                     fout.seek(offset)
                     for chunk in response.iter_content(chunk_size=blocksize):
                         if shutdown_event and shutdown_event.is_set():
-                            return nbytes
+                            return nbytes, None
                         if chunk:
                             nwritten = fout.write(chunk)
                             if nwritten:
