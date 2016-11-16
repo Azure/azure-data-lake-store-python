@@ -43,6 +43,7 @@ setup(name='azure-datalake-store',
       ],
       extras_require={
           ":python_version<'3.4'": ['pathlib2'],
+          ":python_version<='2.7'": ['futures'],
       },
       long_description=readme,
       zip_safe=False
