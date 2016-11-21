@@ -1,0 +1,24 @@
+sudo: False
+
+language: python
+
+cache: pip
+
+matrix:
+  include:
+    - python: 2.7
+    - python: 3.3
+    - python: 3.4
+    - python: 3.5
+
+install:
+  # Install dependencies
+  - pip install -U setuptools pip
+  - pip install -r dev_requirements.txt
+  - python setup.py develop
+
+script:
+  - py.test -x -vvv --doctest-modules --pyargs azure.datalake.store tests
+
+notifications:
+  email: false
