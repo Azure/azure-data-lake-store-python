@@ -4,22 +4,19 @@ azure-datalake-store
 .. image:: https://travis-ci.org/Azure/azure-data-lake-store-python.svg?branch=dev
     :target: https://travis-ci.org/Azure/azure-data-lake-store-python
 
-NOTE: This management package is currently under active development
-and should not be consumed until the first version is published.
-
 azure-datalake-store is a file-system management system in python for the
 Azure Data-Lake Store.
 
-To install:
+To install from source instead of pip (for local testing and development):
 
 .. code-block:: bash
 
-    > pip install -r requirements.txt
-    > python setup.py install
+    > pip install -r dev_requirements.txt
+    > python setup.py develop
 
 
 To run tests, you are required to set the following environment variables:
-azure_tenant_id, azure_username, azure_password, azure_store_name
+azure_tenant_id, azure_username, azure_password, azure_data_lake_store_name
 
 To play with the code, here is a starting point:
 
