@@ -411,7 +411,9 @@ class ADLTransferClient(object):
                 else:
                     self._fstates[(src, dst)] = 'finished'
                     logger.info("Transferred %s -> %s", src, dst)
-        self.save()
+        # TODO: Re-enable progress saving when a less IO intensive solution is available.
+        # See issue: https://github.com/Azure/azure-data-lake-store-python/issues/117
+        #self.save()
         if self.verbose:
             print('\b' * 200, self.status, end='')
             sys.stdout.flush()
@@ -488,7 +490,10 @@ class ADLTransferClient(object):
             logger.warning("%s suspended and persisted", self)
             self.shutdown()
         self._clear()
-        self.save()
+        
+        # TODO: Re-enable progress saving when a less IO intensive solution is available.
+        # See issue: https://github.com/Azure/azure-data-lake-store-python/issues/117
+        #self.save()
 
     def __getstate__(self):
         dic2 = self.__dict__.copy()

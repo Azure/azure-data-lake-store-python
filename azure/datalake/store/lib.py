@@ -31,31 +31,37 @@ from . import __version__
 
 logger = logging.getLogger(__name__)
 
+# TODO: This client id should be removed and it should be a required parameter for authentication.
+default_client = os.environ.get('azure_client_id', "04b07795-8ddb-461a-bbee-02f9e1bf7b46")
+default_store = os.environ.get('azure_data_lake_store_name', None)
+default_adls_suffix = os.environ.get('azure_data_lake_store_url_suffix', 'azuredatalakestore.net')
 
-default_tenant = os.environ.get('azure_tenant_id', "common")
-default_username = os.environ.get('azure_username', None)
-default_password = os.environ.get('azure_password', None)
-default_client = os.environ.get('azure_client_id', "1950a258-227b-4e31-a9cf-717495945fc2")
-default_secret = os.environ.get('azure_client_secret', None)
-default_resource = "https://management.core.windows.net/"
-default_store = os.environ.get('azure_store_name', None)
-default_suffix = os.environ.get('azure_url_suffix', '')
-
+# Constants
+DEFAULT_RESOURCE_ENDPOINT = "https://management.core.windows.net/"
 MAX_CONTENT_LENGTH = 2**16
+
+# This is the maximum number of active pool connections
+# that are supported during a single operation (such as upload or download of a file).
+# This ensures that no connections are prematurely evicted, which has negative performance implications.
 MAX_POOL_CONNECTIONS = 1024
 
-
-def refresh_token(token):
+def refresh_token(token, authority=None):
     """ Refresh an expired authorization token
 
     Parameters
     ----------
     token : dict
         Produced by `auth()` or `refresh_token`.
+    authority: string
+        The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
     """
     if token.get('refresh', False) is False:
         raise ValueError("Token cannot be auto-refreshed.")
-    context = adal.AuthenticationContext('https://login.microsoftonline.com/' +
+
+    if not authority:
+        authority = 'https://login.microsoftonline.com/'
+
+    context = adal.AuthenticationContext(authority +
                                          token['tenant'])
     out = context.acquire_token_with_refresh_token(token['refresh'],
                                                    client_id=token['client'],
@@ -66,9 +72,10 @@ def refresh_token(token):
     return out
 
 
-def auth(tenant_id=default_tenant, username=default_username,
-         password=default_password, client_id=default_client,
-         client_secret=default_secret, resource=default_resource, **kwargs):
+def auth(tenant_id=None, username=None,
+         password=None, client_id=default_client,
+         client_secret=None, resource=DEFAULT_RESOURCE_ENDPOINT,
+         require_2fa=False, authority=None, **kwargs):
     """ User/password authentication
 
     Parameters
@@ -86,6 +93,10 @@ def auth(tenant_id=default_tenant, username=default_username,
         the secret associated with the client_id
     resource : str
         resource for auth (e.g., https://management.core.windows.net/)
+    require_2fa : bool
+        indicates this authentication attempt requires two-factor authentication
+    authority: string
+        The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
     kwargs : key/values
         Other parameters, see http://msrestazure.readthedocs.io/en/latest/msrestazure.html#module-msrestazure.azure_active_directory
         Examples: auth_uri, token_uri, keyring
@@ -94,13 +105,34 @@ def auth(tenant_id=default_tenant, username=default_username,
     -------
     auth dict
     """
-    context = adal.AuthenticationContext('https://login.microsoftonline.com/' +
+    if not authority:
+        authority = 'https://login.microsoftonline.com/'
+
+    context = adal.AuthenticationContext(authority +
                                          tenant_id)
+    if not tenant_id:
+        tenant_id = os.environ.get('azure_tenant_id', "common")
 
-    if tenant_id is None:
-        raise ValueError("tenant_id must be supplied for authentication")
+    if tenant_id is None or client_id is None:
+        raise ValueError("tenant_id and client_id must be supplied for authentication")
+    
+    if not username:
+        username = os.environ.get('azure_username', None)
 
-    if username and password:
+    if not password:
+        password = os.environ.get('azure_password', None)
+
+    if not client_secret:
+        client_secret = os.environ.get('azure_client_secret', None)
+
+    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call and 
+    # and the user will be prompted to login interactively through a browser.
+    if require_2fa or (username is None and password is None and client_secret is None):
+        code = context.acquire_user_code(resource, client_id)
+        print(code['message'])
+        out = context.acquire_token_with_device_code(resource, code, client_id)
+
+    elif username and password:
         out = context.acquire_token_with_username_password(resource, username,
                                                            password, client_id)
     elif client_id and client_secret:
@@ -150,8 +182,9 @@ class DatalakeRESTInterface:
     }
 
     def __init__(self, store_name=default_store, token=None,
-                 url_suffix=default_suffix, **kwargs):
-        url_suffix = url_suffix or "azuredatalakestore.net"
+                 url_suffix=default_adls_suffix, **kwargs):
+        # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
+        url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
         if token is None:
             token = auth(**kwargs)
