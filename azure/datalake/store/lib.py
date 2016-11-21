@@ -31,15 +31,13 @@ from . import __version__
 
 logger = logging.getLogger(__name__)
 
-
-default_tenant = os.environ.get('azure_tenant_id', "common")
-default_username = os.environ.get('azure_username', None)
+# TODO: This client id should be removed and it should be a required parameter for authentication.
 default_client = os.environ.get('azure_client_id', "04b07795-8ddb-461a-bbee-02f9e1bf7b46")
-default_secret = os.environ.get('azure_client_secret', None)
-default_resource = "https://management.core.windows.net/"
 default_store = os.environ.get('azure_data_lake_store_name', None)
-default_suffix = os.environ.get('azure_data_lake_store_url_suffix', 'azuredatalakestore.net')
+default_adls_suffix = os.environ.get('azure_data_lake_store_url_suffix', 'azuredatalakestore.net')
 
+# Constants
+DEFAULT_RESOURCE_ENDPOINT = "https://management.core.windows.net/"
 MAX_CONTENT_LENGTH = 2**16
 
 # This is the maximum number of active pool connections
@@ -74,9 +72,9 @@ def refresh_token(token, authority=None):
     return out
 
 
-def auth(tenant_id=default_tenant, username=default_username,
+def auth(tenant_id=None, username=None,
          password=None, client_id=default_client,
-         client_secret=default_secret, resource=default_resource,
+         client_secret=None, resource=DEFAULT_RESOURCE_ENDPOINT,
          require_2fa=False, authority=None, **kwargs):
     """ User/password authentication
 
@@ -112,12 +110,20 @@ def auth(tenant_id=default_tenant, username=default_username,
 
     context = adal.AuthenticationContext(authority +
                                          tenant_id)
+    if not tenant_id:
+        tenant_id = os.environ.get('azure_tenant_id', "common")
 
     if tenant_id is None or client_id is None:
         raise ValueError("tenant_id and client_id must be supplied for authentication")
     
+    if not username:
+        username = os.environ.get('azure_username', None)
+
     if not password:
         password = os.environ.get('azure_password', None)
+
+    if not client_secret:
+        client_secret = os.environ.get('azure_client_secret', None)
 
     # You can explicitly authenticate with 2fa, or pass in nothing to the auth call and 
     # and the user will be prompted to login interactively through a browser.
@@ -176,9 +182,9 @@ class DatalakeRESTInterface:
     }
 
     def __init__(self, store_name=default_store, token=None,
-                 url_suffix=default_suffix, **kwargs):
+                 url_suffix=default_adls_suffix, **kwargs):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
-        url_suffix = url_suffix or default_suffix
+        url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
         if token is None:
             token = auth(**kwargs)
