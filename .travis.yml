@@ -21,7 +21,7 @@ install:
   - pip install coveralls
 
 script:
-  - py.test -x -vvv --doctest-modules --pyargs azure.datalake.store tests
+  - coverage run py.test -x -vvv --doctest-modules --pyargs azure.datalake.store tests
 
 after_success:
   - coveralls
