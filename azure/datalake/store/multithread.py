@@ -321,6 +321,12 @@ class ADLUploader(object):
                  delimiter=None, overwrite=False, verbose=True):
         if not overwrite and adlfs.exists(rpath):
             raise FileExistsError(rpath)
+        
+        # forcibly remove the target file before execution
+        # if the user indicates they want to overwrite the destination.
+        if overwrite and adlfs.exists(rpath):
+            adlfs.remove(rpath);
+
         if client:
             self.client = client
         else:
@@ -478,10 +484,18 @@ def put_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, delimiter=No
     return nbytes, None
 
 
-def merge_chunks(adlfs, outfile, files, shutdown_event=None):
+def merge_chunks(adlfs, outfile, files, shutdown_event=None, overwrite=False):
     try:
         # note that it is assumed that only temp files from this run are in the segment folder created.
         # so this call is optimized to instantly delete the temp folder on concat.
+        # if somehow the target file was created between the beginning of upload
+        # and concat, we will remove it if the user specified overwrite.
+        if (adlfs.exists(outfile)):
+            if (overwrite):
+                adlfs.remove(outfile)
+            else:
+                raise FileExistsError(rpath)
+
         adlfs.concat(outfile, files, delete_source=True)
     except Exception as e:
         exception = repr(e)

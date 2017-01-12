@@ -108,10 +108,11 @@ def auth(tenant_id=None, username=None,
     if not authority:
         authority = 'https://login.microsoftonline.com/'
 
-    context = adal.AuthenticationContext(authority +
-                                         tenant_id)
     if not tenant_id:
         tenant_id = os.environ.get('azure_tenant_id', "common")
+
+    context = adal.AuthenticationContext(authority +
+                                         tenant_id)
 
     if tenant_id is None or client_id is None:
         raise ValueError("tenant_id and client_id must be supplied for authentication")

@@ -13,7 +13,7 @@ import os
 
 import pytest
 
-from azure.datalake.store.cli import AzureDataLakeFSCommand
+from samples.cli import AzureDataLakeFSCommand
 from tests.testing import azure, my_vcr, working_dir
 
 
