@@ -494,7 +494,7 @@ def merge_chunks(adlfs, outfile, files, shutdown_event=None, overwrite=False):
             if (overwrite):
                 adlfs.remove(outfile)
             else:
-                raise FileExistsError(rpath)
+                raise FileExistsError(outfile)
 
         adlfs.concat(outfile, files, delete_source=True)
     except Exception as e:
