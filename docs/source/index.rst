@@ -3,7 +3,7 @@ azure-datalake-store
 
 A pure-python interface to the Azure Data-lake Storage system, providing
 pythonic file-system and file objects, seamless transition between Windows and
-POSIX remote paths, high-performance up- and down-loader and CLI commands.
+POSIX remote paths, high-performance up- and down-loader.
 
 This software is under active development and not yet recommended for general
 use.
@@ -29,8 +29,8 @@ Auth
 Although users can generate and supply their own tokens to the base file-system
 class, and there is a password-based function in the ``lib`` module for
 generating tokens, the most convenient way to supply credentials is via
-environment parameters. This latter method is the one used by default in both
-library and CLI usage. The following variables are required:
+environment parameters. This latter method is the one used by default in
+library. The following variables are required:
 
 * azure_tenant_id
 * azure_username
@@ -117,32 +117,3 @@ be transferred, files matching a specific glob-pattern or any particular file.
 
     # download the whole directory structure using 5 threads, 16MB chunks
     ADLDownloader(adl, '', 'my_temp_dir', 5, 2**24)
-
-Command Line Usage
-------------------
-
-The package provides the above functionality also from the command line
-(bash, powershell, etc.). Two principle modes are supported: execution of one
-particular file-system operation; and interactive mode in which multiple
-operations can be executed in series.
-
-.. code-block:: bash
-
-    python cli.py ls -l
-
-Execute the program without arguments to access documentation.
-
-
-Contents
-========
-
-.. toctree::
-   api
-   :maxdepth: 2
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

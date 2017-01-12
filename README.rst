@@ -26,7 +26,7 @@ To play with the code, here is a starting point:
 
     from azure.datalake.store import core, lib, multithread
     token = lib.auth(tenant_id, username, password)
-    adl = core.AzureDLFileSystem(store_name, token)
+    adl = core.AzureDLFileSystem(token, store_name=store_name)
 
     # typical operations
     adl.ls('')
@@ -53,18 +53,42 @@ To play with the code, here is a starting point:
     # 16MB chunks
     multithread.ADLDownloader(adl, "", 'my_temp_dir', 5, 2**24)
 
-
+Command Line Sample Usage
+------------------
 To interact with the API at a higher-level, you can use the provided
-command-line interface in "azure/datalake/store/cli.py". You will need to set
+command-line interface in "samples/cli.py". You will need to set
 the appropriate environment variables as described above to connect to the
-Azure Data Lake Store.
+Azure Data Lake Store. Below is a simple sample, with more details beyond.
 
-To start the CLI in interactive mode, run "python azure/datalake/store/cli.py"
+
+.. code-block:: bash
+
+    python samples\cli.py ls -l
+
+Execute the program without arguments to access documentation.
+
+
+Contents
+========
+
+.. toctree::
+   api
+   :maxdepth: 2
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
+
+To start the CLI in interactive mode, run "python samples/cli.py"
 and then type "help" to see all available commands (similiar to Unix utilities):
 
 .. code-block:: bash
 
-    > python azure/datalake/store/cli.py
+    > python samples/cli.py
     azure> help
 
     Documented commands (type help <topic>):
@@ -83,7 +107,7 @@ familiar with the Unix/Linux "ls" command, the columns represent 1) permissions,
 
 .. code-block:: bash
 
-    > python azure/datalake/store/cli.py
+    > python samples/cli.py
     azure> ls -l
     drwxrwx--- 0123abcd 0123abcd         0 Aug 02 12:44 azure1
     -rwxrwx--- 0123abcd 0123abcd   1048576 Jul 25 18:33 abc.csv
@@ -103,7 +127,7 @@ named after the remote file minus the directory path.
 
 .. code-block:: bash
 
-    > python azure/datalake/store/cli.py
+    > python samples/cli.py
     azure> ls -l
     drwxrwx--- 0123abcd 0123abcd         0 Aug 02 12:44 azure1
     -rwxrwx--- 0123abcd 0123abcd   1048576 Jul 25 18:33 abc.csv
@@ -124,7 +148,7 @@ For example, listing the entries in the home directory:
 
 .. code-block:: bash
 
-    > python azure/datalake/store/cli.py ls -l
+    > python samples/cli.py ls -l
     drwxrwx--- 0123abcd 0123abcd         0 Aug 02 12:44 azure1
     -rwxrwx--- 0123abcd 0123abcd   1048576 Jul 25 18:33 abc.csv
     -r-xr-xr-x 0123abcd 0123abcd        36 Jul 22 18:32 xyz.csv
@@ -136,7 +160,7 @@ Also, downloading a remote file:
 
 .. code-block:: bash
 
-    > python azure/datalake/store/cli.py get xyz.csv
+    > python samples/cli.py get xyz.csv
     2016-08-04 18:57:48,603 - ADLFS - DEBUG - Creating empty file xyz.csv
     2016-08-04 18:57:48,604 - ADLFS - DEBUG - Fetch: xyz.csv, 0-36
     2016-08-04 18:57:49,726 - ADLFS - DEBUG - Downloaded to xyz.csv, byte offset 0

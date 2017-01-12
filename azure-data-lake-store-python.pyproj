@@ -21,12 +21,11 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="dev_requirements.txt" />
     <Content Include="docs\requirements.txt" />
     <Content Include="License.txt" />
-    <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="azure\datalake\store\cli.py" />
     <Compile Include="azure\datalake\store\core.py" />
     <Compile Include="azure\datalake\store\exceptions.py" />
     <Compile Include="azure\datalake\store\lib.py" />
@@ -37,8 +36,10 @@
     <Compile Include="azure\datalake\__init__.py" />
     <Compile Include="azure\__init__.py" />
     <Compile Include="docs\source\conf.py" />
+    <Compile Include="samples\benchmarks.py" />
+    <Compile Include="samples\cli.py" />
+    <Compile Include="samples\__init__.py" />
     <Compile Include="setup.py" />
-    <Compile Include="tests\benchmarks.py" />
     <Compile Include="tests\conftest.py" />
     <Compile Include="tests\fake_settings.py" />
     <Compile Include="tests\settings.py" />
@@ -57,6 +58,7 @@
     <Folder Include="azure\datalake\store" />
     <Folder Include="docs" />
     <Folder Include="docs\source" />
+    <Folder Include="samples\" />
     <Folder Include="tests" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
