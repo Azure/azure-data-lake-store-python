@@ -325,7 +325,7 @@ class ADLUploader(object):
         # forcibly remove the target file before execution
         # if the user indicates they want to overwrite the destination.
         if overwrite and adlfs.exists(rpath):
-            adlfs.remove(rpath);
+            adlfs.remove(rpath)
 
         if client:
             self.client = client
@@ -490,8 +490,8 @@ def merge_chunks(adlfs, outfile, files, shutdown_event=None, overwrite=False):
         # so this call is optimized to instantly delete the temp folder on concat.
         # if somehow the target file was created between the beginning of upload
         # and concat, we will remove it if the user specified overwrite.
-        if (adlfs.exists(outfile)):
-            if (overwrite):
+        if adlfs.exists(outfile):
+            if overwrite:
                 adlfs.remove(outfile)
             else:
                 raise FileExistsError(outfile)
