@@ -603,7 +603,11 @@ def test_chmod(azure):
 
         with pytest.raises((OSError, IOError)):
             with azure.open(a, 'ab') as f:
-                f.write(b'data')
+                try:
+                    f.write(b'data')
+                except Exception as e:
+                    print(e)
+                    raise e
 
         azure.chmod(a, '0770')
         azure.rm(a)

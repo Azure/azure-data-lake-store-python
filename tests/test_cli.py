@@ -215,7 +215,7 @@ def test_put(capsys, tmpdir, azure, client):
         lf.write(b'123456')
 
     with setup_dir(azure) as azuredir:
-        client.onecmd(' '.join(['put', '-f', localfile, azuredir]))
+        client.onecmd(' '.join(['put', '-f', localfile, azuredir + '/foo']))
 
         client.onecmd('head ' + azuredir + '/foo')
         assert read_stdout(capsys).endswith('123456')
