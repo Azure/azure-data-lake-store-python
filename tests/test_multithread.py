@@ -273,6 +273,7 @@ def test_upload_glob(tempdir, azure):
 
         rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
                   for f in up.rfiles]
+        
         assert rfiles == [posix('a', 'z.txt'), posix('b', 'z.txt')]
 
 
@@ -281,11 +282,16 @@ def test_upload_overwrite(local_files, azure):
     bigfile, littlefile, a, b, c = local_files
 
     with azure_teardown(azure):
+        # create the folder that we want to make sure the overwrite 
+        # test fails on if it doesn't already exist
+        if not azure.exists(test_dir):
+            azure.mkdir(test_dir)
+
         with pytest.raises(OSError) as e:
             ADLUploader(azure, test_dir, littlefile, nthreads=1)
         assert test_dir.as_posix() in str(e)
 
-
+@my_vcr.use_cassette
 def test_save_up(local_files, azure):
     bigfile, littlefile, a, b, c = local_files
     root = os.path.dirname(bigfile)

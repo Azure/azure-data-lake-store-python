@@ -86,10 +86,15 @@ def azure_teardown(fs):
     try:
         yield
     finally:
-        for path in fs.ls(working_dir()):
-            if fs.exists(path):
-                fs.rm(path, recursive=True)
-
+        # this is a best effort. If there is an error attempting to delete during cleanup,
+        # print it, but it should not cause the test to fail.
+        try:
+            for path in fs.ls(working_dir()):
+                if fs.exists(path):
+                    fs.rm(path, recursive=True)
+        except Exception as e:
+            print('warning: cleanup failed with exception:')
+            print(e)
 
 @contextmanager
 def ignoring(*exceptions):

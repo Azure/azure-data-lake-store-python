@@ -28,7 +28,7 @@ if RECORD_MODE == 'none':
     SUBSCRIPTION_ID = fake_settings.SUBSCRIPTION_ID
     RESOURCE_GROUP_NAME = fake_settings.RESOURCE_GROUP_NAME
 else:
-    STORE_NAME = os.environ['azure_store_name']
+    STORE_NAME = os.environ['azure_data_lake_store_name']
     TENANT_ID = os.environ.get('azure_tenant_id', 'common')
     TOKEN = auth(TENANT_ID,
                  os.environ['azure_username'],

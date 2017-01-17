@@ -1,7 +1,11 @@
-To run the test suite:
+To run the test suite against the published package:
 
     py.test -x -vvv --doctest-modules --pyargs azure-datalake-store tests
 
+To run the test suite against a local build:
+    python setup.py develop
+    py.test -x -vvv --doctest-modules --pyargs azure.datalake.store tests
+    
 This test suite uses [VCR.py](https://github.com/kevin1024/vcrpy) to record the
 responses from Azure. Borrowing from VCR's
 [usage](https://vcrpy.readthedocs.io/en/latest/usage.html#record-modes), this
@@ -22,6 +26,7 @@ environment variables should be defined:
 
 * `azure_username`
 * `azure_password`
-* `azure_store_name`
+* `azure_data_lake_store_name`
+* `azure_subscription_id`
 
 Optionally, you may need to define `azure_tenant_id` or `azure_url_suffix`.
