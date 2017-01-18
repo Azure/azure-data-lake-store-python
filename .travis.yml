@@ -33,9 +33,10 @@ notifications:
 deploy:
   provider: pypi
   user: begoldsm
-  password:
-    secure: IhzHnGCd1ImW8QVzaRX2VxIdT++M44spVTYXaNCLRyo9pkNLysP8HBKjgiAXaGZ58rxS6woYGUc/TTOpDjeBiRVzYoC0HZzxojuPujV+Cl1FWGJKzA9AkljH6YULumyt4nB+Cw0cWJFj2DBBXENTjv8chj4aLZPL0/xp+0XJG+urlNS/sX8kAwUxKcPRE5rnDbUubSWUrERuDdRrhp6YZS65AY2av62kba7qWTyZP289M3a3BV5hUmeEORWzFofhaNBbOBwnlNEYd5uuwRHD2o4KJT/XcyvGfGhxtLkTsOFWEltiyVR9FVV4aUEtHWLRBPS8CWO5ZpQH1YGfDmkMx/TQSeute+PneE0gpzx99J7wb0IUIqS0nKP+NMA2iJhsF5AvKfMuj68Dnha7fHm1Z2UoAMZNu2ULAZs59VaDJ66Cs7LFqun9hK2gP5+hHNT/m8F+N5+E74tDEqn4wl0nbeQSTb2Sw/tyZmEpY2MSH8IDK+5JoCqfEVnlVXooDlfgnQJs9Vj+dG2eSq12iOajq/INtwRyEqc1OyyCC4ZgZtqfuDrKhvXxbB6kyeLoHtcMabK9x2CP7qoZ3JxyR1Dgu6Np6d034NBghEivJJgfbkPK6fMIi+Q05imPgrH/PlbxEhur+HDqQ+z/ZYDvLQ3MbERfQpE82S1BOukgzMAG9XI=
+  skip_upload_docs: true
+  # password: use $PYPI_PASSWORD
   on:
     tags: true
     distributions: sdist bdist_wheel
+    python: '3.6'
     repo: Azure/azure-data-lake-store-python
