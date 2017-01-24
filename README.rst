@@ -3,6 +3,8 @@ azure-datalake-store
 
 .. image:: https://travis-ci.org/Azure/azure-data-lake-store-python.svg?branch=dev
     :target: https://travis-ci.org/Azure/azure-data-lake-store-python
+.. image:: https://coveralls.io/repos/github/Azure/azure-data-lake-store-python/badge.svg?branch=master
+    :target: https://coveralls.io/github/Azure/azure-data-lake-store-python?branch=master
 
 azure-datalake-store is a file-system management system in python for the
 Azure Data-Lake Store.
