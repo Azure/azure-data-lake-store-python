@@ -11,7 +11,7 @@ from hashlib import md5
 import os
 import platform
 import sys
-
+import logging
 
 PY2 = sys.version_info.major == 2
 
@@ -27,6 +27,7 @@ try:
 except:
     pass
 
+logger = logging.getLogger(__name__)
 
 def ensure_writable(b):
     if PY2 and isinstance(b, array.array):
@@ -48,19 +49,21 @@ def read_block(f, offset, length, delimiter=None):
 
     Parameters
     ----------
-    fn: string
-        Path to filename on S3
+    fn: file object
+        a file object that supports seek, tell and read.
     offset: int
         Byte offset to start read
     length: int
-        Number of bytes to read
+        Maximum number of bytes to read
     delimiter: bytes (optional)
-        Ensure reading starts and stops at delimiter bytestring
+        Ensure reading stops at delimiter bytestring
 
     If using the ``delimiter=`` keyword argument we ensure that the read
-    starts and stops at delimiter boundaries that follow the locations
-    ``offset`` and ``offset + length``.  If ``offset`` is zero then we
-    start at zero.  The bytestring returned WILL include the
+    stops at or before the delimiter boundaries that follow the location
+    ``offset + length``. For ADL, if no delimiter is found and the data
+    requested is > 4MB an exception is raised, since a single record cannot
+    exceed 4MB and be guaranteed to land contiguously in ADL.
+    The bytestring returned WILL include the
     terminating delimiter string.
 
     Examples
@@ -72,62 +75,40 @@ def read_block(f, offset, length, delimiter=None):
     b'Alice, 100\\nBo'
 
     >>> read_block(f, 0, 13, delimiter=b'\\n')  # doctest: +SKIP
-    b'Alice, 100\\nBob, 200\\n'
+    b'Alice, 100\\n'
 
     >>> read_block(f, 10, 10, delimiter=b'\\n')  # doctest: +SKIP
-    b'Bob, 200\\nCharlie, 300'
+    b'\\nCharlie, 300'
+    >>> f  = BytesIO(bytearray(2**22))  # doctest: +SKIP
+    >>> read_block(f,0,2**22, delimiter=b'\\n')  # doctest: +SKIP
+    IndexError: No delimiter found within max record size of 4MB. 
+    Transfer without specifying a delimiter (as binary) instead.
     """
-    if delimiter:
-        f.seek(offset)
-        seek_delimiter(f, delimiter, 2**16)
-        start = f.tell()
-        length -= start - offset
-
-        f.seek(start + length)
-        seek_delimiter(f, delimiter, 2**16)
-        end = f.tell()
-        eof = not f.read(1)
-
-        offset = start
-        length = end - start
-
     f.seek(offset)
     bytes = f.read(length)
-    return bytes
-
-
-def seek_delimiter(file, delimiter, blocksize):
-    """ Seek current file to next byte after a delimiter bytestring
-
-    This seeks the file to the next byte following the delimiter.  It does
-    not return anything.  Use ``file.tell()`` to see location afterwards.
-
-    Parameters
-    ----------
-    file: a file
-    delimiter: bytes
-        a delimiter like ``b'\n'`` or message sentinel
-    blocksize: int
-        Number of bytes to read from the file at once.
-    """
-
-    if file.tell() == 0:
-        return
-
-    last = b''
-    while True:
-        current = file.read(blocksize)
-        if not current:
-            return
-        full = last + current
+    if delimiter:
+        # max record size is 4MB
+        max_record = 2**22
+        if length > max_record:
+            raise IndexError('Records larger than ' + str(max_record) + ' bytes are not supported. The length requested was: ' + str(length) + 'bytes')
+        # get the last index of the delimiter if it exists
         try:
-            i = full.index(delimiter)
-            file.seek(file.tell() - (len(full) - i) + len(delimiter))
-            return
+            last_delim_index = len(bytes) -1 - bytes[::-1].index(delimiter)
+            # this ensures the length includes all of the last delimiter (in the event that it is more than one character)
+            length = last_delim_index + len(delimiter)
+            return bytes[0:length]
         except ValueError:
-            pass
-        last = full[-len(delimiter):]
-
+            # TODO: Before delimters can be supported through the ADLUploader logic, the number of chunks being uploaded 
+            # needs to be visible to this method, since it needs to throw if:
+            # 1. We cannot find a delimiter in <= 4MB of data
+            # 2. If the remaining size is less than 4MB but there are multiple chunks that need to be stitched together,
+            #   since the delimiter could be split across chunks.
+            # 3. If delimiters are specified, there must be logic during segment determination that ensures all chunks
+            #   terminate at the end of a record (on a new line), even if that makes the chunk < 256MB.
+            if length >= max_record:
+                raise IndexError('No delimiter found within max record size of ' + str(max_record) + ' bytes. Transfer without specifying a delimiter (as binary) instead.')
+    
+    return bytes
 
 def tokenize(*args, **kwargs):
     """ Deterministic token
