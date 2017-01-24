@@ -72,26 +72,49 @@ def create_remote_csv(fs, name, columns, colwidth, lines):
 
 
 @my_vcr.use_cassette
-def test_download_single_file(tempdir, azure):
+def test_download_single_empty_file(tempdir, azure):
     with azure_teardown(azure):
         name = posix(test_dir, 'remote.csv')
-        lines = 100
+        lines = 0 # the file should have no bytes in it
         size, checksum = create_remote_csv(azure, name, 10, 5, lines)
         fname = os.path.join(tempdir, 'local.csv')
 
         # single chunk
-        down = ADLDownloader(azure, name, fname, 1, size + 10, overwrite=True)
-        assert md5sum(fname) == checksum
-        assert os.stat(fname).st_size == size
-        assert linecount(fname) == lines
-        os.remove(fname)
+        try:
+            down = ADLDownloader(azure, name, fname, 1, size + 10, overwrite=True)
+            assert md5sum(fname) == checksum
+            assert os.stat(fname).st_size == size
+            assert linecount(fname) == lines
+        finally:
+            if os.path.isfile(fname):
+                os.remove(fname)
 
-        # multiple chunks, one thread
-        down = ADLDownloader(azure, name, fname, 1, size // 5, overwrite=True)
-        assert md5sum(fname) == checksum
-        assert os.stat(fname).st_size == size
-        assert linecount(fname) == lines
-        os.remove(fname)
+@my_vcr.use_cassette
+def test_download_single_file(tempdir, azure):
+    with azure_teardown(azure):
+        name = posix(test_dir, 'remote.csv')
+        lines = 100
+        fname = os.path.join(tempdir, 'local.csv')
+        size, checksum = create_remote_csv(azure, name, 10, 5, lines)
+        try:
+            # single chunk
+            down = ADLDownloader(azure, name, fname, 1, size + 10, overwrite=True)
+            assert md5sum(fname) == checksum
+            assert os.stat(fname).st_size == size
+            assert linecount(fname) == lines
+        finally:
+            if os.path.isfile(fname):
+                os.remove(fname)
+
+        try:
+            # multiple chunks, one thread
+            down = ADLDownloader(azure, name, fname, 1, size // 5, overwrite=True)
+            assert md5sum(fname) == checksum
+            assert os.stat(fname).st_size == size
+            assert linecount(fname) == lines
+        finally:
+            if os.path.isfile(fname):
+                os.remove(fname)
 
 
 @my_vcr.use_cassette
@@ -101,12 +124,14 @@ def test_download_single_to_dir(tempdir, azure):
         lines = 100
         size, checksum = create_remote_csv(azure, name, 10, 5, lines)
         fname = os.path.join(tempdir, 'remote.csv')
-
-        down = ADLDownloader(azure, name, tempdir, 1, 2**24, overwrite=True)
-        assert md5sum(fname) == checksum
-        assert os.stat(fname).st_size == size
-        assert linecount(fname) == lines
-        os.remove(fname)
+        try:
+            down = ADLDownloader(azure, name, tempdir, 1, 2**24, overwrite=True)
+            assert md5sum(fname) == checksum
+            assert os.stat(fname).st_size == size
+            assert linecount(fname) == lines
+        finally:
+            if os.path.isfile(fname):
+                os.remove(fname)
 
 
 @my_vcr.use_cassette
@@ -178,12 +203,14 @@ def test_save_down(tempdir, azure):
 
 @pytest.yield_fixture()
 def local_files(tempdir):
-    filenames = [os.path.join(tempdir, f) for f in ['bigfile', 'littlefile']]
+    filenames = [os.path.join(tempdir, f) for f in ['bigfile', 'littlefile', 'emptyfile']]
     with open(filenames[0], 'wb') as f:
         for char in b"0 1 2 3 4 5 6 7 8 9".split():
             f.write(char * 1000)
     with open(filenames[1], 'wb') as f:
         f.write(b'0123456789')
+    with open(filenames[2], 'wb') as f: # just open an empty file and close it
+        f.close()
     nestpath = os.path.join(tempdir, 'nested1', 'nested2')
     os.makedirs(nestpath)
     for filename in ['a', 'b', 'c']:
@@ -196,7 +223,7 @@ def local_files(tempdir):
 @my_vcr.use_cassette
 def test_upload_one(local_files, azure):
     with azure_teardown(azure):
-        bigfile, littlefile, a, b, c = local_files
+        bigfile, littlefile, emptyfile, a, b, c = local_files
 
         # transfer client w/ deterministic temporary directory
         from azure.datalake.store.multithread import put_chunk
@@ -221,16 +248,32 @@ def test_upload_one(local_files, azure):
 
 
 @my_vcr.use_cassette
+def test_upload_one_empty_file(local_files, azure):
+    with azure_teardown(azure):
+        bigfile, littlefile, emptyfile, a, b, c = local_files
+
+        # transfer client w/ deterministic temporary directory
+        from azure.datalake.store.multithread import put_chunk
+        client = ADLTransferClient(azure, transfer=put_chunk,
+                                   unique_temporary=False)
+
+        # single chunk, empty file
+        up = ADLUploader(azure, test_dir / 'emptyfile', emptyfile, nthreads=1,
+                         overwrite=True)
+        assert azure.info(test_dir / 'emptyfile')['length'] == 0
+        azure.rm(test_dir / 'emptyfile')
+
+@my_vcr.use_cassette
 def test_upload_many(local_files, azure):
     with azure_teardown(azure):
-        bigfile, littlefile, a, b, c = local_files
+        bigfile, littlefile, emptyfile, a, b, c = local_files
         root = os.path.dirname(bigfile)
 
         # single thread
         up = ADLUploader(azure, test_dir, root, nthreads=1, overwrite=True)
         assert azure.info(test_dir / 'littlefile')['length'] == 10
         assert azure.cat(test_dir / 'nested1/nested2/a') == b'0123456789'
-        assert len(azure.du(test_dir, deep=True)) == 5
+        assert len(azure.du(test_dir, deep=True)) == 6
         assert azure.du(test_dir, deep=True, total=True) == 10000 + 40
 
 
@@ -279,7 +322,7 @@ def test_upload_glob(tempdir, azure):
 
 @my_vcr.use_cassette
 def test_upload_overwrite(local_files, azure):
-    bigfile, littlefile, a, b, c = local_files
+    bigfile, littlefile, emptyfile, a, b, c = local_files
 
     with azure_teardown(azure):
         # create the folder that we want to make sure the overwrite 
@@ -293,7 +336,7 @@ def test_upload_overwrite(local_files, azure):
 
 @my_vcr.use_cassette
 def test_save_up(local_files, azure):
-    bigfile, littlefile, a, b, c = local_files
+    bigfile, littlefile, emptyfile, a, b, c = local_files
     root = os.path.dirname(bigfile)
 
     up = ADLUploader(azure, '', root, 1, 1000000, run=False, overwrite=True)

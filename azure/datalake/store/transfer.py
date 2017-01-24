@@ -269,6 +269,14 @@ class ADLTransferClient(object):
             tmpdir = None
 
         offsets = list(range(0, length, self._chunksize))
+
+        # in the case of empty files, ensure that the initial offset of 0 is properly added.
+        if not offsets:
+            if not length:
+                offsets.append(0)
+            else:
+                raise DatalakeIncompleteTransferException('Could not compute offsets for source: {}, with destination: {} and expected length: {}.'.format(src, dst, length))
+
         for offset in offsets:
             if tmpdir and len(offsets) > 1:
                 name = tmpdir / "{}_{}".format(dst.name, offset)
