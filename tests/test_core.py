@@ -10,7 +10,7 @@ import io
 import sys
 
 import pytest
-
+from azure.datalake.store import utils
 from tests.testing import azure, azure_teardown, my_vcr, posix, tmpfile, working_dir
 
 test_dir = working_dir()
@@ -308,33 +308,40 @@ def test_tail_head(azure):
         assert azure.head(a, 3) == b'012'
         assert azure.tail(a, 100) == b'0123456789'
 
-
 @my_vcr.use_cassette
 def test_read_delimited_block(azure):
     fn = '/tmp/test/a'
     delimiter = b'\n'
-    data = delimiter.join([b'123', b'456', b'789'])
-
+    data = delimiter.join([b'123', b'456', b'789'])    
     with azure_teardown(azure):
         with azure.open(fn, 'wb') as f:
             f.write(data)
 
+        #TODO: add E2E validation with the transfer client once delimiters are hooked up
         assert azure.read_block(fn, 1, 2) == b'23'
-        assert azure.read_block(fn, 0, 1, delimiter=b'\n') == b'123\n'
-        assert azure.read_block(fn, 0, 2, delimiter=b'\n') == b'123\n'
-        assert azure.read_block(fn, 0, 3, delimiter=b'\n') == b'123\n'
-        assert azure.read_block(fn, 0, 5, delimiter=b'\n') == b'123\n456\n'
-        assert azure.read_block(fn, 0, 8, delimiter=b'\n') == b'123\n456\n789'
-        assert azure.read_block(fn, 0, 100, delimiter=b'\n') == b'123\n456\n789'
-        assert azure.read_block(fn, 1, 1, delimiter=b'\n') == b''
-        assert azure.read_block(fn, 1, 5, delimiter=b'\n') == b'456\n'
-        assert azure.read_block(fn, 1, 8, delimiter=b'\n') == b'456\n789'
+        assert azure.read_block(fn, 0, 1, delimiter=b'\n') == b'1'
+        assert azure.read_block(fn, 0, 2, delimiter=b'\n') == b'12'
+        assert azure.read_block(fn, 0, 3, delimiter=b'\n') == b'123'
+        assert azure.read_block(fn, 0, 4, delimiter=b'\n') == b'123\n'
+        assert azure.read_block(fn, 0, 5, delimiter=b'\n') == b'123\n'
+        assert azure.read_block(fn, 0, 8, delimiter=b'\n') == b'123\n456\n'
+        assert azure.read_block(fn, 0, 100, delimiter=b'\n') == b'123\n456\n'
+        assert azure.read_block(fn, 1, 1, delimiter=b'\n') == b'2'
+        assert azure.read_block(fn, 1, 5, delimiter=b'\n') == b'23\n'
+        assert azure.read_block(fn, 1, 8, delimiter=b'\n') == b'23\n456\n'
 
-        for ols in [[(0, 3), (3, 3), (6, 3), (9, 2)],
-                    [(0, 4), (4, 4), (8, 4)]]:
-            out = [azure.read_block(fn, o, l, b'\n') for o, l in ols]
-            assert b''.join(filter(None, out)) == data
-
+        azure.rm(fn)
+        # test the negative cases of just the util read block
+        with io.BytesIO(bytearray([1] * 2**22)) as data:
+            with pytest.raises(IndexError):
+                utils.read_block(data, 0, 2**22, delimiter=b'\n')
+        
+            # ensure it throws if the new line is past 4MB
+            data.seek(2**22)
+            data.write(b'\n')
+            data.seek(0)
+            with pytest.raises(IndexError):
+                utils.read_block(data, 0, 1 + 2**22, delimiter=b'\n')
 
 @my_vcr.use_cassette
 def test_readline(azure):
