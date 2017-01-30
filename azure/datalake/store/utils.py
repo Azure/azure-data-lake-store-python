@@ -11,7 +11,6 @@ from hashlib import md5
 import os
 import platform
 import sys
-import logging
 
 PY2 = sys.version_info.major == 2
 
@@ -26,8 +25,6 @@ try:
     os.makedirs(datadir)
 except:
     pass
-
-logger = logging.getLogger(__name__)
 
 def ensure_writable(b):
     if PY2 and isinstance(b, array.array):
