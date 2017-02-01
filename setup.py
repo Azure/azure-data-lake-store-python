@@ -20,10 +20,10 @@ if not version:
 
 setup(name='azure-datalake-store',
       version=version,
-      description='Convenient Filesystem interface to Azure Data Lake Store',
+      description='Azure Data Lake Store Filesystem Client Library for Python',
       url='https://github.com/Azure/azure-data-lake-store-python',
       author='Microsoft Corporation',
-      author_email='',
+      author_email='ptvshelp@microsoft.com',
       license='MIT License',
       keywords='azure',
       classifiers=[

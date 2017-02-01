@@ -67,22 +67,6 @@ Azure Data Lake Store. Below is a simple sample, with more details beyond.
 
 Execute the program without arguments to access documentation.
 
-
-Contents
-========
-
-.. toctree::
-   api
-   :maxdepth: 2
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-
 To start the CLI in interactive mode, run "python samples/cli.py"
 and then type "help" to see all available commands (similiar to Unix utilities):
 
