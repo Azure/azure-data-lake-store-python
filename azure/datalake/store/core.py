@@ -733,8 +733,8 @@ class AzureDLFile(object):
 
 def _fetch_range(rest, path, start, end, stream=False):
     logger.debug('Fetch: %s, %s-%s', path, start, end)
-    if end <= start:
-        return b''
+    # if the caller gives a bad start/end combination, OPEN will throw and
+    # this call will bubble it up
     return rest.call(
         'OPEN', path, offset=start, length=end-start, read='true', stream=stream)
 

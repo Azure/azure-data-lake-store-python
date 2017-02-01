@@ -7,6 +7,8 @@ import re
 
 with open('README.rst', encoding='utf-8') as f:
     readme = f.read()
+with open('HISTORY.rst', encoding='utf-8') as f:
+    history = f.read()
 
 # Version extraction inspired from 'requests'
 with open('azure/datalake/store/__init__.py', 'r') as fd:
@@ -18,7 +20,7 @@ if not version:
 
 setup(name='azure-datalake-store',
       version=version,
-      description='Convenient Filesystem interface to Azure Data-lake Store',
+      description='Convenient Filesystem interface to Azure Data Lake Store',
       url='https://github.com/Azure/azure-data-lake-store-python',
       author='Microsoft Corporation',
       author_email='',
@@ -46,6 +48,6 @@ setup(name='azure-datalake-store',
           ":python_version<'3.4'": ['pathlib2'],
           ":python_version<='2.7'": ['futures'],
       },
-      long_description=readme,
+      long_description=readme + '\n\n' + history,
       zip_safe=False
 )

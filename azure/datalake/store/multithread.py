@@ -299,13 +299,10 @@ class ADLUploader(object):
         block for each API call. This block cannot be bigger than a chunk.
     client: ADLTransferClient [None]
         Set an instance of ADLTransferClient when finer-grained control over
-        transfer parameters is needed. Ignores `nthreads`, `chunksize`, and
-        `delimiter` set by constructor.
+        transfer parameters is needed. Ignores `nthreads` and `chunksize`
+        set by constructor.
     run: bool [True]
         Whether to begin executing immediately.
-    delimiter: byte(s) or None
-        If set, will write blocks using delimiters in the backend, as well as
-        split files for uploading on that delimiter.
     overwrite: bool [False]
         Whether to forcibly overwrite existing files/directories. If False and
         remote path is a directory, will quit regardless if any files would be
@@ -318,7 +315,7 @@ class ADLUploader(object):
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
-                 delimiter=None, overwrite=False, verbose=True):
+                 overwrite=False, verbose=True):
         if not overwrite and adlfs.exists(rpath):
             raise FileExistsError(rpath)
         
@@ -338,7 +335,7 @@ class ADLUploader(object):
                 chunksize=chunksize,
                 buffersize=buffersize,
                 blocksize=blocksize,
-                delimiter=delimiter,
+                delimiter=None, # TODO: see utils.cs for what is required to support delimiters.
                 parent=self,
                 verbose=verbose,
                 unique_temporary=True)
@@ -468,14 +465,15 @@ def put_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, delimiter=No
         with adlfs.open(dst, 'wb', blocksize=buffersize, delimiter=delimiter) as fout:
             end = offset + size
             miniblock = min(size, blocksize)
-            with open(src, 'rb') as fin:
-                for o in range(offset, end, miniblock):
-                    if shutdown_event and shutdown_event.is_set():
-                        return nbytes, None
-                    data = read_block(fin, o, miniblock, delimiter)
-                    nwritten = fout.write(data)
-                    if nwritten:
-                        nbytes += nwritten
+            # For empty files there is no need to take the IO hit.
+            if size != 0:
+                with open(src, 'rb') as fin:
+                    for o in range(offset, end, miniblock):
+                        if shutdown_event and shutdown_event.is_set():
+                            return nbytes, None
+                        data = read_block(fin, o, miniblock, delimiter)
+                        nbytes += fout.write(data)
+                
     except Exception as e:
         exception = repr(e)
         logger.error('Upload failed %s; %s', src, exception)
