@@ -54,7 +54,7 @@ To play with the code, here is a starting point:
     multithread.ADLDownloader(adl, "", 'my_temp_dir', 5, 2**24)
 
 Command Line Sample Usage
-------------------
+-------------------------
 To interact with the API at a higher-level, you can use the provided
 command-line interface in "samples/cli.py". You will need to set
 the appropriate environment variables as described above to connect to the
@@ -66,22 +66,6 @@ Azure Data Lake Store. Below is a simple sample, with more details beyond.
     python samples\cli.py ls -l
 
 Execute the program without arguments to access documentation.
-
-
-Contents
-========
-
-.. toctree::
-   api
-   :maxdepth: 2
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
 
 To start the CLI in interactive mode, run "python samples/cli.py"
 and then type "help" to see all available commands (similiar to Unix utilities):
