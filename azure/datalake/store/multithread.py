@@ -322,7 +322,7 @@ class ADLUploader(object):
         # forcibly remove the target file before execution
         # if the user indicates they want to overwrite the destination.
         if overwrite and adlfs.exists(rpath):
-            adlfs.remove(rpath)
+            adlfs.remove(rpath, True)
 
         if client:
             self.client = client
@@ -490,7 +490,7 @@ def merge_chunks(adlfs, outfile, files, shutdown_event=None, overwrite=False):
         # and concat, we will remove it if the user specified overwrite.
         if adlfs.exists(outfile):
             if overwrite:
-                adlfs.remove(outfile)
+                adlfs.remove(outfile, True)
             else:
                 raise FileExistsError(outfile)
 
