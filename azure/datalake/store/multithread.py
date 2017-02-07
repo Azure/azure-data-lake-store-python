@@ -100,7 +100,7 @@ class ADLDownloader(object):
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
-                 overwrite=False, verbose=True):
+                 overwrite=False, verbose=False):
         if not overwrite and os.path.exists(lpath):
             raise FileExistsError(lpath)
         if client:
@@ -315,14 +315,14 @@ class ADLUploader(object):
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
-                 overwrite=False, verbose=True):
+                 overwrite=False, verbose=False):
         if not overwrite and adlfs.exists(rpath):
             raise FileExistsError(rpath)
         
         # forcibly remove the target file before execution
         # if the user indicates they want to overwrite the destination.
         if overwrite and adlfs.exists(rpath):
-            adlfs.remove(rpath)
+            adlfs.remove(rpath, True)
 
         if client:
             self.client = client
@@ -490,7 +490,7 @@ def merge_chunks(adlfs, outfile, files, shutdown_event=None, overwrite=False):
         # and concat, we will remove it if the user specified overwrite.
         if adlfs.exists(outfile):
             if overwrite:
-                adlfs.remove(outfile)
+                adlfs.remove(outfile, True)
             else:
                 raise FileExistsError(outfile)
 
