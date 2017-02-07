@@ -2,10 +2,17 @@
 
 Release History
 ===============
+0.0.4 (2017-02-07)
+------------------
+* Fix for folder upload to properly delete folders with contents when overwrite specified.
+* Fix to set verbose output to False/Off by default. This removes progress tracking output by default but drastically improves performance.
+
+0.0.3 (2017-02-02)
+------------------
+* Fix to setup.py to include the HISTORY.rst file. No other changes
 
 0.0.2 (2017-01-30)
 ------------------
-
 * Addresses an issue with lib.auth() not properly defaulting to 2FA
 * Fixes an issue with Overwrite for ADLUploader sometimes not being honored.
 * Fixes an issue with empty files not properly being uploaded and resulting in a hang in progress tracking.
