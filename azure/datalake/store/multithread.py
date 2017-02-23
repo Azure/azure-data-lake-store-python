@@ -103,6 +103,13 @@ class ADLDownloader(object):
                  overwrite=False, verbose=False):
         if not overwrite and os.path.exists(lpath):
             raise FileExistsError(lpath)
+        
+        # validate that the src exists and the current user has access to it
+        # this only validates access to the top level folder. If there are files
+        # or folders underneath it that the user does not have access to the download
+        # will fail on those files. We clean the path in case there are wildcards.
+        if not adlfs.exists(AzureDLPath(rpath).globless_prefix):
+            raise FileNotFoundError('Data Lake item at path: {} either does not exist or the current user does not have permission to access it.'.format(rpath))
         if client:
             self.client = client
         else:

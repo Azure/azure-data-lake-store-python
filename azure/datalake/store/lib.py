@@ -25,6 +25,7 @@ import adal
 import requests
 import requests.exceptions
 
+from msrest.authentication import (Authentication)
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
 from . import __version__
@@ -69,7 +70,8 @@ def refresh_token(token, authority=None):
     out.update({'access': out['accessToken'], 'refresh': out['refreshToken'],
                 'time': time.time(), 'tenant': token['tenant'],
                 'resource': token['resource'], 'client': token['client']})
-    return out
+    
+    return DataLakeCredential(out)
 
 
 def auth(tenant_id=None, username=None,
@@ -103,7 +105,7 @@ def auth(tenant_id=None, username=None,
 
     Returns
     -------
-    auth dict
+    :type AADTokenCredentials :mod: `A msrestazure Credentials object<msrestazure.azure_active_directory>`
     """
     if not authority:
         authority = 'https://login.microsoftonline.com/'
@@ -141,11 +143,26 @@ def auth(tenant_id=None, username=None,
                                                             client_secret)
     else:
         raise ValueError("No authentication method found for credentials")
+
     out.update({'access': out['accessToken'], 'resource': resource,
                 'refresh': out.get('refreshToken', False),
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
-    return out
 
+    return DataLakeCredential(out)
+
+class DataLakeCredential(Authentication):
+    def __init__(self, token):
+        self.token = token
+
+    def signed_session(self):
+        session = super(DataLakeCredential, self).signed_session()
+        if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
+            self.token = refresh_token(self.token)
+
+        scheme, token = self.token['tokenType'], self.token['access']
+        header = "{} {}".format(scheme, token)
+        session.headers['Authorization'] = header
+        return session
 
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
@@ -153,11 +170,16 @@ class DatalakeRESTInterface:
     Parameters
     ----------
     store_name: str
+        The name of the Data Lake Store account to execute operations against.
     token: dict
         from `auth()` or `refresh_token()` or other ADAL source
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
+    api_version: str (2016-11-01)
+        The API version to target with requests. Changing this value will
+        change the behavior of the requests, and can cause unexpected behavior or
+        breaking changes. Changes to this value should be undergone with caution.
     kwargs: optional arguments to auth
         See ``auth()``. Includes, e.g., username, password, tenant; will pull
         values from environment variables if not provided.
@@ -177,21 +199,36 @@ class DatalakeRESTInterface:
         'MKDIRS': ('put', set(), set()),
         'OPEN': ('get', set(), {'offset', 'length', 'read'}),
         'RENAME': ('put', {'destination'}, {'destination'}),
-        'TRUNCATE': ('post', {'newlength'}, {'newlength'}),
         'SETOWNER': ('put', set(), {'owner', 'group'}),
-        'SETPERMISSION': ('put', set(), {'permission'})
+        'SETPERMISSION': ('put', set(), {'permission'}),
+        'SETEXPIRY': ('put', {'expiryOption'}, {'expiryOption', 'expireTime'}),
+        'SETACL': ('put', {'aclSpec'}, {'aclSpec'}),
+        'MODIFYACLENTRIES': ('put', {'aclSpec'}, {'aclSpec'}),
+        'REMOVEACLENTRIES': ('put', {'aclSpec'}, {'aclSpec'}),
+        'REMOVEACL': ('put', set(), set()),
+        'MSGETACLSTATUS': ('get', set(), set()),
+        'REMOVEDEFAULTACL': ('put', set(), set())
     }
 
     def __init__(self, store_name=default_store, token=None,
-                 url_suffix=default_adls_suffix, **kwargs):
+                 url_suffix=default_adls_suffix, api_version='2016-11-01', **kwargs):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
         url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
         if token is None:
             token = auth(**kwargs)
         self.token = token
-        self.head = {'Authorization': 'Bearer ' + token['access']}
-        self.url = 'https://%s.%s/webhdfs/v1/' % (store_name, url_suffix)
+
+        # There is a case where the user can opt to exclude an API version, in which case
+        # the service itself decides on the API version to use (it's default).
+        if api_version:
+            self.api_version = api_version
+        else:
+            self.api_version = None
+        self.head = {'Authorization': token.signed_session().headers['Authorization']}
+        self.url = 'https://%s.%s/' % (store_name, url_suffix)
+        self.webhdfs = 'webhdfs/v1/'
+        self.extended_operations = 'webhdfsext/'
         self.user_agent = "python/{} ({}) {}/{} Azure-Data-Lake-Store-SDK-For-Python".format(
             platform.python_version(),
             platform.platform(),
@@ -214,9 +251,9 @@ class DatalakeRESTInterface:
         return s
 
     def _check_token(self):
-        if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
-            self.token = refresh_token(self.token)
-            self.head = {'Authorization': 'Bearer ' + self.token['access']}
+        cur_session = self.token.signed_session()
+        if not self.head or not 'Authorization' in self.head or self.head['Authorization'] != cur_session.headers['Authorization']:
+            self.head = {'Authorization': cur_session.headers['Authorization']}
             self.local.session = None
 
     def _log_request(self, method, url, op, path, params, headers):
@@ -263,7 +300,7 @@ class DatalakeRESTInterface:
             return False
         return response.headers['content-type'].startswith('application/json')
 
-    def call(self, op, path='', **kwargs):
+    def call(self, op, path='', is_extended=False, **kwargs):
         """ Execute a REST call
 
         Parameters
@@ -272,6 +309,10 @@ class DatalakeRESTInterface:
             webHDFS operation to perform, one of `DatalakeRESTInterface.ends`
         path: str
             filepath on the remote system
+        is_extended: bool (False)
+            Indicates if the API call comes from the webhdfs extensions path or the basic webhdfs path.
+            By default, all requests target the official webhdfs path. A small subset of custom convenience
+            methods specific to Azure Data Lake Store target the extension path (such as SETEXPIRY).
         kwargs: dict
             other parameters, as defined by the webHDFS standard and
             https://msdn.microsoft.com/en-us/library/mt710547.aspx
@@ -280,6 +321,7 @@ class DatalakeRESTInterface:
             raise ValueError("No such op: %s", op)
         self._check_token()
         method, required, allowed = self.ends[op]
+        allowed.add('api-version')
         data = kwargs.pop('data', b'')
         stream = kwargs.pop('stream', False)
         keys = set(kwargs)
@@ -290,9 +332,16 @@ class DatalakeRESTInterface:
             raise ValueError("Extra parameters given: %s",
                              keys - allowed)
         params = {'OP': op}
+        if self.api_version:
+            params['api-version'] = self.api_version
+
         params.update(kwargs)
         func = getattr(self.session, method)
-        url = self.url + path
+        if is_extended:
+            url = self.url + self.extended_operations
+        else:
+            url = self.url + self.webhdfs
+        url += path
         try:
             headers = self.head.copy()
             headers['x-ms-client-request-id'] = str(uuid.uuid1())

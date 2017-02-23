@@ -2,6 +2,22 @@
 
 Release History
 ===============
+0.0.5 (2017-03-01)
+------------------
+* Fix for downloader to ensure there is access to the source path before creating destination files
+* Fix for credential objects to inherit from msrest.authentication for more universal authentication support
+* Add support for the following:
+  * set_expiry: allows for setting expiration on files
+  * ACL management:
+	* set_acl: allows for the full replacement of an ACL on a file or folder
+	* set_acl_entries: allows for "patching" an existing ACL on a file or folder
+	* get_acl_status: retrieves the ACL information for a file or folder
+	* remove_acl_entries: removes the specified entries from an ACL on a file or folder
+	* remove_acl: removes all non-default ACL entries from a file or folder
+	* remove_default_acl: removes all default ACL entries from a folder
+* Remove unsupported and unused "TRUNCATE" operation.
+* Added API-Version support with a default of the latest api version (2016-11-01)
+
 0.0.4 (2017-02-07)
 ------------------
 * Fix for folder upload to properly delete folders with contents when overwrite specified.
