@@ -448,7 +448,7 @@ class ADLTransferClient(object):
         if monitor:
             self.monitor()
             has_errors = False
-            error_list = list()
+            error_list = []
             for f in self.progress:
                 for chunk in f.chunks:
                     if chunk.state == 'finished':

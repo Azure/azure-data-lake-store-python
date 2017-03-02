@@ -21,6 +21,7 @@ import os
 import pickle
 import time
 
+from io import open
 from .core import AzureDLPath, _fetch_range
 from .exceptions import FileExistsError
 from .transfer import ADLTransferClient

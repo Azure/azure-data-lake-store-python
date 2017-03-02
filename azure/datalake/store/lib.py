@@ -25,7 +25,7 @@ import adal
 import requests
 import requests.exceptions
 
-from msrest.authentication import (Authentication)
+from msrest.authentication import Authentication
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
 from . import __version__
@@ -221,10 +221,7 @@ class DatalakeRESTInterface:
 
         # There is a case where the user can opt to exclude an API version, in which case
         # the service itself decides on the API version to use (it's default).
-        if api_version:
-            self.api_version = api_version
-        else:
-            self.api_version = None
+        self.api_version = api_version or None
         self.head = {'Authorization': token.signed_session().headers['Authorization']}
         self.url = 'https://%s.%s/' % (store_name, url_suffix)
         self.webhdfs = 'webhdfs/v1/'
@@ -252,7 +249,7 @@ class DatalakeRESTInterface:
 
     def _check_token(self):
         cur_session = self.token.signed_session()
-        if not self.head or not 'Authorization' in self.head or self.head['Authorization'] != cur_session.headers['Authorization']:
+        if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
             self.head = {'Authorization': cur_session.headers['Authorization']}
             self.local.session = None
 
