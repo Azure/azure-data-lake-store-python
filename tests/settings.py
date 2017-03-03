@@ -10,7 +10,7 @@ import base64
 import os
 import time
 
-from azure.datalake.store.lib import auth
+from azure.datalake.store.lib import auth, DataLakeCredential
 from tests import fake_settings
 
 
@@ -19,12 +19,14 @@ RECORD_MODE = os.environ.get('RECORD_MODE', 'none').lower()
 if RECORD_MODE == 'none':
     STORE_NAME = fake_settings.STORE_NAME
     TENANT_ID = fake_settings.TENANT_ID
-    TOKEN = dict(
-        access=str(base64.b64encode(os.urandom(1420))),
-        refresh=str(base64.b64encode(os.urandom(718))),
-        time=time.time(), client='common',
-        resource="https://management.core.windows.net/",
-        tenant=TENANT_ID, expiresIn=3600)
+    TOKEN = DataLakeCredential(
+        dict(
+            access=str(base64.b64encode(os.urandom(1420))),
+            refresh=str(base64.b64encode(os.urandom(718))),
+            time=time.time(), client='common',
+            resource="https://management.core.windows.net/",
+            tenant=TENANT_ID, expiresIn=3600,
+            tokenType='Bearer'))
     SUBSCRIPTION_ID = fake_settings.SUBSCRIPTION_ID
     RESOURCE_GROUP_NAME = fake_settings.RESOURCE_GROUP_NAME
 else:

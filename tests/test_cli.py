@@ -14,6 +14,7 @@ import os
 import pytest
 
 from samples.cli import AzureDataLakeFSCommand
+from azure.datalake.store.exceptions import PermissionError
 from tests.testing import azure, my_vcr, working_dir
 
 
@@ -57,9 +58,10 @@ def test_cat(capsys, azure, client):
 
 @my_vcr.use_cassette
 def test_chgrp(capsys, azure, client):
+    group_id = '6b190b7a-0acf-43c8-ab14-965f5aea6243'
     with setup_file(azure) as azurefile:
-        client.onecmd('chgrp foo ' + azurefile)
-        assert not read_stdout(capsys)
+        with pytest.raises(PermissionError):
+            client.onecmd('chgrp {} {}'.format(group_id, azurefile))
 
 
 @my_vcr.use_cassette
@@ -78,15 +80,9 @@ def test_chmod(capsys, azure, client):
 @my_vcr.use_cassette
 def test_chown(capsys, azure, client):
     with setup_file(azure) as azurefile:
-        client.onecmd('chown foo ' + azurefile)
-        assert not read_stdout(capsys)
-
-        client.onecmd('chown :foo ' + azurefile)
-        assert not read_stdout(capsys)
-
-        client.onecmd('chown foo:foo ' + azurefile)
-        assert not read_stdout(capsys)
-
+        user_id = '6b190b7a-0acf-43c8-ab14-965f5aea6243'
+        with pytest.raises(PermissionError):
+            client.onecmd('chown {} {}'.format(user_id, azurefile))
 
 @my_vcr.use_cassette
 def test_df(capsys, azure, client):
@@ -145,7 +141,7 @@ def test_info(capsys, azure, client):
     with setup_file(azure) as azurefile:
         client.onecmd('info ' + azurefile)
         out = read_stdout(capsys)
-        assert len(out.strip().split('\n')) == 11
+        assert len(out.strip().split('\n')) == 13
         assert 'modificationTime' in out
 
 

@@ -46,12 +46,12 @@ def test_errors(token):
 
 @my_vcr.use_cassette
 def test_auth_refresh(token):
-    assert token['access']
+    assert token.token['access']
     time.sleep(3)
-    token2 = refresh_token(token)
-    assert token2['access']
-    assert token['access'] != token2['access']
-    assert token2['time'] > token['time']
+    token2 = refresh_token(token.token)
+    assert token2.token['access']
+    assert token.token['access'] != token2.token['access']
+    assert token2.token['time'] > token.token['time']
 
 
 @my_vcr.use_cassette
