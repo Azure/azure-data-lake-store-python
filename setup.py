@@ -42,6 +42,7 @@ setup(name='azure-datalake-store',
       install_requires=[
           'cffi',
           'adal>=0.4.2',
+          'msrest~=0.4.5',
           'azure-nspkg'
       ],
       extras_require={

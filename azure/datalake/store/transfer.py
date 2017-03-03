@@ -447,18 +447,28 @@ class ADLTransferClient(object):
         before_start = None
         if monitor:
             self.monitor()
+            has_errors = False
+            error_list = []
             for f in self.progress:
                 for chunk in f.chunks:
                     if chunk.state == 'finished':
                         continue
                     if chunk.exception:
-                        logger.error('{} -> {}, chunk {} {}: {}, {}'.format(
+                        error_string = '{} -> {}, chunk {} {}: {}, {}'.format(
                             f.src, f.dst, chunk.name, chunk.offset,
-                            chunk.state, repr(chunk.exception)))
+                            chunk.state, repr(chunk.exception))
+                        logger.error(error_string)
+                        has_errors = True
+                        error_list.append(error_string)
                     else:
-                        logger.error('{} -> {}, chunk {} {}: {}'.format(
+                        error_string = '{} -> {}, chunk {} {}: {}'.format(
                             f.src, f.dst, chunk.name, chunk.offset,
-                            chunk.state))
+                            chunk.state)
+                        logger.error(error_string)
+                        error_list.append(error_string)
+                        has_errors = True
+            if has_errors:
+                raise DatalakeIncompleteTransferException('One more more exceptions occured during transfer, resulting in an incomplete transfer. \n\n List of exceptions and errors:\n {}'.format('\n'.join(error_list)))
 
     def _wait(self, poll=0.1, timeout=0):
         start = time.time()
