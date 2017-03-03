@@ -5,14 +5,10 @@
 # Licensed under the MIT License. See License.txt in the project root for
 # license information.
 # --------------------------------------------------------------------------
+from enum import Enum
 
-__version__ = "0.0.5"
-
-from .core import AzureDLFileSystem
-from .multithread import ADLDownloader
-
-# Set default logging handler
-import logging
-from logging import NullHandler
-
-logging.getLogger(__name__).addHandler(NullHandler())
+class ExpiryOptionType(Enum):
+    never_expire = "NeverExpire"
+    relative_to_now = "RelativeToNow"
+    relative_to_creation_date = "RelativeToCreationDate"
+    absolute = "Absolute"

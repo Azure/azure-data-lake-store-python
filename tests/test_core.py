@@ -10,7 +10,9 @@ import io
 import sys
 
 import pytest
+import datetime
 from azure.datalake.store import utils
+from azure.datalake.store.exceptions import PermissionError
 from tests.testing import azure, azure_teardown, my_vcr, posix, tmpfile, working_dir
 
 test_dir = working_dir()
@@ -70,7 +72,7 @@ def test_pickle(azure):
     import pickle
     azure2 = pickle.loads(pickle.dumps(azure))
 
-    assert azure2.token == azure.token
+    assert azure2.token.signed_session().headers == azure.token.signed_session().headers
 
 
 @my_vcr.use_cassette
@@ -633,22 +635,119 @@ def test_chmod(azure):
 def test_chown(azure):
     with azure_teardown(azure):
         azure.touch(a)
-
+        # fake IDs
+        user_id = '470c0ccf-c91a-4597-98cd-48507d2f1486'
+        group_id = '6b190b7a-0acf-43c8-ab14-965f5aea6243'
+        
         # Account doesn't have permission to change owner
         owner = azure.info(a)['owner']
-        azure.chown(a, owner='foo')
+        with pytest.raises(PermissionError):
+            azure.chown(a, owner=user_id)
+        
         assert owner == azure.info(a)['owner']
 
         # Account doesn't have permission to change group
         group = azure.info(a)['group']
-        azure.chown(a, group='bar')
+        with pytest.raises(PermissionError):
+            azure.chown(a, group=group_id)
+        
         assert group == azure.info(a)['group']
 
         # Account doesn't have permission to change owner/group
-        azure.chown(a, owner='foo', group='bar')
+        with pytest.raises(PermissionError):
+            azure.chown(a, owner=owner, group=group)
+        
         assert owner == azure.info(a)['owner']
         assert group == azure.info(a)['group']
 
+@my_vcr.use_cassette
+def test_acl_management(azure):
+    user_id = '470c0ccf-c91a-4597-98cd-48507d2f1486'
+    acl_to_add = 'user:{}:rwx'.format(user_id)
+    acl_to_modify = 'user:{}:-w-'.format(user_id)
+    acl_to_remove = 'user:{}'.format(user_id)
+    with azure_teardown(azure):
+        azure.touch(a)
+        # get initial ACLs
+        initial_acls = azure.get_acl_status(a)
+        acl_len = len(initial_acls['entries'])
+        
+        # set the full acl
+        new_acl = ','.join(initial_acls['entries'])
+        print(new_acl)
+        new_acl += ',{}'.format(acl_to_add)
+        print(new_acl)
+        azure.set_acl(a, new_acl)
+        
+        # get the ACL and ensure it has an additional entry
+        new_acls = azure.get_acl_status(a)
+        assert acl_len + 1 == len(new_acls['entries'])
+        # assert that the entry is there
+        assert acl_to_add in new_acls['entries']
+
+        # set the specific ACL entry
+        azure.modify_acl_entries(a, acl_to_modify)
+
+        # get and validate that it was changed
+        new_acls = azure.get_acl_status(a)
+        assert acl_len + 1 == len(new_acls['entries'])
+        # assert that the entry is there
+        assert acl_to_modify in new_acls['entries']
+
+        # remove the ACL entry
+        azure.remove_acl_entries(a, acl_to_remove)
+
+        # get and validate that it was changed
+        new_acls = azure.get_acl_status(a)
+        assert acl_len == len(new_acls['entries'])
+        # assert that the entry is there
+        assert acl_to_modify not in new_acls['entries']
+
+        # remove the full acl and validate the lengths
+        azure.remove_default_acl(a)
+        
+        # get and validate that it was changed
+        new_acls = azure.get_acl_status(a)
+        assert 5 == len(new_acls['entries'])
+
+        # remove the full acl and validate the lengths
+        azure.remove_acl(a)
+        
+        # get and validate that it was changed
+        new_acls = azure.get_acl_status(a)
+        assert 3 == len(new_acls['entries'])   
+
+@my_vcr.use_cassette
+def test_set_expiry(azure):
+    with azure_teardown(azure):
+        azure.touch(a)
+        
+        # first get the existing expiry, which should be never
+        initial_expiry = azure.info(a)['msExpirationTime']
+        
+        # this future time gives the milliseconds since the epoch that have occured as of 01/31/2030 at noon
+        epoch_time = datetime.datetime.utcfromtimestamp(0)
+        final_time = datetime.datetime(2030, 1, 31, 12)
+        time_in_milliseconds = (final_time - epoch_time).total_seconds() * 1000
+        azure.set_expiry(a, 'Absolute', time_in_milliseconds)
+
+        cur_expiry = azure.info(a)['msExpirationTime']
+        assert time_in_milliseconds == cur_expiry
+        assert initial_expiry != cur_expiry
+
+        # now set it back to never expire and validate it is the same
+        azure.set_expiry(a, 'NeverExpire')
+        cur_expiry = azure.info(a)['msExpirationTime']
+        assert initial_expiry == cur_expiry
+
+        # now validate the fail cases
+        # bad enum
+        with pytest.raises(ValueError):
+            azure.set_expiry(a, 'BadEnumValue')
+        
+        # missing time
+        with pytest.raises(ValueError):
+            azure.set_expiry(a, 'Absolute')
 
 @pytest.mark.skipif(sys.platform != 'win32', reason="requires windows")
 def test_backslash():

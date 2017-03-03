@@ -25,6 +25,7 @@ from .exceptions import DatalakeBadOffsetException
 from .exceptions import FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
+from .enums import ExpiryOptionType
 
 if sys.version_info >= (3, 4):
     import pathlib
@@ -32,7 +33,7 @@ else:
     import pathlib2 as pathlib
 
 logger = logging.getLogger(__name__)
-
+valid_expire_types = [x.value for x in ExpiryOptionType]
 
 class AzureDLFileSystem(object):
     """
@@ -42,12 +43,16 @@ class AzureDLFileSystem(object):
     ----------
     store_name : str ("")
         Store name to connect to
-    token : dict
+    token : credentials object<msrestazure.azure_active_directory>
         When setting up a new connection, this contains the authorization
         credentials (see `lib.auth()`).
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
+    api_version: str (2016-11-01)
+        The API version to target with requests. Changing this value will
+        change the behavior of the requests, and can cause unexpected behavior or
+        breaking changes. Changes to this value should be undergone with caution.
     kwargs: optional key/values
         See ``lib.auth()``; full list: tenant_id, username, password, client_id,
         client_secret, resource
@@ -192,6 +197,159 @@ class AzureDLFileSystem(object):
         path = AzureDLPath(path).trim()
         self.azure.call('SETPERMISSION', path.as_posix(), permission=mod)
         self.invalidate_cache(path.as_posix())
+    
+    def set_expiry(self, path, expiry_option, expire_time=None):
+        """
+        Sets or removes the expiration time on the specified file. 
+        This operation can only be executed against files. 
+        
+        Note: Folders are not supported.
+
+        Parameters
+        ----------
+        path: str
+            File path to set or remove expiration time
+        expire_time: int
+            The time that the file will expire, corresponding to the expiry_option that was set
+        expiry_option: str
+            Indicates the type of expiration to use for the file: 
+                1. NeverExpire: ExpireTime is ignored. 
+                2. RelativeToNow: ExpireTime is an integer in milliseconds representing the expiration date relative to when file expiration is updated. 
+                3. RelativeToCreationDate: ExpireTime is an integer in milliseconds representing the expiration date relative to file creation. 
+                4. Absolute: ExpireTime is an integer in milliseconds, as a Unix timestamp relative to 1/1/1970 00:00:00.
+        """
+        parms = {}
+        value_to_use = [x for x in valid_expire_types if x.lower() == expiry_option.lower()]
+        if len(value_to_use) != 1:
+            raise ValueError('expiry_option must be one of: {}. Value given: {}'.format(valid_expire_types, expiry_option))
+        
+        if value_to_use[0] != ExpiryOptionType.never_expire.value and not expire_time:
+            raise ValueError('expire_time must be specified if the expiry_option is not NeverExpire. Value of expiry_option: {}'.format(expiry_option))
+
+        path = AzureDLPath(path).trim()
+        parms['expiryOption'] = value_to_use[0]
+
+        if expire_time:
+            parms['expireTime'] = int(expire_time)
+
+        self.azure.call('SETEXPIRY', path.as_posix(), is_extended=True, **parms)
+
+    def _acl_call(self, action, path, acl_spec=None):
+        """
+        Helper method for ACL calls to reduce code repetition
+
+        Parameters
+        ----------
+        action: str
+            The ACL action being executed. For example SETACL
+        path: str
+            The path the action is being executed on (file or folder)
+        acl_spec: str
+            The optional ACL specification to set on the path in the format 
+            '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
+
+            Note that for remove acl entries the permission (rwx) portion is not required.
+        """
+        parms = {}
+        path = AzureDLPath(path).trim()
+        if acl_spec:
+            parms['aclSpec'] = acl_spec
+        
+        return self.azure.call(action, path.as_posix(), **parms)
+
+    def set_acl(self, path, acl_spec):
+        """
+        Sets the Access Control List (ACL) for a file or folder.
+
+        Note: this is not recursive, and applies only to the file or folder specified.
+            
+        Parameters
+        ----------
+        path: str
+            Location to set the ACL on.
+        acl_spec: str
+            The ACL specification to set on the path in the format 
+            '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
+        """
+
+        self._acl_call('SETACL', path, acl_spec)
+
+    def modify_acl_entries(self, path, acl_spec):
+        """
+        Modifies existing Access Control List (ACL) entries on a file or folder.
+        If the entry does not exist it is added, otherwise it is updated based on the spec passed in.
+        No entries are removed by this process (unlike set_acl).
+
+        Note: this is not recursive, and applies only to the file or folder specified.
+
+        Parameters
+        ----------
+        path: str
+            Location to set the ACL entries on.
+        acl_spec: str
+            The ACL specification to use in modifying the ACL at the path in the format 
+            '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
+        """
+        self._acl_call('MODIFYACLENTRIES', path, acl_spec)
+
+    def remove_acl_entries(self, path, acl_spec):
+        """
+        Removes existing, named, Access Control List (ACL) entries on a file or folder.
+        If the entry does not exist already it is ignored.
+        Default entries cannot be removed this way, please use remove_default_acl for that.
+        Unnamed entries cannot be removed in this way, please use remove_acl for that. 
+
+        Note: this is not recursive, and applies only to the file or folder specified.
+
+        Parameters
+        ----------
+        path: str
+            Location to remove the ACL entries.
+        acl_spec: str
+            The ACL specification to remove from the ACL at the path in the format (note that the permission portion is missing)
+            '[default:]user|group|other:[entity id or UPN],[default:]user|group|other:[entity id or UPN],...'
+        """
+        self._acl_call('REMOVEACLENTRIES', path, acl_spec)
+        
+    def get_acl_status(self, path):
+        """
+        Gets Access Control List (ACL) entries for the specified file or directory.
+
+        Parameters
+        ----------
+        path: str
+            Location to get the ACL.
+        """
+        return self._acl_call('MSGETACLSTATUS', path)['AclStatus']
+
+    def remove_acl(self, path):
+        """
+        Removes the entire, non default, ACL from the file or folder, including unnamed entries.
+        Default entries cannot be removed this way, please use remove_default_acl for that.
+
+        Note: this is not recursive, and applies only to the file or folder specified.
+
+        Parameters
+        ----------
+        path: str
+            Location to remove the ACL.
+        """
+        self._acl_call('REMOVEACL', path)
+
+    def remove_default_acl(self, path):
+        """
+        Removes the entire default ACL from the folder.
+        Default entries do not exist on files, if a file
+        is specified, this operation does nothing.
+
+        Note: this is not recursive, and applies only to the folder specified.
+
+        Parameters
+        ----------
+        path: str
+            Location to set the ACL on.
+        """
+        self._acl_call('REMOVEDEFAULTACL', path)
 
     def chown(self, path, owner=None, group=None):
         """
