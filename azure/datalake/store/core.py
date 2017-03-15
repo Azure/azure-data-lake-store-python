@@ -111,8 +111,8 @@ class AzureDLFileSystem(object):
         """ List files at given path """
         path = AzureDLPath(path).trim()
         key = path.as_posix()
-        if path not in self.dirs:
-            out = self.azure.call('LISTSTATUS', path.as_posix())
+        if key not in self.dirs:
+            out = self.azure.call('LISTSTATUS', key)
             self.dirs[key] = out['FileStatuses']['FileStatus']
             for f in self.dirs[key]:
                 f['name'] = (path / f['pathSuffix']).as_posix()

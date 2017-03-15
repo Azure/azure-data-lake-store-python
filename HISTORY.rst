@@ -2,6 +2,10 @@
 
 Release History
 ===============
+0.0.6 (2017-03-15)
+------------------
+* Fix an issue with path caching that should drastically improve performance for download
+
 0.0.5 (2017-03-01)
 ------------------
 * Fix for downloader to ensure there is access to the source path before creating destination files
