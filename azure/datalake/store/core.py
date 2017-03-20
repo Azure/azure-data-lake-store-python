@@ -137,10 +137,12 @@ class AzureDLFileSystem(object):
         """
         path = AzureDLPath(path).trim()
         root = path.parent
-        myfile = [f for f in self._ls(root) if f['name'] == path.as_posix()]
-        if len(myfile) == 1:
-            return myfile[0]
-        raise FileNotFoundError(path)
+        path_as_posix = path.as_posix()
+        for f in self._ls(root):
+            if f['name'] == path_as_posix:
+                return f
+        else:
+            raise FileNotFoundError(path)
 
     def _walk(self, path):
         fi = list(self._ls(path))
@@ -149,21 +151,28 @@ class AzureDLFileSystem(object):
                 fi.extend(self._ls(apath['name']))
         return [f for f in fi if f['type'] == 'FILE']
 
-    def walk(self, path=''):
+    def walk(self, path='', details=False):
         """ Get all files below given path
         """
+        if details:
+            return self._walk(path)
+
         return [f['name'] for f in self._walk(path)]
 
-    def glob(self, path):
+    def glob(self, path, details=False):
         """
         Find files (not directories) by glob-matching.
         """
         path = AzureDLPath(path).trim()
+        path_as_posix = path.as_posix()
         prefix = path.globless_prefix
-        allfiles = self.walk(prefix)
+        allfiles = self.walk(prefix, details)
         if prefix == path:
             return allfiles
-        return [f for f in allfiles if AzureDLPath(f).match(path.as_posix())]
+        if details:
+            return [f for f in allfiles if AzureDLPath(f['name']).match(path_as_posix)]
+        
+        return [f for f in allfiles if AzureDLPath(f).match(path_as_posix)]
 
     def du(self, path, total=False, deep=False):
         """ Bytes in keys at path """
