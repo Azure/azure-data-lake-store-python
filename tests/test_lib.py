@@ -47,11 +47,14 @@ def test_errors(token):
 @my_vcr.use_cassette
 def test_auth_refresh(token):
     assert token.token['access']
+    initial_access = token.token['access']
+    initial_time = token.token['time']
     time.sleep(3)
-    token2 = DataLakeCredential(token.refresh_token().token)
+    token.refresh_token()
+    token2 = DataLakeCredential(token.token)
     assert token2.token['access']
-    assert token.token['access'] != token2.token['access']
-    assert token2.token['time'] > token.token['time']
+    assert initial_access != token2.token['access']
+    assert token2.token['time'] > initial_time
 
 
 @my_vcr.use_cassette

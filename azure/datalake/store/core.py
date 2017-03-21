@@ -242,8 +242,9 @@ class AzureDLFileSystem(object):
             parms['expireTime'] = int(expire_time)
 
         self.azure.call('SETEXPIRY', path.as_posix(), is_extended=True, **parms)
+        self.invalidate_cache(path.as_posix())
 
-    def _acl_call(self, action, path, acl_spec=None):
+    def _acl_call(self, action, path, acl_spec=None, invalidate_cache=False):
         """
         Helper method for ACL calls to reduce code repetition
 
@@ -258,13 +259,20 @@ class AzureDLFileSystem(object):
             '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
 
             Note that for remove acl entries the permission (rwx) portion is not required.
+        invalidate_cache: bool
+            optionally indicates that the cache of files should be invalidated after this operation
+            This should always be done for set and remove operations, since the state of the file or folder has changed.
         """
         parms = {}
         path = AzureDLPath(path).trim()
         if acl_spec:
             parms['aclSpec'] = acl_spec
         
-        return self.azure.call(action, path.as_posix(), **parms)
+        to_return = self.azure.call(action, path.as_posix(), **parms)
+        if invalidate_cache:
+            self.invalidate_cache(path.as_posix())
+        
+        return to_return
 
     def set_acl(self, path, acl_spec):
         """
@@ -281,7 +289,8 @@ class AzureDLFileSystem(object):
             '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
         """
 
-        self._acl_call('SETACL', path, acl_spec)
+        self._acl_call('SETACL', path, acl_spec, invalidate_cache=True)
+
 
     def modify_acl_entries(self, path, acl_spec):
         """
@@ -299,7 +308,8 @@ class AzureDLFileSystem(object):
             The ACL specification to use in modifying the ACL at the path in the format 
             '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
         """
-        self._acl_call('MODIFYACLENTRIES', path, acl_spec)
+        self._acl_call('MODIFYACLENTRIES', path, acl_spec, invalidate_cache=True)
+
 
     def remove_acl_entries(self, path, acl_spec):
         """
@@ -318,7 +328,8 @@ class AzureDLFileSystem(object):
             The ACL specification to remove from the ACL at the path in the format (note that the permission portion is missing)
             '[default:]user|group|other:[entity id or UPN],[default:]user|group|other:[entity id or UPN],...'
         """
-        self._acl_call('REMOVEACLENTRIES', path, acl_spec)
+        self._acl_call('REMOVEACLENTRIES', path, acl_spec, invalidate_cache=True)
+
         
     def get_acl_status(self, path):
         """
@@ -343,7 +354,8 @@ class AzureDLFileSystem(object):
         path: str
             Location to remove the ACL.
         """
-        self._acl_call('REMOVEACL', path)
+        self._acl_call('REMOVEACL', path, invalidate_cache=True)
+
 
     def remove_default_acl(self, path):
         """
@@ -358,7 +370,8 @@ class AzureDLFileSystem(object):
         path: str
             Location to set the ACL on.
         """
-        self._acl_call('REMOVEDEFAULTACL', path)
+        self._acl_call('REMOVEDEFAULTACL', path, invalidate_cache=True)
+
 
     def chown(self, path, owner=None, group=None):
         """
@@ -384,6 +397,7 @@ class AzureDLFileSystem(object):
             parms['group'] = group
         path = AzureDLPath(path).trim()
         self.azure.call('SETOWNER', path.as_posix(), **parms)
+        self.invalidate_cache(path.as_posix())
 
     def exists(self, path):
         """ Does such a file/directory exist? """

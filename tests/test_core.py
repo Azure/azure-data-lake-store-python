@@ -206,6 +206,16 @@ def test_glob_walk(azure):
 
         assert set(azure.walk(test_dir / 'c')) == set(azure.walk(test_dir / 'c'))
 
+        # test glob and walk with details=True
+        glob_details = azure.glob(test_dir / '*', details=True)
+
+        # validate that the objects are subscriptable
+        assert glob_details[0]['name'] != None
+        assert glob_details[0]['type'] != None
+
+        walk_details = azure.walk(test_dir, details=True)
+        assert walk_details[0]['name'] != None
+        assert walk_details[0]['type'] != None
 
 @my_vcr.use_cassette
 def test_info(azure):
@@ -674,14 +684,12 @@ def test_acl_management(azure):
         
         # set the full acl
         new_acl = ','.join(initial_acls['entries'])
-        print(new_acl)
         new_acl += ',{}'.format(acl_to_add)
-        print(new_acl)
         azure.set_acl(a, new_acl)
         
         # get the ACL and ensure it has an additional entry
         new_acls = azure.get_acl_status(a)
-        assert acl_len + 1 == len(new_acls['entries'])
+        assert acl_len + 2 == len(new_acls['entries'])
         # assert that the entry is there
         assert acl_to_add in new_acls['entries']
 
@@ -690,7 +698,7 @@ def test_acl_management(azure):
 
         # get and validate that it was changed
         new_acls = azure.get_acl_status(a)
-        assert acl_len + 1 == len(new_acls['entries'])
+        assert acl_len + 2 == len(new_acls['entries'])
         # assert that the entry is there
         assert acl_to_modify in new_acls['entries']
 
@@ -699,7 +707,7 @@ def test_acl_management(azure):
 
         # get and validate that it was changed
         new_acls = azure.get_acl_status(a)
-        assert acl_len == len(new_acls['entries'])
+        assert acl_len + 1 == len(new_acls['entries'])
         # assert that the entry is there
         assert acl_to_modify not in new_acls['entries']
 
@@ -708,7 +716,7 @@ def test_acl_management(azure):
         
         # get and validate that it was changed
         new_acls = azure.get_acl_status(a)
-        assert 5 == len(new_acls['entries'])
+        assert 4 == len(new_acls['entries'])
 
         # remove the full acl and validate the lengths
         azure.remove_acl(a)

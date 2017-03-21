@@ -186,8 +186,8 @@ class ADLDownloader(object):
             rfiles = self.client._adlfs.glob(self.rpath, details=True)
         if len(rfiles) > 1:
             prefix = commonprefix([f['name'] for f in rfiles])
-            file_pairs = ((os.path.join(self.lpath, os.path.relpath(f['name'], prefix)), f)
-                          for f in rfiles)
+            file_pairs = [(os.path.join(self.lpath, os.path.relpath(f['name'], prefix)), f)
+                          for f in rfiles]
         elif len(rfiles) == 1:
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
                 file_pairs = [(os.path.join(self.lpath, os.path.basename(rfiles[0]['name'])),
@@ -196,6 +196,10 @@ class ADLDownloader(object):
                 file_pairs = [(self.lpath, rfiles[0])]
         else:
             raise ValueError('No files to download')
+
+        # this property is used for internal validation
+        # and should not be referenced directly by public callers
+        self._file_pairs = file_pairs
 
         for lfile, rfile in file_pairs:
             self.client.submit(rfile['name'], lfile, rfile['length'])
@@ -419,9 +423,13 @@ class ADLUploader(object):
                self.client._adlfs.info(self.rpath)['type'] == "DIRECTORY":
                 file_pairs = [(lfiles[0], self.rpath / AzureDLPath(lfiles[0]).name)]
             else:
-                file_pairs = [lfiles[0], self.rpath]
+                file_pairs = [(lfiles[0], self.rpath)]
         else:
             raise ValueError('No files to upload')
+
+        # this property is used for internal validation
+        # and should not be referenced directly by public callers
+        self._file_pairs = file_pairs
 
         for lfile, rfile in file_pairs:
             fsize = os.stat(lfile).st_size
