@@ -181,26 +181,28 @@ class ADLDownloader(object):
         """ Create set of parameters to loop over
         """
         if "*" not in self.rpath:
-            rfiles = self.client._adlfs.walk(self.rpath)
+            rfiles = self.client._adlfs.walk(self.rpath, details=True)
         else:
-            rfiles = self.client._adlfs.glob(self.rpath)
+            rfiles = self.client._adlfs.glob(self.rpath, details=True)
         if len(rfiles) > 1:
-            prefix = commonprefix(rfiles)
-            lfiles = [os.path.join(self.lpath, os.path.relpath(f, prefix))
-                      for f in rfiles]
-        elif rfiles:
+            prefix = commonprefix([f['name'] for f in rfiles])
+            file_pairs = [(os.path.join(self.lpath, os.path.relpath(f['name'], prefix)), f)
+                          for f in rfiles]
+        elif len(rfiles) == 1:
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
-                lfiles = [os.path.join(self.lpath, os.path.basename(rfiles[0]))]
+                file_pairs = [(os.path.join(self.lpath, os.path.basename(rfiles[0]['name'])),
+                               rfiles[0])]
             else:
-                lfiles = [self.lpath]
+                file_pairs = [(self.lpath, rfiles[0])]
         else:
             raise ValueError('No files to download')
-        self.rfiles = rfiles
-        self.lfiles = lfiles
 
-        for lfile, rfile in zip(lfiles, rfiles):
-            fsize = self.client._adlfs.info(rfile)['length']
-            self.client.submit(rfile, lfile, fsize)
+        # this property is used for internal validation
+        # and should not be referenced directly by public callers
+        self._file_pairs = file_pairs
+
+        for lfile, rfile in file_pairs:
+            self.client.submit(rfile['name'], lfile, rfile['length'])
 
     def run(self, nthreads=None, monitor=True):
         """ Populate transfer queue and execute downloads
@@ -412,22 +414,24 @@ class ADLUploader(object):
                 lfiles = [self.lpath]
         else:
             lfiles = glob.glob(self.lpath)
+        
         if len(lfiles) > 1:
             prefix = commonprefix(lfiles)
-            rfiles = [self.rpath / AzureDLPath(f).relative_to(prefix)
-                      for f in lfiles]
+            file_pairs = [(f, self.rpath / AzureDLPath(f).relative_to(prefix)) for f in lfiles]
         elif lfiles:
             if self.client._adlfs.exists(self.rpath) and \
                self.client._adlfs.info(self.rpath)['type'] == "DIRECTORY":
-                rfiles = [self.rpath / AzureDLPath(lfiles[0]).name]
+                file_pairs = [(lfiles[0], self.rpath / AzureDLPath(lfiles[0]).name)]
             else:
-                rfiles = [self.rpath]
+                file_pairs = [(lfiles[0], self.rpath)]
         else:
             raise ValueError('No files to upload')
-        self.rfiles = rfiles
-        self.lfiles = lfiles
 
-        for lfile, rfile in zip(lfiles, rfiles):
+        # this property is used for internal validation
+        # and should not be referenced directly by public callers
+        self._file_pairs = file_pairs
+
+        for lfile, rfile in file_pairs:
             fsize = os.stat(lfile).st_size
             self.client.submit(lfile, rfile, fsize)
 

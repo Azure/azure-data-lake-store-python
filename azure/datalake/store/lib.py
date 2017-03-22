@@ -46,34 +46,6 @@ MAX_CONTENT_LENGTH = 2**16
 # This ensures that no connections are prematurely evicted, which has negative performance implications.
 MAX_POOL_CONNECTIONS = 1024
 
-def refresh_token(token, authority=None):
-    """ Refresh an expired authorization token
-
-    Parameters
-    ----------
-    token : dict
-        Produced by `auth()` or `refresh_token`.
-    authority: string
-        The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
-    """
-    if token.get('refresh', False) is False:
-        raise ValueError("Token cannot be auto-refreshed.")
-
-    if not authority:
-        authority = 'https://login.microsoftonline.com/'
-
-    context = adal.AuthenticationContext(authority +
-                                         token['tenant'])
-    out = context.acquire_token_with_refresh_token(token['refresh'],
-                                                   client_id=token['client'],
-                                                   resource=token['resource'])
-    out.update({'access': out['accessToken'], 'refresh': out['refreshToken'],
-                'time': time.time(), 'tenant': token['tenant'],
-                'resource': token['resource'], 'client': token['client']})
-    
-    return DataLakeCredential(out)
-
-
 def auth(tenant_id=None, username=None,
          password=None, client_id=default_client,
          client_secret=None, resource=DEFAULT_RESOURCE_ENDPOINT,
@@ -157,12 +129,37 @@ class DataLakeCredential(Authentication):
     def signed_session(self):
         session = super(DataLakeCredential, self).signed_session()
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
-            self.token = refresh_token(self.token)
+            self.refresh_token()
 
         scheme, token = self.token['tokenType'], self.token['access']
         header = "{} {}".format(scheme, token)
         session.headers['Authorization'] = header
         return session
+    
+    def refresh_token(self, authority=None):
+        """ Refresh an expired authorization token
+
+        Parameters
+        ----------
+        authority: string
+            The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
+        """
+        if self.token.get('refresh', False) is False:
+            raise ValueError("Token cannot be auto-refreshed.")
+
+        if not authority:
+            authority = 'https://login.microsoftonline.com/'
+
+        context = adal.AuthenticationContext(authority +
+                                             self.token['tenant'])
+        out = context.acquire_token_with_refresh_token(self.token['refresh'],
+                                                       client_id=self.token['client'],
+                                                       resource=self.token['resource'])
+        out.update({'access': out['accessToken'], 'refresh': out['refreshToken'],
+                    'time': time.time(), 'tenant': self.token['tenant'],
+                    'resource': self.token['resource'], 'client': self.token['client']})
+    
+        self.token = out
 
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
