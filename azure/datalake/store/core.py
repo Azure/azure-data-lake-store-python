@@ -154,10 +154,7 @@ class AzureDLFileSystem(object):
     def walk(self, path='', details=False):
         """ Get all files below given path
         """
-        if details:
-            return self._walk(path)
-
-        return [f['name'] for f in self._walk(path)]
+        return [f if details else f['name'] for f in self._walk(path)]
 
     def glob(self, path, details=False):
         """
@@ -169,10 +166,7 @@ class AzureDLFileSystem(object):
         allfiles = self.walk(prefix, details)
         if prefix == path:
             return allfiles
-        if details:
-            return [f for f in allfiles if AzureDLPath(f['name']).match(path_as_posix)]
-        
-        return [f for f in allfiles if AzureDLPath(f).match(path_as_posix)]
+        return [f for f in allfiles if AzureDLPath(f['name'] if details else f).match(path_as_posix)]
 
     def du(self, path, total=False, deep=False):
         """ Bytes in keys at path """
@@ -265,12 +259,13 @@ class AzureDLFileSystem(object):
         """
         parms = {}
         path = AzureDLPath(path).trim()
+        posix_path = path.as_posix()
         if acl_spec:
             parms['aclSpec'] = acl_spec
         
-        to_return = self.azure.call(action, path.as_posix(), **parms)
+        to_return = self.azure.call(action, posix_path, **parms)
         if invalidate_cache:
-            self.invalidate_cache(path.as_posix())
+            self.invalidate_cache(posix_path)
         
         return to_return
 
