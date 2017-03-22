@@ -210,12 +210,12 @@ def test_glob_walk(azure):
         glob_details = azure.glob(test_dir / '*', details=True)
 
         # validate that the objects are subscriptable
-        assert glob_details[0]['name'] != None
-        assert glob_details[0]['type'] != None
+        assert glob_details[0]['name'] is not None
+        assert glob_details[0]['type'] is not None
 
         walk_details = azure.walk(test_dir, details=True)
-        assert walk_details[0]['name'] != None
-        assert walk_details[0]['type'] != None
+        assert walk_details[0]['name'] is not None
+        assert walk_details[0]['type'] is not None
 
 @my_vcr.use_cassette
 def test_info(azure):
