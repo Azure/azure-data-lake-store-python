@@ -2,6 +2,10 @@
 
 Release History
 ===============
+0.0.7 (2017-04-19)
+------------------
+* Update the build process to more efficiently handle multi-part namespaces for pip.
+
 0.0.6 (2017-03-15)
 ------------------
 * Fix an issue with path caching that should drastically improve performance for download

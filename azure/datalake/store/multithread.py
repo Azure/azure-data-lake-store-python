@@ -252,6 +252,7 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
     Internal function used by `download`.
     """
     err = None
+    total_bytes_downloaded = 0
     for i in range(retries):
         try:
             nbytes = 0
@@ -261,13 +262,29 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
                     fout.seek(offset)
                     for chunk in response.iter_content(chunk_size=blocksize):
                         if shutdown_event and shutdown_event.is_set():
-                            return nbytes, None
+                            return total_bytes_downloaded, None
                         if chunk:
                             nwritten = fout.write(chunk)
                             if nwritten:
                                 nbytes += nwritten
-            logger.debug('Downloaded to %s, byte offset %s', dst, offset)
-            return nbytes, None
+            logger.debug('Downloaded %s bytes to %s, byte offset %s', nbytes, dst, offset)
+            
+            # There are certain cases where we will be throttled and recieve less than the expected amount of data.
+            # In these cases, instead of failing right away, instead indicate a retry is occuring and update offset and
+            # size to attempt another read to get the rest of the data. We will only do this if the amount of bytes read
+            # is less than size, because if somehow we recieved too much data we are not clear on how to proceed.
+            if nbytes < size:
+                errMsg = 'Did not recieve total bytes requested from server. This can be due to server side throttling and will be retried. Data Expected: {}. Data Received: {}.'.format(size, nbytes)
+                size -= nbytes
+                offset += nbytes
+                total_bytes_downloaded += nbytes
+                raise IOError(errMsg)
+            elif nbytes > size:
+                raise IOError('Received more bytes than expected from the server. Expected: {}. Received: {}.'.format(size, nbytes))
+            else:
+                total_bytes_downloaded += nbytes
+
+            return total_bytes_downloaded, None
         except Exception as e:
             err = e
             logger.debug('Exception %s on ADL download, retrying in %s seconds',
@@ -276,7 +293,7 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
         delay *= backoff
     exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
     logger.error('Download failed %s; %s', dst, repr(exception))
-    return nbytes, exception
+    return total_bytes_downloaded, exception
 
 
 class ADLUploader(object):

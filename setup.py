@@ -4,6 +4,12 @@ import os
 from setuptools import find_packages, setup
 from io import open
 import re
+try:
+    from azure_bdist_wheel import cmdclass
+except ImportError:
+    from distutils import log as logger
+    logger.warn("Wheel is not available, disabling bdist_wheel hook")
+    cmdclass = {}
 
 with open('README.rst', encoding='utf-8') as f:
     readme = f.read()
@@ -42,13 +48,13 @@ setup(name='azure-datalake-store',
       install_requires=[
           'cffi',
           'adal>=0.4.2',
-          'msrest~=0.4.5',
-          'azure-nspkg'
+          'msrest~=0.4.5'
       ],
       extras_require={
           ":python_version<'3.4'": ['pathlib2'],
           ":python_version<='2.7'": ['futures'],
       },
       long_description=readme + '\n\n' + history,
-      zip_safe=False
+      zip_safe=False,
+      cmdclass=cmdclass
 )
