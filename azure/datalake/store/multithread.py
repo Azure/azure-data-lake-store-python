@@ -246,7 +246,7 @@ class ADLDownloader(object):
 
 
 def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
-              shutdown_event=None, retries=10, delay=0.01, backoff=1):
+              shutdown_event=None, retries=10, delay=0.01, backoff=3):
     """ Download a piece of a remote file and write locally
 
     Internal function used by `download`.
