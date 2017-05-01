@@ -916,15 +916,15 @@ def _fetch_range(rest, path, start, end, stream=False):
 
 
 def _fetch_range_with_retry(rest, path, start, end, stream=False, retries=10,
-                            delay=0.01, backoff=1):
+                            delay=0.01, backoff=3):
     err = None
     for i in range(retries):
         try:
             return _fetch_range(rest, path, start, end, stream=False)
         except Exception as e:
             err = e
-            logger.debug('Exception %s on ADL download, retrying in %s seconds',
-                         repr(err), delay, exc_info=True)
+            logger.debug('Exception %s on ADL download on attempt: %s, retrying in %s seconds',
+                         repr(err), i, delay, exc_info=True)
         time.sleep(delay)
         delay *= backoff
     exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
@@ -936,7 +936,7 @@ def _put_data(rest, op, path, data, **kwargs):
     return rest.call(op, path=path, data=data, **kwargs)
 
 
-def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=1,
+def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=3,
                          **kwargs):
     err = None
     for i in range(retries):
@@ -953,8 +953,8 @@ def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=1
             return
         except Exception as e:
             err = e
-            logger.debug('Exception %s on ADL upload, retrying in %s seconds',
-                         repr(err), delay, exc_info=True)
+            logger.debug('Exception %s on ADL upload on attempt: %s, retrying in %s seconds',
+                         repr(err), i, delay, exc_info=True)
         time.sleep(delay)
         delay *= backoff
     exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
