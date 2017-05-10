@@ -25,6 +25,14 @@ import adal
 import requests
 import requests.exceptions
 
+# this is required due to github issue, to ensure we don't lose perf from openPySSL: https://github.com/pyca/pyopenssl/issues/625
+try:
+    from requests.packages.urllib3.contrib.pyopenssl import extract_from_urllib3 as enforce_no_py_open_ssl
+    enforce_no_py_open_ssl()
+except ImportError:
+    # if OpenSSL is unavailable an import error will occur and that is ok.
+    pass
+
 from msrest.authentication import Authentication
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
