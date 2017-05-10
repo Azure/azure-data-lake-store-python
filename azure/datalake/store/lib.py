@@ -30,8 +30,13 @@ try:
     from requests.packages.urllib3.contrib.pyopenssl import extract_from_urllib3 as enforce_no_py_open_ssl
     enforce_no_py_open_ssl()
 except ImportError:
-    # if OpenSSL is unavailable an import error will occur and that is ok.
-    pass
+    # in the case of debian/ubuntu system packages, the import is slightly different
+    try:
+        from urllib3.contrib.pyopenssl import extract_from_urllib3 as enforce_no_py_open_ssl
+        enforce_no_py_open_ssl()
+    except ImportError:
+        # if OpenSSL is unavailable in both cases then there is no need to "undo" it.
+        pass
 
 from msrest.authentication import Authentication
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException

@@ -4,7 +4,7 @@ Release History
 ===============
 0.0.9 (2017-05-09)
 ------------------
-* Enforce basic SSL utilization to ensure performance due to github issue: https://github.com/pyca/pyopenssl/issues/625
+* Enforce basic SSL utilization to ensure performance due to `GitHub issue 625 <https://github.com/pyca/pyopenssl/issues/625>`
 
 0.0.8 (2017-04-26)
 ------------------
