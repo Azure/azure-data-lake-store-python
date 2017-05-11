@@ -2,6 +2,10 @@
 
 Release History
 ===============
+0.0.9 (2017-05-09)
+------------------
+* Enforce basic SSL utilization to ensure performance due to `GitHub issue 625 <https://github.com/pyca/pyopenssl/issues/625>`
+
 0.0.8 (2017-04-26)
 ------------------
 * Fix server-side throttling retry support. This is not a guarantee that if the server is throttling the upload (or download) it will eventually succeed, but there is now a back-off retry in place to make it more likely.
