@@ -95,7 +95,7 @@ class AzureDLFileSystem(object):
         path: string
             Path of file on ADL
         mode: string
-            One of 'rb' or 'wb'
+            One of 'rb', 'ab' or 'wb'
         blocksize: int
             Size of data-node blocks if reading
         delimiter: byte(s) or None
@@ -107,10 +107,14 @@ class AzureDLFileSystem(object):
         return AzureDLFile(self, AzureDLPath(path), mode, blocksize=blocksize,
                            delimiter=delimiter)
 
-    def _ls(self, path):
+    def _ls(self, path, invalidate_cache=True):
         """ List files at given path """
         path = AzureDLPath(path).trim()
         key = path.as_posix()
+        
+        if invalidate_cache:
+            self.invalidate_cache(key)
+
         if key not in self.dirs:
             out = self.azure.call('LISTSTATUS', key)
             self.dirs[key] = out['FileStatuses']['FileStatus']
@@ -118,62 +122,88 @@ class AzureDLFileSystem(object):
                 f['name'] = (path / f['pathSuffix']).as_posix()
         return self.dirs[key]
 
-    def ls(self, path="", detail=False):
+    def ls(self, path="", detail=False, invalidate_cache=True):
         """ List single directory with or without details """
         path = AzureDLPath(path)
-        files = self._ls(path)
+        files = self._ls(path, invalidate_cache)
         if not files:
-            inf = self.info(path)
+            # in this case we just invalidated the cache (if it was true), so no need to do it again
+            inf = self.info(path, invalidate_cache=False)
             if inf['type'] == 'DIRECTORY':
-                return []
+                if detail:
+                    return inf
+                else:
+                    return []
             raise FileNotFoundError(path)
         if detail:
             return files
         else:
             return [f['name'] for f in files]
 
-    def info(self, path):
+    def info(self, path, invalidate_cache=True):
         """ File information
         """
         path = AzureDLPath(path).trim()
-        root = path.parent
         path_as_posix = path.as_posix()
-        for f in self._ls(root):
+        root = path.parent
+        root_as_posix = root.as_posix()
+        
+        # in the case of getting info about the root itself or if the cache won't be hit
+        # simply return the result of a GETFILESTATUS from the service
+        if invalidate_cache or path_as_posix == '/' or path_as_posix == '.':
+            to_return  = self.azure.call('GETFILESTATUS', path_as_posix)['FileStatus']
+            to_return['name'] = path_as_posix
+            
+            # add the key/value pair back to the cache so long as it isn't the root
+            if path_as_posix != '/' and path_as_posix != '.':
+                if root_as_posix not in self.dirs:
+                    self.dirs[root_as_posix] = [to_return]
+                else:
+                    found = False
+                    for f in self.dirs[root_as_posix]:
+                        if f['name'] == path_as_posix:
+                            found = True
+                            f = to_return
+                    if not found:
+                        self.dirs[root_as_posix].append(to_return)
+            return to_return
+
+        for f in self._ls(root, invalidate_cache):
             if f['name'] == path_as_posix:
                 return f
-        else:
-            raise FileNotFoundError(path)
+        
+        raise FileNotFoundError(path)
 
-    def _walk(self, path):
-        fi = list(self._ls(path))
+    def _walk(self, path, invalidate_cache=True):
+        fi = list(self._ls(path, invalidate_cache))
         for apath in fi:
             if apath['type'] == 'DIRECTORY':
-                fi.extend(self._ls(apath['name']))
+                fi.extend(self._ls(apath['name'], invalidate_cache))
         return [f for f in fi if f['type'] == 'FILE']
 
-    def walk(self, path='', details=False):
+    def walk(self, path='', details=False, invalidate_cache=True):
         """ Get all files below given path
         """
-        return [f if details else f['name'] for f in self._walk(path)]
+        return [f if details else f['name'] for f in self._walk(path, invalidate_cache)]
 
-    def glob(self, path, details=False):
+    def glob(self, path, details=False, invalidate_cache=True):
         """
         Find files (not directories) by glob-matching.
         """
         path = AzureDLPath(path).trim()
         path_as_posix = path.as_posix()
         prefix = path.globless_prefix
-        allfiles = self.walk(prefix, details)
+        allfiles = self.walk(prefix, details, invalidate_cache)
         if prefix == path:
             return allfiles
         return [f for f in allfiles if AzureDLPath(f['name'] if details else f).match(path_as_posix)]
 
-    def du(self, path, total=False, deep=False):
+    def du(self, path, total=False, deep=False, invalidate_cache=True):
         """ Bytes in keys at path """
         if deep:
-            files = self._walk(path)
+            files = self._walk(path, invalidate_cache)
         else:
-            files = self.ls(path, detail=True)
+            files = self.ls(path, detail=True, invalidate_cache=invalidate_cache)
         if total:
             return sum(f.get('length', 0) for f in files)
         else:
@@ -394,10 +424,10 @@ class AzureDLFileSystem(object):
         self.azure.call('SETOWNER', path.as_posix(), **parms)
         self.invalidate_cache(path.as_posix())
 
-    def exists(self, path):
+    def exists(self, path, invalidate_cache=True):
         """ Does such a file/directory exist? """
         try:
-            self.info(path)
+            self.info(path, invalidate_cache)
             return True
         except FileNotFoundError:
             return False
@@ -451,7 +481,8 @@ class AzureDLFileSystem(object):
         """ Remove empty directory """
         if self.info(path)['type'] != "DIRECTORY":
             raise ValueError('Can only rmdir on directories')
-        if self.ls(path):
+        # should always invalidate the cache when checking to see if the directory is empty
+        if self.ls(path, invalidate_cache=True):
             raise ValueError('Directory not empty: %s' % path)
         self.rm(path, False)
 
@@ -507,7 +538,8 @@ class AzureDLFileSystem(object):
             by `walk()`.
         """
         path = AzureDLPath(path).trim()
-        if not self.exists(path):
+        # Always invalidate the cache when attempting to check existence of something to delete
+        if not self.exists(path, invalidate_cache=True):
             raise FileNotFoundError(path)
         self.azure.call('DELETE', path.as_posix(), recursive=recursive)
         self.invalidate_cache(path)
@@ -635,7 +667,14 @@ class AzureDLFile(object):
         self.buffer = io.BytesIO()
         self.blocksize = blocksize
         self.first_write = True
-        if mode == 'ab' and self.azure.exists(path):
+        exists = self.azure.exists(path, invalidate_cache=True)
+        
+        # cannot create a new file object out of a directory
+        if exists and self.info()['type'] == 'DIRECTORY':
+            raise IOError('path: {} is a directory, not a file, and cannot be opened for reading or writing'.format(path))
+        # always invalidate the cache when checking for existence of a file
+        # that may be created or written to (for the first time).
+        if mode == 'ab' and exists:    
             self.loc = self.info()['length']
             self.first_write = False
         if mode == 'rb':

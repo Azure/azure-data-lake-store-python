@@ -83,7 +83,7 @@ def verify(instance):
         print("local file size :", None)
 
     print("remote file     :", rfile)
-    if adl.exists(rfile):
+    if adl.exists(rfile, invalidate_cache=False):
         print("remote file size:", adl.du(rfile, total=True, deep=True))
     else:
         print("remote file size:", None)
@@ -240,7 +240,7 @@ if __name__ == '__main__':
         lpath_down = os.path.join(args.local_path, '50gbfile.txt.out')
         rpath = args.remote_path + '/50gbfile.txt'
 
-        if adl.exists(rpath):
+        if adl.exists(rpath, invalidate_cache=False):
             adl.rm(rpath)
         if os.path.exists(lpath_down):
             os.remove(lpath_down)

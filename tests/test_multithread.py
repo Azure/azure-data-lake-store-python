@@ -16,7 +16,7 @@ from azure.datalake.store.core import AzureDLPath
 from azure.datalake.store.multithread import ADLDownloader, ADLUploader
 from tests.testing import azure, azure_teardown, md5sum, my_vcr, posix, working_dir
 from azure.datalake.store.transfer import ADLTransferClient
-
+import time
 test_dir = working_dir()
 
 
@@ -50,8 +50,8 @@ def setup_tree(azure):
     try:
         yield
     finally:
-        for path in azure.ls(test_dir):
-            if azure.exists(path):
+        for path in azure.ls(test_dir, invalidate_cache=False):
+            if azure.exists(path, invalidate_cache=False):
                 azure.rm(path, recursive=True)
 
 
@@ -146,6 +146,7 @@ def test_download_many(tempdir, azure):
 
 @my_vcr.use_cassette
 def test_download_glob(tempdir, azure):
+    time.sleep(10)
     with setup_tree(azure):
         remote_path = test_dir / 'data' / 'a' / '*.csv'
         down = ADLDownloader(azure, remote_path, tempdir, run=False,
@@ -186,6 +187,9 @@ def test_download_glob(tempdir, azure):
 @my_vcr.use_cassette
 def test_download_overwrite(tempdir, azure):
     with setup_tree(azure):
+        with open(os.path.join(tempdir, 'x.csv'), 'w') as f:
+            f.write('12345')
+
         with pytest.raises(OSError) as e:
             ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
         assert tempdir in str(e)
@@ -335,10 +339,8 @@ def test_upload_overwrite(local_files, azure):
     bigfile, littlefile, emptyfile, a, b, c = local_files
 
     with azure_teardown(azure):
-        # create the folder that we want to make sure the overwrite 
-        # test fails on if it doesn't already exist
-        if not azure.exists(test_dir):
-            azure.mkdir(test_dir)
+        # make the file already exist.
+        azure.touch('/{}/littlefile'.format(test_dir.as_posix()))
 
         with pytest.raises(OSError) as e:
             ADLUploader(azure, test_dir, littlefile, nthreads=1)

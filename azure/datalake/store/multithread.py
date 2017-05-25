@@ -102,14 +102,16 @@ class ADLDownloader(object):
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
                  overwrite=False, verbose=False):
-        if not overwrite and os.path.exists(lpath):
-            raise FileExistsError(lpath)
         
         # validate that the src exists and the current user has access to it
         # this only validates access to the top level folder. If there are files
         # or folders underneath it that the user does not have access to the download
         # will fail on those files. We clean the path in case there are wildcards.
-        if not adlfs.exists(AzureDLPath(rpath).globless_prefix):
+        # In this case, we will always invalidate the cache for this check to 
+        # do our best to ensure that the path exists as close to run time of the transfer as possible.
+        # Due to the nature of a distributed filesystem, the path could be deleted later during execution,
+        # at which point the transfer's behavior may be non-deterministic, but it will indicate an error.
+        if not adlfs.exists(AzureDLPath(rpath).globless_prefix, invalidate_cache=True):
             raise FileNotFoundError('Data Lake item at path: {} either does not exist or the current user does not have permission to access it.'.format(rpath))
         if client:
             self.client = client
@@ -128,7 +130,10 @@ class ADLDownloader(object):
         self.rpath = rpath
         self.lpath = lpath
         self._overwrite = overwrite
-        self._setup()
+        existing_files = self._setup()
+        if existing_files:
+            raise FileExistsError('Overwrite was not specified and the following files exist, blocking the transfer operation. Please specify overwrite to overwrite these files during transfer: {}'.format(','.join(existing_files)))
+        
         if run:
             self.run()
 
@@ -181,9 +186,9 @@ class ADLDownloader(object):
         """ Create set of parameters to loop over
         """
         if "*" not in self.rpath:
-            rfiles = self.client._adlfs.walk(self.rpath, details=True)
+            rfiles = self.client._adlfs.walk(self.rpath, details=True, invalidate_cache=True)
         else:
-            rfiles = self.client._adlfs.glob(self.rpath, details=True)
+            rfiles = self.client._adlfs.glob(self.rpath, details=True, invalidate_cache=True)
         if len(rfiles) > 1:
             prefix = commonprefix([f['name'] for f in rfiles])
             file_pairs = [(os.path.join(self.lpath, os.path.relpath(f['name'], prefix)), f)
@@ -201,9 +206,14 @@ class ADLDownloader(object):
         # and should not be referenced directly by public callers
         self._file_pairs = file_pairs
 
+        existing_files = []
         for lfile, rfile in file_pairs:
-            self.client.submit(rfile['name'], lfile, rfile['length'])
-
+            if not self._overwrite and os.path.exists(lfile):
+                existing_files.append(lfile)
+            else:
+                self.client.submit(rfile['name'], lfile, rfile['length'])
+        
+        return existing_files
     def run(self, nthreads=None, monitor=True):
         """ Populate transfer queue and execute downloads
 
@@ -343,13 +353,6 @@ class ADLUploader(object):
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
                  overwrite=False, verbose=False):
-        if not overwrite and adlfs.exists(rpath):
-            raise FileExistsError(rpath)
-        
-        # forcibly remove the target file before execution
-        # if the user indicates they want to overwrite the destination.
-        if overwrite and adlfs.exists(rpath):
-            adlfs.remove(rpath, True)
 
         if client:
             self.client = client
@@ -370,7 +373,11 @@ class ADLUploader(object):
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
         self._overwrite = overwrite
-        self._setup()
+        existing_files = self._setup()
+        
+        if existing_files:
+            raise FileExistsError('Overwrite was not specified and the following files exist, blocking the transfer operation. Please specify overwrite to overwrite these files during transfer: {}'.format(','.join(existing_files)))
+
         if run:
             self.run()
 
@@ -436,8 +443,8 @@ class ADLUploader(object):
             prefix = commonprefix(lfiles)
             file_pairs = [(f, self.rpath / AzureDLPath(f).relative_to(prefix)) for f in lfiles]
         elif lfiles:
-            if self.client._adlfs.exists(self.rpath) and \
-               self.client._adlfs.info(self.rpath)['type'] == "DIRECTORY":
+            if self.client._adlfs.exists(self.rpath, invalidate_cache=True) and \
+               self.client._adlfs.info(self.rpath, invalidate_cache=False)['type'] == "DIRECTORY":
                 file_pairs = [(lfiles[0], self.rpath / AzureDLPath(lfiles[0]).name)]
             else:
                 file_pairs = [(lfiles[0], self.rpath)]
@@ -448,9 +455,15 @@ class ADLUploader(object):
         # and should not be referenced directly by public callers
         self._file_pairs = file_pairs
 
+        existing_files = []
         for lfile, rfile in file_pairs:
-            fsize = os.stat(lfile).st_size
-            self.client.submit(lfile, rfile, fsize)
+            if not self._overwrite and self.client._adlfs.exists(rfile, invalidate_cache=False):
+                existing_files.append(rfile.as_posix())
+            else:
+                fsize = os.stat(lfile).st_size
+                self.client.submit(lfile, rfile, fsize)
+
+        return existing_files
 
     def run(self, nthreads=None, monitor=True):
         """ Populate transfer queue and execute downloads
@@ -517,7 +530,10 @@ def merge_chunks(adlfs, outfile, files, shutdown_event=None, overwrite=False):
         # so this call is optimized to instantly delete the temp folder on concat.
         # if somehow the target file was created between the beginning of upload
         # and concat, we will remove it if the user specified overwrite.
-        if adlfs.exists(outfile):
+        # here we must get the most up to date information from the service,
+        # instead of relying on the local cache to ensure that we know if
+        # the merge target already exists.
+        if adlfs.exists(outfile, invalidate_cache=True):
             if overwrite:
                 adlfs.remove(outfile, True)
             else:

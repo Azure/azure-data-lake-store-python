@@ -13,8 +13,7 @@ import pytest
 import datetime
 from azure.datalake.store import utils
 from azure.datalake.store.exceptions import PermissionError
-from tests.testing import azure, azure_teardown, my_vcr, posix, tmpfile, working_dir
-
+from tests.testing import azure, second_azure, azure_teardown, my_vcr, posix, tmpfile, working_dir
 test_dir = working_dir()
 
 a = posix(test_dir / 'a')
@@ -48,23 +47,35 @@ def test_idempotent_connect(azure):
 @my_vcr.use_cassette
 def test_ls_touch(azure):
     with azure_teardown(azure):
-        assert not azure.ls(test_dir)
+        assert not azure.ls(test_dir, invalidate_cache=False)
         azure.touch(a)
         azure.touch(b)
-        L = azure.ls(test_dir, True)
+        L = azure.ls(test_dir, True, invalidate_cache=False)
         assert set(d['name'] for d in L) == set([a, b])
-        L = azure.ls(test_dir, False)
+        L = azure.ls(test_dir, False, invalidate_cache=False)
         assert set(L) == set([a, b])
 
+@my_vcr.use_cassette
+def test_ls_touch_invalidate_cache(azure, second_azure):
+    with azure_teardown(azure):
+        assert not azure.ls(test_dir, invalidate_cache=False)
+        assert not second_azure.ls(test_dir, invalidate_cache=False)
+        azure.touch(a)
+        azure.touch(b)
+        L = azure.ls(test_dir, True, invalidate_cache=False)
+        assert not second_azure.ls(test_dir, invalidate_cache=False)
+        L_second = second_azure.ls(test_dir, True, invalidate_cache=True)
+        assert set(d['name'] for d in L) == set([a, b])
+        assert L == L_second
 
 @my_vcr.use_cassette
 def test_rm(azure):
     with azure_teardown(azure):
-        assert not azure.exists(a)
+        assert not azure.exists(a, invalidate_cache=False)
         azure.touch(a)
-        assert azure.exists(a)
+        assert azure.exists(a, invalidate_cache=False)
         azure.rm(a)
-        assert not azure.exists(a)
+        assert not azure.exists(a, invalidate_cache=False)
 
 
 @my_vcr.use_cassette
@@ -189,7 +200,7 @@ def test_glob_walk(azure):
             posix(test_dir / 'a3'),
             posix(test_dir / 'b1')}
 
-        assert set(azure.walk(test_dir)) == {
+        assert set(azure.walk(test_dir, invalidate_cache=False)) == {
             posix(test_dir / 'a'),
             posix(test_dir / 'a1'),
             posix(test_dir / 'a2'),
@@ -199,21 +210,82 @@ def test_glob_walk(azure):
             posix(test_dir / 'c' / 'x2'),
             posix(test_dir / 'c' / 'd' / 'x3')}
 
-        assert set(azure.walk(test_dir / 'c')) == {
+        assert set(azure.walk(test_dir / 'c', invalidate_cache=False)) == {
             posix(test_dir / 'c' / 'x1'),
             posix(test_dir / 'c' / 'x2'),
             posix(test_dir / 'c' / 'd' / 'x3')}
 
-        assert set(azure.walk(test_dir / 'c')) == set(azure.walk(test_dir / 'c'))
+        assert set(azure.walk(test_dir / 'c', invalidate_cache=False)) == set(azure.walk(test_dir / 'c', invalidate_cache=False))
 
         # test glob and walk with details=True
-        glob_details = azure.glob(test_dir / '*', details=True)
+        glob_details = azure.glob(test_dir / '*', details=True, invalidate_cache=False)
 
         # validate that the objects are subscriptable
         assert glob_details[0]['name'] is not None
         assert glob_details[0]['type'] is not None
 
-        walk_details = azure.walk(test_dir, details=True)
+        walk_details = azure.walk(test_dir, details=True, invalidate_cache=False)
+        assert walk_details[0]['name'] is not None
+        assert walk_details[0]['type'] is not None
+
+@my_vcr.use_cassette
+def test_glob_walk_invalidate_cache(azure):
+    with azure_teardown(azure):
+        azure.mkdir(test_dir / 'c')
+        azure.mkdir(test_dir / 'c' / 'd')
+        filenames = ['a', 'a1', 'a2', 'a3', 'b1', 'c/x1', 'c/x2', 'c/d/x3']
+        filenames = [test_dir / s for s in filenames]
+        for fn in filenames:
+            azure.touch(fn)
+
+        assert set(azure.glob(test_dir / 'a*')) == {
+            posix(test_dir / 'a'),
+            posix(test_dir / 'a1'),
+            posix(test_dir / 'a2'),
+            posix(test_dir / 'a3')}
+
+        assert set(azure.glob(test_dir / 'c' / '*')) == {
+            posix(test_dir / 'c' / 'x1'),
+            posix(test_dir / 'c' / 'x2')}
+
+        assert (set(azure.glob(test_dir / 'c')) ==
+                set(azure.glob(test_dir / 'c' / '')))
+
+        assert set(azure.glob(test_dir / 'a')) == {posix(test_dir / 'a')}
+        assert set(azure.glob(test_dir / 'a1')) == {posix(test_dir / 'a1')}
+
+        assert set(azure.glob(test_dir / '*')) == {
+            posix(test_dir / 'a'),
+            posix(test_dir / 'a1'),
+            posix(test_dir / 'a2'),
+            posix(test_dir / 'a3'),
+            posix(test_dir / 'b1')}
+
+        assert set(azure.walk(test_dir, invalidate_cache=True)) == {
+            posix(test_dir / 'a'),
+            posix(test_dir / 'a1'),
+            posix(test_dir / 'a2'),
+            posix(test_dir / 'a3'),
+            posix(test_dir / 'b1'),
+            posix(test_dir / 'c' / 'x1'),
+            posix(test_dir / 'c' / 'x2'),
+            posix(test_dir / 'c' / 'd' / 'x3')}
+
+        assert set(azure.walk(test_dir / 'c', invalidate_cache=True)) == {
+            posix(test_dir / 'c' / 'x1'),
+            posix(test_dir / 'c' / 'x2'),
+            posix(test_dir / 'c' / 'd' / 'x3')}
+
+        assert set(azure.walk(test_dir / 'c', invalidate_cache=True)) == set(azure.walk(test_dir / 'c', invalidate_cache=True))
+
+        # test glob and walk with details=True
+        glob_details = azure.glob(test_dir / '*', details=True, invalidate_cache=True)
+
+        # validate that the objects are subscriptable
+        assert glob_details[0]['name'] is not None
+        assert glob_details[0]['type'] is not None
+
+        walk_details = azure.walk(test_dir, details=True, invalidate_cache=True)
         assert walk_details[0]['name'] is not None
         assert walk_details[0]['type'] is not None
 
@@ -223,13 +295,40 @@ def test_info(azure):
         with azure.open(a, 'wb') as f:
             f.write(b'a' * 5)
 
-        info = azure.info(a)
+        info = azure.info(a, invalidate_cache=False)
         assert info['length'] == 5
         assert info['name'] == a
         assert info['type'] == 'FILE'
 
-        assert azure.info(test_dir)['type'] == 'DIRECTORY'
+        assert azure.info(test_dir, invalidate_cache=True)['type'] == 'DIRECTORY'
 
+@my_vcr.use_cassette
+def test_info_invalidate_cache(azure, second_azure):
+    with azure_teardown(azure):
+        # construct initial cache and ensure the file doesn't already exist
+        assert not azure.exists(a, invalidate_cache=False)
+        assert not second_azure.exists(a, invalidate_cache=False)
+
+        with azure.open(a, 'wb') as f:
+            f.write(b'a' * 5)
+
+        # verify that it works in the fs that did the write and not on the other
+        info = azure.info(a, invalidate_cache=False)
+        with pytest.raises(FileNotFoundError):
+            second_azure.info(a, invalidate_cache=False)
+
+        # then invalidate
+        second_info = second_azure.info(a, invalidate_cache=True)
+        assert info['length'] == 5
+        assert info['name'] == a
+        assert info['type'] == 'FILE'
+
+        assert info['length'] == second_info['length']
+        assert info['name'] == second_info['name']
+        assert info['type'] == second_info['type']
+
+        # assure that the cache was properly repopulated on the info call
+        assert second_azure.info(test_dir, invalidate_cache=False)['type'] == 'DIRECTORY'
 
 @my_vcr.use_cassette
 def test_df(azure):
@@ -248,11 +347,11 @@ def test_df(azure):
 def test_move(azure):
     with azure_teardown(azure):
         azure.touch(a)
-        assert azure.exists(a)
-        assert not azure.exists(b)
+        assert azure.exists(a, invalidate_cache=False)
+        assert not azure.exists(b, invalidate_cache=False)
         azure.mv(a, b)
-        assert not azure.exists(a)
-        assert azure.exists(b)
+        assert not azure.exists(a, invalidate_cache=False)
+        assert azure.exists(b, invalidate_cache=False)
 
 
 @my_vcr.use_cassette
@@ -260,22 +359,40 @@ def test_move(azure):
 def test_copy(azure):
     with azure_teardown(azure):
         azure.touch(a)
-        assert azure.exists(a)
-        assert not azure.exists(b)
+        assert azure.exists(a, invalidate_cache=False)
+        assert not azure.exists(b, invalidate_cache=False)
         azure.cp(a, b)
-        assert azure.exists(a)
-        assert azure.exists(b)
+        assert azure.exists(a, invalidate_cache=False)
+        assert azure.exists(b, invalidate_cache=False)
 
 
 @my_vcr.use_cassette
 def test_exists(azure):
     with azure_teardown(azure):
-        assert not azure.exists(a)
+        assert not azure.exists(a, invalidate_cache=False)
         azure.touch(a)
-        assert azure.exists(a)
+        assert azure.exists(a, invalidate_cache=False)
         azure.rm(a)
-        assert not azure.exists(a)
+        assert not azure.exists(a, invalidate_cache=False)
 
+@my_vcr.use_cassette
+def test_exists_remove_invalidate_cache(azure, second_azure):
+    with azure_teardown(azure):
+        # test to ensure file does not exist up front, cache doesn't matter
+        assert not azure.exists(a, invalidate_cache=False)
+        assert not second_azure.exists(a, invalidate_cache=False)
+        azure.touch(a)
+        # now ensure that it exists in the client that did the work, but not in the other
+        assert azure.exists(a, invalidate_cache=False)
+        assert not second_azure.exists(a, invalidate_cache=False)
+        # now, with cache invalidation it should exist
+        assert second_azure.exists(a, invalidate_cache=True)
+        azure.rm(a)
+        # same idea with remove. It should no longer exist (cache invalidated or not) in client 1, but still exist in client 2
+        assert not azure.exists(a, invalidate_cache=False)
+        assert second_azure.exists(a, invalidate_cache=False)
+        # now ensure it does not exist when we do invalidate the cache
+        assert not second_azure.exists(a, invalidate_cache=True)
 
 @my_vcr.use_cassette
 def test_cat(azure):
@@ -372,7 +489,7 @@ def test_readline(azure):
 def test_touch_exists(azure):
     with azure_teardown(azure):
         azure.touch(a)
-        assert azure.exists(a)
+        assert azure.exists(a, invalidate_cache=False)
 
 
 @my_vcr.use_cassette
@@ -610,7 +727,6 @@ def test_delimiters_dash(azure):
 
 
 @my_vcr.use_cassette
-@pytest.mark.skipif(sys.version_info[0:2] == (3, 3), reason="takes too long on Python 3.3")
 def test_chmod(azure):
     with azure_teardown(azure):
         azure.touch(a)
@@ -636,7 +752,7 @@ def test_chmod(azure):
         azure.chmod(test_dir / 'deep', '660')
 
         with pytest.raises((OSError, IOError)):
-            azure.ls(test_dir / 'deep')
+            azure.ls(test_dir / 'deep', invalidate_cache=False)
 
         azure.chmod(test_dir / 'deep', '770')
 
@@ -728,19 +844,21 @@ def test_acl_management(azure):
 @my_vcr.use_cassette
 def test_set_expiry(azure):
     with azure_teardown(azure):
-        azure.touch(a)
-        
-        # first get the existing expiry, which should be never
-        initial_expiry = azure.info(a)['msExpirationTime']
-        
         # this future time gives the milliseconds since the epoch that have occured as of 01/31/2030 at noon
         epoch_time = datetime.datetime.utcfromtimestamp(0)
         final_time = datetime.datetime(2030, 1, 31, 12)
         time_in_milliseconds = (final_time - epoch_time).total_seconds() * 1000
+        
+        # create the file
+        azure.touch(a)
+        
+        # first get the existing expiry, which should be never
+        initial_expiry = azure.info(a, invalidate_cache=True)['msExpirationTime']
         azure.set_expiry(a, 'Absolute', time_in_milliseconds)
-
-        cur_expiry = azure.info(a)['msExpirationTime']
-        assert time_in_milliseconds == cur_expiry
+        cur_expiry = azure.info(a, invalidate_cache=True)['msExpirationTime']
+        # this is a range of +- 100ms because the service does a best effort to set it precisely, but there is
+        # no guarantee that the expiry will be to the exact millisecond
+        assert time_in_milliseconds - 100 <= cur_expiry <= time_in_milliseconds + 100
         assert initial_expiry != cur_expiry
 
         # now set it back to never expire and validate it is the same
