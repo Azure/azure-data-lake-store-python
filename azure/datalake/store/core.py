@@ -140,7 +140,7 @@ class AzureDLFileSystem(object):
         else:
             return [f['name'] for f in files]
 
-    def info(self, path, invalidate_cache=True):
+    def info(self, path, invalidate_cache=True, expected_error_code=None):
         """ File information
         """
         path = AzureDLPath(path).trim()
@@ -151,7 +151,7 @@ class AzureDLFileSystem(object):
         # in the case of getting info about the root itself or if the cache won't be hit
         # simply return the result of a GETFILESTATUS from the service
         if invalidate_cache or path_as_posix == '/' or path_as_posix == '.':
-            to_return  = self.azure.call('GETFILESTATUS', path_as_posix)['FileStatus']
+            to_return  = self.azure.call('GETFILESTATUS', path_as_posix, expected_error_code=expected_error_code)['FileStatus']
             to_return['name'] = path_as_posix
             
             # add the key/value pair back to the cache so long as it isn't the root
@@ -427,7 +427,7 @@ class AzureDLFileSystem(object):
     def exists(self, path, invalidate_cache=True):
         """ Does such a file/directory exist? """
         try:
-            self.info(path, invalidate_cache)
+            self.info(path, invalidate_cache, expected_error_code=404)
             return True
         except FileNotFoundError:
             return False
