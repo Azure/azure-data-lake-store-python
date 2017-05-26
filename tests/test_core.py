@@ -12,7 +12,7 @@ import sys
 import pytest
 import datetime
 from azure.datalake.store import utils
-from azure.datalake.store.exceptions import PermissionError
+from azure.datalake.store.exceptions import PermissionError, FileNotFoundError
 from tests.testing import azure, second_azure, azure_teardown, my_vcr, posix, tmpfile, working_dir
 test_dir = working_dir()
 
