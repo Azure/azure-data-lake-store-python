@@ -16,7 +16,6 @@ from azure.datalake.store.core import AzureDLPath
 from azure.datalake.store.multithread import ADLDownloader, ADLUploader
 from tests.testing import azure, azure_teardown, md5sum, my_vcr, posix, working_dir
 from azure.datalake.store.transfer import ADLTransferClient
-import time
 test_dir = working_dir()
 
 
@@ -146,7 +145,6 @@ def test_download_many(tempdir, azure):
 
 @my_vcr.use_cassette
 def test_download_glob(tempdir, azure):
-    time.sleep(10)
     with setup_tree(azure):
         remote_path = test_dir / 'data' / 'a' / '*.csv'
         down = ADLDownloader(azure, remote_path, tempdir, run=False,

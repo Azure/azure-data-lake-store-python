@@ -31,7 +31,7 @@ To play with the code, here is a starting point:
     # typical operations
     adl.ls('')
     adl.ls('tmp/', detail=True)
-	adl.ls('tmp/', detail=True, invalidate_cache=True)
+    adl.ls('tmp/', detail=True, invalidate_cache=True)
     adl.cat('littlefile')
     adl.head('gdelt20150827.csv')
 
