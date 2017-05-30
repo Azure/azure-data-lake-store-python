@@ -1,30 +1,57 @@
 interactions:
 - request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
+          Azure-Data-Lake-Store-SDK-For-Python]
+      x-ms-client-request-id: [5beaa440-4267-11e7-ac27-645106422854]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=GETFILESTATUS&api-version=2016-11-01
+  response:
+    body: {string: '{"RemoteException":{"exception":"FileNotFoundException","message":"File/Folder
+        does not exist: /azure_test_dir/a [1839ba8e-f524-4420-840b-d75e4f947a02][2017-05-26T16:02:15.3415735-07:00]","javaClassName":"java.io.FileNotFoundException"}}'}
+    headers:
+      Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
+      Content-Length: ['237']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Fri, 26 May 2017 23:02:15 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Status: ['0x8309000A']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [1839ba8e-f524-4420-840b-d75e4f947a02]
+      x-ms-webhdfs-version: [16.12.19.00]
+    status: {code: 404, message: Not Found}
+- request:
     body: 123--
     headers:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       Content-Length: ['5']
-      User-Agent: [python/3.5.2 (Windows-10-10.0.14393-SP0) azure.datalake.store.lib/0.0.6
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
           Azure-Data-Lake-Store-SDK-For-Python]
-      x-ms-client-request-id: [81d3ce0c-0e6a-11e7-abe6-645106422854]
+      x-ms-client-request-id: [5c2d45d2-4267-11e7-8b00-645106422854]
     method: PUT
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?overwrite=true&api-version=2016-11-01&OP=CREATE&write=true
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=CREATE&api-version=2016-11-01&write=true&overwrite=true
   response:
     body: {string: ''}
     headers:
       Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
       Content-Length: ['0']
       ContentLength: ['0']
-      Date: ['Tue, 21 Mar 2017 19:13:47 GMT']
+      Date: ['Fri, 26 May 2017 23:02:15 GMT']
       Expires: ['-1']
-      Location: ['https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?overwrite=true&api-version=2016-11-01&OP=CREATE&write=true']
+      Location: ['https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=CREATE&api-version=2016-11-01&write=true&overwrite=true']
       Pragma: [no-cache]
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [3dc26415-3b3a-4ff2-8ddf-fcfe4457614f]
+      x-ms-request-id: [6f1301b4-7091-4a40-b48b-b8ccd8e655bc]
       x-ms-webhdfs-version: [16.12.19.00]
     status: {code: 201, message: Created}
 - request:
@@ -33,24 +60,24 @@ interactions:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
-      User-Agent: [python/3.5.2 (Windows-10-10.0.14393-SP0) azure.datalake.store.lib/0.0.6
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
           Azure-Data-Lake-Store-SDK-For-Python]
-      x-ms-client-request-id: [82411b7a-0e6a-11e7-9f00-645106422854]
+      x-ms-client-request-id: [5c6c8c48-4267-11e7-bb70-645106422854]
     method: GET
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir?api-version=2016-11-01&OP=LISTSTATUS
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=GETFILESTATUS&api-version=2016-11-01
   response:
-    body: {string: '{"FileStatuses":{"FileStatus":[{"length":5,"pathSuffix":"a","type":"FILE","blockSize":268435456,"accessTime":1490123627044,"modificationTime":1490123627126,"replication":1,"permission":"770","owner":"9a23860e-03b0-4bad-a8b7-e1d081d592bd","group":"2e6c02d2-a364-4530-9137-d17403996cbf","msExpirationTime":0,"aclBit":false}]}}'}
+    body: {string: '{"FileStatus":{"length":5,"pathSuffix":"","type":"FILE","blockSize":268435456,"accessTime":1495839735607,"modificationTime":1495839735668,"replication":1,"permission":"770","owner":"9a23860e-03b0-4bad-a8b7-e1d081d592bd","group":"2e6c02d2-a364-4530-9137-d17403996cbf","msExpirationTime":0,"aclBit":false}}'}
     headers:
       Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
-      Content-Length: ['324']
+      Content-Length: ['304']
       Content-Type: [application/json; charset=utf-8]
-      Date: ['Tue, 21 Mar 2017 19:13:47 GMT']
+      Date: ['Fri, 26 May 2017 23:02:15 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [cc3420e4-8376-4aff-8009-4f6062823252]
+      x-ms-request-id: [972335c4-516a-490d-802e-f1aab511dcd4]
       x-ms-webhdfs-version: [16.12.19.00]
     status: {code: 200, message: OK}
 - request:
@@ -59,24 +86,76 @@ interactions:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
-      User-Agent: [python/3.5.2 (Windows-10-10.0.14393-SP0) azure.datalake.store.lib/0.0.6
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
           Azure-Data-Lake-Store-SDK-For-Python]
-      x-ms-client-request-id: [825727e2-0e6a-11e7-9026-645106422854]
+      x-ms-client-request-id: [5c92c50c-4267-11e7-9395-645106422854]
     method: GET
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?read=true&offset=0&api-version=2016-11-01&OP=OPEN&length=5
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=GETFILESTATUS&api-version=2016-11-01
+  response:
+    body: {string: '{"FileStatus":{"length":5,"pathSuffix":"","type":"FILE","blockSize":268435456,"accessTime":1495839735607,"modificationTime":1495839735668,"replication":1,"permission":"770","owner":"9a23860e-03b0-4bad-a8b7-e1d081d592bd","group":"2e6c02d2-a364-4530-9137-d17403996cbf","msExpirationTime":0,"aclBit":false}}'}
+    headers:
+      Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
+      Content-Length: ['304']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Fri, 26 May 2017 23:02:16 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [38d5b541-7ae7-4c0b-85fc-bf48ccc402cd]
+      x-ms-webhdfs-version: [16.12.19.00]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
+          Azure-Data-Lake-Store-SDK-For-Python]
+      x-ms-client-request-id: [5ca8d7de-4267-11e7-96ce-645106422854]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=GETFILESTATUS&api-version=2016-11-01
+  response:
+    body: {string: '{"FileStatus":{"length":5,"pathSuffix":"","type":"FILE","blockSize":268435456,"accessTime":1495839735607,"modificationTime":1495839735668,"replication":1,"permission":"770","owner":"9a23860e-03b0-4bad-a8b7-e1d081d592bd","group":"2e6c02d2-a364-4530-9137-d17403996cbf","msExpirationTime":0,"aclBit":false}}'}
+    headers:
+      Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
+      Content-Length: ['304']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Fri, 26 May 2017 23:02:16 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [65d41968-d60b-4238-aedd-edd102cbe9ea]
+      x-ms-webhdfs-version: [16.12.19.00]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
+          Azure-Data-Lake-Store-SDK-For-Python]
+      x-ms-client-request-id: [5cd1ae3e-4267-11e7-b853-645106422854]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=OPEN&api-version=2016-11-01&read=true&offset=0&length=5
   response:
     body: {string: 123--}
     headers:
       Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
       Content-Type: [application/octet-stream]
-      Date: ['Tue, 21 Mar 2017 19:13:47 GMT']
+      Date: ['Fri, 26 May 2017 23:02:16 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       Transfer-Encoding: [chunked]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [45e7b28e-650c-42fe-9030-14d30737b4d6]
+      x-ms-request-id: [02968c7a-902a-4f54-b9e1-e0181c0fc9b0]
       x-ms-webhdfs-version: [16.12.19.00]
     status: {code: 200, message: OK}
 - request:
@@ -86,23 +165,23 @@ interactions:
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       Content-Length: ['5']
-      User-Agent: [python/3.5.2 (Windows-10-10.0.14393-SP0) azure.datalake.store.lib/0.0.6
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
           Azure-Data-Lake-Store-SDK-For-Python]
-      x-ms-client-request-id: [827019c0-0e6a-11e7-9e63-645106422854]
+      x-ms-client-request-id: [5cecb1f0-4267-11e7-a307-645106422854]
     method: POST
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?append=true&api-version=2016-11-01&OP=APPEND
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=APPEND&api-version=2016-11-01&append=true
   response:
     body: {string: ''}
     headers:
       Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
       Content-Length: ['0']
-      Date: ['Tue, 21 Mar 2017 19:13:47 GMT']
+      Date: ['Fri, 26 May 2017 23:02:16 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [08dbdafe-aafc-4f9b-b9ec-48eb5945e140]
+      x-ms-request-id: [d16b0ecf-f621-4a04-b120-a4cb2117d608]
       x-ms-webhdfs-version: [16.12.19.00]
     status: {code: 200, message: OK}
 - request:
@@ -112,23 +191,23 @@ interactions:
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       Content-Length: ['3']
-      User-Agent: [python/3.5.2 (Windows-10-10.0.14393-SP0) azure.datalake.store.lib/0.0.6
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
           Azure-Data-Lake-Store-SDK-For-Python]
-      x-ms-client-request-id: [82923506-0e6a-11e7-ae1d-645106422854]
+      x-ms-client-request-id: [5d0e8fda-4267-11e7-99e7-645106422854]
     method: POST
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?append=true&offset=10&api-version=2016-11-01&OP=APPEND
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=APPEND&api-version=2016-11-01&offset=10&append=true
   response:
     body: {string: ''}
     headers:
       Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
       Content-Length: ['0']
-      Date: ['Tue, 21 Mar 2017 19:13:47 GMT']
+      Date: ['Fri, 26 May 2017 23:02:16 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [a91df5db-d411-430d-b1fb-7323f3e70e76]
+      x-ms-request-id: [c232c9fb-6281-4b4e-8b94-796c2ba9b469]
       x-ms-webhdfs-version: [16.12.19.00]
     status: {code: 200, message: OK}
 - request:
@@ -137,24 +216,24 @@ interactions:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
-      User-Agent: [python/3.5.2 (Windows-10-10.0.14393-SP0) azure.datalake.store.lib/0.0.6
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
           Azure-Data-Lake-Store-SDK-For-Python]
-      x-ms-client-request-id: [82adfa9c-0e6a-11e7-92a8-645106422854]
+      x-ms-client-request-id: [5d284574-4267-11e7-9b16-645106422854]
     method: GET
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir?api-version=2016-11-01&OP=LISTSTATUS
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=GETFILESTATUS&api-version=2016-11-01
   response:
-    body: {string: '{"FileStatuses":{"FileStatus":[{"length":13,"pathSuffix":"a","type":"FILE","blockSize":268435456,"accessTime":1490123627044,"modificationTime":1490123627688,"replication":1,"permission":"770","owner":"9a23860e-03b0-4bad-a8b7-e1d081d592bd","group":"2e6c02d2-a364-4530-9137-d17403996cbf","msExpirationTime":0,"aclBit":false}]}}'}
+    body: {string: '{"FileStatus":{"length":13,"pathSuffix":"","type":"FILE","blockSize":268435456,"accessTime":1495839735607,"modificationTime":1495839736746,"replication":1,"permission":"770","owner":"9a23860e-03b0-4bad-a8b7-e1d081d592bd","group":"2e6c02d2-a364-4530-9137-d17403996cbf","msExpirationTime":0,"aclBit":false}}'}
     headers:
       Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
-      Content-Length: ['325']
+      Content-Length: ['305']
       Content-Type: [application/json; charset=utf-8]
-      Date: ['Tue, 21 Mar 2017 19:13:48 GMT']
+      Date: ['Fri, 26 May 2017 23:02:16 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [4d481309-4415-4f8f-a4ef-63a73641673c]
+      x-ms-request-id: [88389ba4-74ce-424d-8bca-2104a195d6ec]
       x-ms-webhdfs-version: [16.12.19.00]
     status: {code: 200, message: OK}
 - request:
@@ -163,24 +242,102 @@ interactions:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
-      User-Agent: [python/3.5.2 (Windows-10-10.0.14393-SP0) azure.datalake.store.lib/0.0.6
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
           Azure-Data-Lake-Store-SDK-For-Python]
-      x-ms-client-request-id: [82c442ae-0e6a-11e7-9226-645106422854]
+      x-ms-client-request-id: [5d3c3be6-4267-11e7-b056-645106422854]
     method: GET
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?read=true&offset=0&api-version=2016-11-01&OP=OPEN&length=13
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=GETFILESTATUS&api-version=2016-11-01
+  response:
+    body: {string: '{"FileStatus":{"length":13,"pathSuffix":"","type":"FILE","blockSize":268435456,"accessTime":1495839735607,"modificationTime":1495839736746,"replication":1,"permission":"770","owner":"9a23860e-03b0-4bad-a8b7-e1d081d592bd","group":"2e6c02d2-a364-4530-9137-d17403996cbf","msExpirationTime":0,"aclBit":false}}'}
+    headers:
+      Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
+      Content-Length: ['305']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Fri, 26 May 2017 23:02:17 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [f2370c40-0089-49a0-af01-827535ca8115]
+      x-ms-webhdfs-version: [16.12.19.00]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
+          Azure-Data-Lake-Store-SDK-For-Python]
+      x-ms-client-request-id: [5d5330d0-4267-11e7-8ace-645106422854]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=GETFILESTATUS&api-version=2016-11-01
+  response:
+    body: {string: '{"FileStatus":{"length":13,"pathSuffix":"","type":"FILE","blockSize":268435456,"accessTime":1495839735607,"modificationTime":1495839736746,"replication":1,"permission":"770","owner":"9a23860e-03b0-4bad-a8b7-e1d081d592bd","group":"2e6c02d2-a364-4530-9137-d17403996cbf","msExpirationTime":0,"aclBit":false}}'}
+    headers:
+      Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
+      Content-Length: ['305']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Fri, 26 May 2017 23:02:17 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [5ccc10a1-45e7-4146-a7bc-794ac79ddf9b]
+      x-ms-webhdfs-version: [16.12.19.00]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
+          Azure-Data-Lake-Store-SDK-For-Python]
+      x-ms-client-request-id: [5d68f902-4267-11e7-9f7f-645106422854]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=OPEN&api-version=2016-11-01&read=true&offset=0&length=13
   response:
     body: {string: 123--456--789}
     headers:
       Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
       Content-Type: [application/octet-stream]
-      Date: ['Tue, 21 Mar 2017 19:13:48 GMT']
+      Date: ['Fri, 26 May 2017 23:02:17 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       Transfer-Encoding: [chunked]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [3f7e604d-bdf6-465f-96f2-a7cf90dd3240]
+      x-ms-request-id: [5ddcf7de-eaae-4249-ad76-073e069f4eec]
+      x-ms-webhdfs-version: [16.12.19.00]
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
+          Azure-Data-Lake-Store-SDK-For-Python]
+      x-ms-client-request-id: [5d8b3d4c-4267-11e7-add5-645106422854]
+    method: GET
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=GETFILESTATUS&api-version=2016-11-01
+  response:
+    body: {string: '{"FileStatus":{"length":13,"pathSuffix":"","type":"FILE","blockSize":268435456,"accessTime":1495839735607,"modificationTime":1495839736746,"replication":1,"permission":"770","owner":"9a23860e-03b0-4bad-a8b7-e1d081d592bd","group":"2e6c02d2-a364-4530-9137-d17403996cbf","msExpirationTime":0,"aclBit":false}}'}
+    headers:
+      Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
+      Content-Length: ['305']
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Fri, 26 May 2017 23:02:17 GMT']
+      Expires: ['-1']
+      Pragma: [no-cache]
+      Status: ['0x0']
+      Strict-Transport-Security: [max-age=15724800; includeSubDomains]
+      X-Content-Type-Options: [nosniff]
+      x-ms-request-id: [298c0ac4-7792-44ff-acd5-377c0029214f]
       x-ms-webhdfs-version: [16.12.19.00]
     status: {code: 200, message: OK}
 - request:
@@ -190,24 +347,24 @@ interactions:
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
       Content-Length: ['0']
-      User-Agent: [python/3.5.2 (Windows-10-10.0.14393-SP0) azure.datalake.store.lib/0.0.6
+      User-Agent: [python/3.5.2 (Windows-10-10.0.15063-SP0) azure.datalake.store.lib/0.0.10
           Azure-Data-Lake-Store-SDK-For-Python]
-      x-ms-client-request-id: [82dfb9f6-0e6a-11e7-9bd4-645106422854]
+      x-ms-client-request-id: [5da0d5f0-4267-11e7-9ed7-645106422854]
     method: DELETE
-    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?recursive=True&api-version=2016-11-01&OP=DELETE
+    uri: https://fakestore.azuredatalakestore.net/webhdfs/v1/azure_test_dir/a?OP=DELETE&api-version=2016-11-01&recursive=True
   response:
     body: {string: '{"boolean":true}'}
     headers:
       Cache-Control: ['no-cache, no-cache, no-store, max-age=0']
       Content-Length: ['16']
       Content-Type: [application/json; charset=utf-8]
-      Date: ['Tue, 21 Mar 2017 19:13:48 GMT']
+      Date: ['Fri, 26 May 2017 23:02:17 GMT']
       Expires: ['-1']
       Pragma: [no-cache]
       Status: ['0x0']
       Strict-Transport-Security: [max-age=15724800; includeSubDomains]
       X-Content-Type-Options: [nosniff]
-      x-ms-request-id: [109ef7e6-d750-45bf-948e-e672bfa1ef9d]
+      x-ms-request-id: [b23ff08a-3056-45d3-9034-9075ae51af88]
       x-ms-webhdfs-version: [16.12.19.00]
     status: {code: 200, message: OK}
 version: 1
