@@ -148,12 +148,12 @@ class AzureDLFileSystem(object):
         
         # in the case of getting info about the root itself or if the cache won't be hit
         # simply return the result of a GETFILESTATUS from the service
-        if invalidate_cache or path_as_posix == '/' or path_as_posix == '.':
+        if invalidate_cache or path_as_posix in {'/', '.'}:
             to_return  = self.azure.call('GETFILESTATUS', path_as_posix, expected_error_code=expected_error_code)['FileStatus']
             to_return['name'] = path_as_posix
             
             # add the key/value pair back to the cache so long as it isn't the root
-            if path_as_posix != '/' and path_as_posix != '.':
+            if path_as_posix not in {'/', '.'}:
                 if root_as_posix not in self.dirs:
                     self.dirs[root_as_posix] = [to_return]
                 else:
@@ -162,6 +162,7 @@ class AzureDLFileSystem(object):
                         if f['name'] == path_as_posix:
                             found = True
                             f = to_return
+                            break
                     if not found:
                         self.dirs[root_as_posix].append(to_return)
             return to_return
@@ -665,17 +666,19 @@ class AzureDLFile(object):
         self.buffer = io.BytesIO()
         self.blocksize = blocksize
         self.first_write = True
+        
+        # always invalidate the cache when checking for existence of a file
+        # that may be created or written to (for the first time).
         exists = self.azure.exists(path, invalidate_cache=True)
         
         # cannot create a new file object out of a directory
         if exists and self.info()['type'] == 'DIRECTORY':
             raise IOError('path: {} is a directory, not a file, and cannot be opened for reading or writing'.format(path))
-        # always invalidate the cache when checking for existence of a file
-        # that may be created or written to (for the first time).
+        
         if mode == 'ab' and exists:    
             self.loc = self.info()['length']
             self.first_write = False
-        if mode == 'rb':
+        elif mode == 'rb':
             self.size = self.info()['length']
         else:
             self.blocksize = min(2**22, blocksize)
