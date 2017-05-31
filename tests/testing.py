@@ -80,6 +80,15 @@ def azure():
 
     yield fs
 
+@pytest.yield_fixture()
+def second_azure():
+    from azure.datalake.store import AzureDLFileSystem
+    fs = AzureDLFileSystem(token=settings.TOKEN, store_name=settings.STORE_NAME)
+
+    # Clear filesystem cache to ensure we capture all requests from a test
+    fs.invalidate_cache()
+
+    yield fs
 
 @contextmanager
 def azure_teardown(fs):
@@ -89,8 +98,8 @@ def azure_teardown(fs):
         # this is a best effort. If there is an error attempting to delete during cleanup,
         # print it, but it should not cause the test to fail.
         try:
-            for path in fs.ls(working_dir()):
-                if fs.exists(path):
+            for path in fs.ls(working_dir(), invalidate_cache=False):
+                if fs.exists(path, invalidate_cache=False):
                     fs.rm(path, recursive=True)
         except Exception as e:
             print('warning: cleanup failed with exception:')

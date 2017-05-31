@@ -172,7 +172,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         parser.add_argument('file', type=str)
         args = parser.parse_args(line.split())
 
-        print(self._fs.exists(args.file))
+        print(self._fs.exists(args.file, invalidate_cache=False))
 
     def help_exists(self):
         print("exists file\n")
@@ -224,7 +224,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         args = parser.parse_args(line.split())
 
         for f in args.files:
-            self._display_dict(self._fs.info(f))
+            self._display_dict(self._fs.info(f, invalidate_cache=False))
 
     def help_info(self):
         print("info file ...\n")
@@ -274,7 +274,7 @@ class AzureDataLakeFSCommand(cmd.Cmd, object):
         args = parser.parse_args(line.split())
 
         for d in args.dirs:
-            for item in self._fs.ls(d, detail=args.detail):
+            for item in self._fs.ls(d, detail=args.detail, invalidate_cache=False):
                 if args.detail:
                     self._display_item(item, args.human_readable)
                 else:
