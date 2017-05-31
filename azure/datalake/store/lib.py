@@ -309,7 +309,7 @@ class DatalakeRESTInterface:
             return False
         return response.headers['content-type'].startswith('application/json')
 
-    def call(self, op, path='', is_extended=False, **kwargs):
+    def call(self, op, path='', is_extended=False, expected_error_code=None, **kwargs):
         """ Execute a REST call
 
         Parameters
@@ -322,6 +322,11 @@ class DatalakeRESTInterface:
             Indicates if the API call comes from the webhdfs extensions path or the basic webhdfs path.
             By default, all requests target the official webhdfs path. A small subset of custom convenience
             methods specific to Azure Data Lake Store target the extension path (such as SETEXPIRY).
+        expected_error_code: int
+            Optionally indicates a specific, expected error code, if any. In the event that this error
+            is returned, the exception will be logged to DEBUG instead of ERROR stream. The exception
+            will still be raised, however, as it is expected that the caller will expect to handle it
+            and do something different if it is raised.
         kwargs: dict
             other parameters, as defined by the webHDFS standard and
             https://msdn.microsoft.com/en-us/library/mt710547.aspx
@@ -359,11 +364,16 @@ class DatalakeRESTInterface:
             r = func(url, params=params, headers=headers, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: ' + repr(e))
+        
+        exception_log_level = logging.ERROR
+        if expected_error_code and r.status_code == expected_error_code:
+            logger.log(logging.DEBUG, 'Error code: {} was an expected potential error from the caller. Logging the exception to the debug stream'.format(r.status_code))
+            exception_log_level = logging.DEBUG
 
         if r.status_code == 403:
-            self.log_response_and_raise(r, PermissionError(path))
+            self.log_response_and_raise(r, PermissionError(path), level=exception_log_level)
         elif r.status_code == 404:
-            self.log_response_and_raise(r, FileNotFoundError(path))
+            self.log_response_and_raise(r, FileNotFoundError(path), level=exception_log_level)
         elif r.status_code >= 400:
             err = DatalakeRESTException(
                 'Data-lake REST exception: %s, %s' % (op, path))
@@ -374,7 +384,7 @@ class DatalakeRESTInterface:
                     if exception == 'BadOffsetException':
                         err = DatalakeBadOffsetException(path)
                         self.log_response_and_raise(r, err, level=logging.DEBUG)
-            self.log_response_and_raise(r, err)
+            self.log_response_and_raise(r, err, level=exception_log_level)
         else:
             self._log_response(r)
 

@@ -2,6 +2,13 @@
 
 Release History
 ===============
+0.0.10 (2017-05-24)
+------------------
+* Allow users to explicitly use or invalidate the internal, local cache of the filesystem that is built up from previous `ls` calls. It is now set to always call the service instead of the cache by default.
+* Update to properly create the wheel package during build to ensure all pip packages are available.
+* Update folder upload/download to properly throw early in the event that the destination files exist and overwrite was not specified. NOTE: target folder existence (or sub folder existence) does not automatically cause failure. Only leaf node existence will result in failure.
+* Fix a bug that caused file not found errors when attempting to get information about the root folder.
+
 0.0.9 (2017-05-09)
 ------------------
 * Enforce basic SSL utilization to ensure performance due to `GitHub issue 625 <https://github.com/pyca/pyopenssl/issues/625>`
