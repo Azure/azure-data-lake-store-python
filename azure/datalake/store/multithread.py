@@ -209,8 +209,11 @@ class ADLDownloader(object):
 
         existing_files = []
         for lfile, rfile in file_pairs:
-            if not self._overwrite and os.path.exists(lfile):
-                existing_files.append(lfile)
+            # only interested in the final destination file name for existence, 
+            # not the initial inprogress target
+            destination_file = lfile.replace('.inprogress', '')
+            if not self._overwrite and os.path.exists(destination_file):
+                existing_files.append(destination_file)
             else:
                 self.client.submit(rfile['name'], lfile, rfile['length'])
         
