@@ -2,6 +2,10 @@
 
 Release History
 ===============
+0.0.11 (2017-06-02)
+-------------------
+* Update to name incomplete file downloads with a `.inprogress` suffix. This suffix is removed when the download completes successfully.
+
 0.0.10 (2017-05-24)
 -------------------
 * Allow users to explicitly use or invalidate the internal, local cache of the filesystem that is built up from previous `ls` calls. It is now set to always call the service instead of the cache by default.
