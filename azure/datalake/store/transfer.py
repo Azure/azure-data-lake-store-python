@@ -404,6 +404,11 @@ class ADLTransferClient(object):
                                                       key=operator.itemgetter(1))], 
                         overwrite=self._parent._overwrite)
                     self._ffutures[merge_future] = parent
+                elif self._merge and not self._chunked and dst.endswith('.inprogress'):
+                    logger.debug("Renaming file to remove .inprogress: %s", self._fstates[parent])
+                    self._fstates[parent] = 'merging'    
+                    merge_future = self._submit(self._merge, dst, dst.replace('.inprogress',''))
+                    self._ffutures[merge_future] = parent
                 else:
                     self._fstates[parent] = 'finished'
                     logger.info("Transferred %s -> %s", src, dst)
