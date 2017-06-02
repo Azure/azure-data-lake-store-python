@@ -119,7 +119,6 @@ class ADLDownloader(object):
             self.client = ADLTransferClient(
                 adlfs,
                 transfer=get_chunk,
-                merge=rename_file,
                 nthreads=nthreads,
                 chunksize=chunksize,
                 buffersize=buffersize,
@@ -257,25 +256,6 @@ class ADLDownloader(object):
                                                   self.client.status)
 
     __repr__ = __str__
-def rename_file(src, dst, shutdown_event=None, overwrite=False):
-    """ Rename a file from file_name.inprogress to just file_name. Invoked once download completes on a file.
-
-    Internal function used by `download`.
-    """
-    try:
-        # we do a final check to make sure someone didn't create the destination file while download was occuring
-        # if the user did not specify overwrite.
-        if not overwrite and os.path.isfile(dst):
-            raise FileExistsError(dst)
-        os.rename(src, dst)
-    except Exception as e:
-        exception = repr(e)
-        logger.error('Rename failed for source file: %s; %s', src, exception)
-        raise e
-    
-    logger.debug('Renamed %s to %s', src, dst)
-    return None
-        
 
 def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
               shutdown_event=None, retries=10, delay=0.01, backoff=3):
