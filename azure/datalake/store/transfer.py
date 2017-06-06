@@ -377,12 +377,10 @@ class ADLTransferClient(object):
                 os.remove(dst)
             os.rename(src, dst)
         except Exception as e:
-            exception = repr(e)
-            logger.error('Rename failed for source file: %s; %s', src, exception)
+            logger.error('Rename failed for source file: %r; %r', src, e)
             raise e
     
-        logger.debug('Renamed %s to %s', src, dst)
-        return None
+        logger.debug('Renamed %r to %r', src, dst)
 
     def _update(self, future):
         if future in self._cfutures:
