@@ -21,6 +21,7 @@ import threading
 import time
 import uuid
 import operator
+import os
 
 from .exceptions import DatalakeIncompleteTransferException
 
@@ -361,6 +362,25 @@ class ADLTransferClient(object):
                 chunks=chunks,
                 exception=self._files[key]['exception']))
         return files
+    
+    def _rename_file(self, src, dst, overwrite=False):
+        """ Rename a file from file_name.inprogress to just file_name. Invoked once download completes on a file.
+
+        Internal function used by `download`.
+        """
+        try:
+            # we do a final check to make sure someone didn't create the destination file while download was occuring
+            # if the user did not specify overwrite.
+            if os.path.isfile(dst):
+                if not overwrite:
+                    raise FileExistsError(dst)
+                os.remove(dst)
+            os.rename(src, dst)
+        except Exception as e:
+            logger.error('Rename failed for source file: %r; %r', src, e)
+            raise e
+    
+        logger.debug('Renamed %r to %r', src, dst)
 
     def _update(self, future):
         if future in self._cfutures:
@@ -405,6 +425,12 @@ class ADLTransferClient(object):
                         overwrite=self._parent._overwrite)
                     self._ffutures[merge_future] = parent
                 else:
+                    if not self._chunked and str(dst).endswith('.inprogress'):
+                        logger.debug("Renaming file to remove .inprogress: %s", self._fstates[parent])
+                        self._fstates[parent] = 'merging'    
+                        self._rename_file(dst, dst.replace('.inprogress',''), overwrite=self._parent._overwrite)
+                        dst = dst.replace('.inprogress', '')
+
                     self._fstates[parent] = 'finished'
                     logger.info("Transferred %s -> %s", src, dst)
             elif cstates.contains_none('running'):

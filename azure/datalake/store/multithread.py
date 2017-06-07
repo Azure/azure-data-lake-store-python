@@ -191,11 +191,11 @@ class ADLDownloader(object):
             rfiles = self.client._adlfs.glob(self.rpath, details=True, invalidate_cache=True)
         if len(rfiles) > 1:
             prefix = commonprefix([f['name'] for f in rfiles])
-            file_pairs = [(os.path.join(self.lpath, os.path.relpath(f['name'], prefix)), f)
+            file_pairs = [(os.path.join(self.lpath, os.path.relpath(f['name'] +'.inprogress', prefix)), f)
                           for f in rfiles]
         elif len(rfiles) == 1:
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
-                file_pairs = [(os.path.join(self.lpath, os.path.basename(rfiles[0]['name'])),
+                file_pairs = [(os.path.join(self.lpath, os.path.basename(rfiles[0]['name'] + '.inprogress')),
                                rfiles[0])]
             else:
                 file_pairs = [(self.lpath, rfiles[0])]
@@ -208,8 +208,11 @@ class ADLDownloader(object):
 
         existing_files = []
         for lfile, rfile in file_pairs:
-            if not self._overwrite and os.path.exists(lfile):
-                existing_files.append(lfile)
+            # only interested in the final destination file name for existence, 
+            # not the initial inprogress target
+            destination_file = lfile.replace('.inprogress', '')
+            if not self._overwrite and os.path.exists(destination_file):
+                existing_files.append(destination_file)
             else:
                 self.client.submit(rfile['name'], lfile, rfile['length'])
         
@@ -253,7 +256,6 @@ class ADLDownloader(object):
                                                   self.client.status)
 
     __repr__ = __str__
-
 
 def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
               shutdown_event=None, retries=10, delay=0.01, backoff=3):
