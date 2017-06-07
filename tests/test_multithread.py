@@ -154,7 +154,7 @@ def test_download_glob(tempdir, azure):
         assert len(file_pair_dict.keys()) == 2
 
         lfiles = [os.path.relpath(f, tempdir) for f in file_pair_dict.keys()]
-        assert sorted(lfiles) == sorted(['x.csv', 'y.csv'])
+        assert sorted(lfiles) == sorted(['x.csv.inprogress', 'y.csv.inprogress'])
 
         remote_path = test_dir / 'data' / '*' / '*.csv'
         down = ADLDownloader(azure, remote_path, tempdir, run=False,
@@ -165,10 +165,10 @@ def test_download_glob(tempdir, azure):
 
         lfiles = [os.path.relpath(f, tempdir) for f in file_pair_dict.keys()]
         assert sorted(lfiles) == sorted([
-            os.path.join('a', 'x.csv'),
-            os.path.join('a', 'y.csv'),
-            os.path.join('b', 'x.csv'),
-            os.path.join('b', 'y.csv')])
+            os.path.join('a', 'x.csv.inprogress'),
+            os.path.join('a', 'y.csv.inprogress'),
+            os.path.join('b', 'x.csv.inprogress'),
+            os.path.join('b', 'y.csv.inprogress')])
 
         remote_path = test_dir / 'data' / '*' / 'z.txt'
         down = ADLDownloader(azure, remote_path, tempdir, run=False,
@@ -178,8 +178,8 @@ def test_download_glob(tempdir, azure):
 
         lfiles = [os.path.relpath(f, tempdir) for f in file_pair_dict.keys()]
         assert sorted(lfiles) == sorted([
-            os.path.join('a', 'z.txt'),
-            os.path.join('b', 'z.txt')])
+            os.path.join('a', 'z.txt.inprogress'),
+            os.path.join('b', 'z.txt.inprogress')])
 
 
 @my_vcr.use_cassette
