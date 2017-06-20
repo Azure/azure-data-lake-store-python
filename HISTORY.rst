@@ -2,6 +2,10 @@
 
 Release History
 ===============
+0.0.12 (2017-06-20)
+-------------------
+* Fix a regression with ls returning the top level folder if it has no contents. It now properly returns an empty array if a folder has no children.
+
 0.0.11 (2017-06-02)
 -------------------
 * Update to name incomplete file downloads with a `.inprogress` suffix. This suffix is removed when the download completes successfully.
