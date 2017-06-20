@@ -56,6 +56,11 @@ def test_ls_touch(azure):
         assert set(L) == set([a, b])
 
 @my_vcr.use_cassette
+def test_ls_empty_with_details(azure):
+    with azure_teardown(azure):
+        assert not azure.ls(test_dir, invalidate_cache=False, detail=True)
+
+@my_vcr.use_cassette
 def test_ls_touch_invalidate_cache(azure, second_azure):
     with azure_teardown(azure):
         assert not azure.ls(test_dir, invalidate_cache=False)

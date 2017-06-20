@@ -130,7 +130,8 @@ class AzureDLFileSystem(object):
             # in this case we just invalidated the cache (if it was true), so no need to do it again
             inf = self.info(path, invalidate_cache=False)
             if inf['type'] == 'DIRECTORY':
-                return inf if detail else []
+                # always return an empty array in this case, because there are no entries underneath the folder
+                return []
 
             raise FileNotFoundError(path)
         if detail:
