@@ -172,7 +172,7 @@ class DataLakeCredential(Authentication):
 
         context = adal.AuthenticationContext(authority +
                                              self.token['tenant'])
-        if self.token['secret'] and self.token['client']:
+        if self.token.get('secret') and self.token.get('client'):
             out = context.acquire_token_with_client_credentials(self.token['resource'], self.token['client'],
                                                                 self.token['secret'])
             out.update({'secret': self.token['secret']})

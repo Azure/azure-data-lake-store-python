@@ -1,12 +1,12 @@
 To run the test suite against the published package:
 
-    py.test -x -vvv --doctest-modules --pyargs azure-datalake-store tests
+    py.test -x -vvv --doctest-modules --pyargs azure.datalake.store tests
 
 To run the test suite against a local build:
     
     python setup.py develop
     
-    py.test -x -vvv --doctest-modules --pyargs azure-datalake-store tests
+    py.test -x -vvv --doctest-modules --pyargs azure.datalake.store tests
     
 This test suite uses [VCR.py](https://github.com/kevin1024/vcrpy) to record the
 responses from Azure. Borrowing from VCR's
