@@ -21,6 +21,10 @@ def token():
     return settings.TOKEN
 
 @pytest.fixture()
+def principal_token():
+    return settings.PRINCIPAL_TOKEN
+
+@pytest.fixture()
 def rest(token):
     return DatalakeRESTInterface(settings.STORE_NAME, token)
 
@@ -56,6 +60,20 @@ def test_auth_refresh(token):
     assert initial_access != token2.token['access']
     assert token2.token['time'] > initial_time
 
+@my_vcr.use_cassette
+def test_auth_refresh_for_service_principal(principal_token):
+    assert principal_token.token['access']
+    assert principal_token.token['secret']
+    initial_access = principal_token.token['access']
+    initial_time = principal_token.token['time']
+    time.sleep(3)
+    principal_token.refresh_token()
+    token2 = DataLakeCredential(principal_token.token)
+    assert token2.token['access']
+    assert token2.token['secret']
+    assert token2.token['secret'] == principal_token.token['secret']
+    assert initial_access != token2.token['access']
+    assert token2.token['time'] > initial_time
 
 @my_vcr.use_cassette
 def test_response(rest):
