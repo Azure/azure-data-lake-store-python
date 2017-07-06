@@ -2,6 +2,10 @@
 
 Release History
 ===============
+0.0.13 (2017-06-28)
+-------------------
+* Add support for automatic refreshing of service principal credentials
+
 0.0.12 (2017-06-20)
 -------------------
 * Fix a regression with ls returning the top level folder if it has no contents. It now properly returns an empty array if a folder has no children.
