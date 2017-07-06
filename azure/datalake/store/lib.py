@@ -164,7 +164,7 @@ class DataLakeCredential(Authentication):
         authority: string
             The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
         """
-        if self.token.get('refresh', False) is False and (not self.token['secret'] or not self.token['client']):
+        if self.token.get('refresh', False) is False and (not self.token.get('secret') or not self.token.get('client')):
             raise ValueError("Token cannot be auto-refreshed.")
 
         if not authority:
