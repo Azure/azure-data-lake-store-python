@@ -6,10 +6,6 @@ This repository contains The Azure Data Lake Store Filesystem SDK for Python tha
 
 If you would like to become an active contributor to this project, please follow the instructions provided in [Microsoft Azure Projects Contribution Guidelines](http://azure.github.io/guidelines/).
 
-In the Azure Developer Experience, you are at Step 4:
-
-[Design, Build and Describe REST API](https://github.com/Azure/adx-documentation-pr/blob/master/README.md#step-1---design-build-and-describe-rest-api) -> [Get Your Swagger Approved](https://github.com/Azure/adx-documentation-pr/blob/master/README.md#step-2---get-your-swagger-approved) -> _**[Generate Request-Response Style Libraries](https://github.com/Azure/adx-documentation-pr/blob/master/README.md#step-3---generate-request-response-style-libraries)**_ -> [Build Command Line Experiences](https://github.com/Azure/adx-documentation-pr/blob/master/README.md#step-4---build-command-line-experiences)
-
 ## Table of Contents
 
 [Before Starting](#before-starting)
