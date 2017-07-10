@@ -2,6 +2,10 @@
 
 Release History
 ===============
+0.0.14 (2017-07-10)
+-------------------
+* Fix an issue where common prefixes in paths for upload and download were collapsed into only unique paths.
+
 0.0.13 (2017-06-28)
 -------------------
 * Add support for automatic refreshing of service principal credentials
