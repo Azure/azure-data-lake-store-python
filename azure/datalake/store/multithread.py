@@ -25,7 +25,7 @@ from io import open
 from .core import AzureDLPath, _fetch_range
 from .exceptions import FileExistsError
 from .transfer import ADLTransferClient
-from .utils import commonprefix, datadir, read_block, tokenize
+from .utils import datadir, read_block, tokenize
 
 logger = logging.getLogger(__name__)
 
@@ -190,8 +190,8 @@ class ADLDownloader(object):
         else:
             rfiles = self.client._adlfs.glob(self.rpath, details=True, invalidate_cache=True)
         if len(rfiles) > 1:
-            prefix = commonprefix([f['name'] for f in rfiles])
-            file_pairs = [(os.path.join(self.lpath, os.path.relpath(f['name'] +'.inprogress', prefix)), f)
+            local_rel_rpath = str(AzureDLPath(self.rpath).globless_prefix)
+            file_pairs = [(os.path.join(self.lpath, os.path.relpath(f['name'] +'.inprogress', local_rel_rpath)), f)
                           for f in rfiles]
         elif len(rfiles) == 1:
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
@@ -442,8 +442,8 @@ class ADLUploader(object):
             lfiles = glob.glob(self.lpath)
         
         if len(lfiles) > 1:
-            prefix = commonprefix(lfiles)
-            file_pairs = [(f, self.rpath / AzureDLPath(f).relative_to(prefix)) for f in lfiles]
+            local_rel_lpath = str(AzureDLPath(self.lpath).globless_prefix)
+            file_pairs = [(f, self.rpath / AzureDLPath(f).relative_to(local_rel_lpath)) for f in lfiles]
         elif lfiles:
             if self.client._adlfs.exists(self.rpath, invalidate_cache=True) and \
                self.client._adlfs.info(self.rpath, invalidate_cache=False)['type'] == "DIRECTORY":

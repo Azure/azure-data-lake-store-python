@@ -61,6 +61,9 @@ MAX_CONTENT_LENGTH = 2**16
 # This ensures that no connections are prematurely evicted, which has negative performance implications.
 MAX_POOL_CONNECTIONS = 1024
 
+# TODO: a breaking change should be made to add a new parameter specific for service_principal_app_id
+# instead of overloading client_id, which is also used by other login methods to indicate what application
+# is requesting the authentication (for example, in an interactive prompt).
 def auth(tenant_id=None, username=None,
          password=None, client_id=default_client,
          client_secret=None, resource=DEFAULT_RESOURCE_ENDPOINT,
@@ -128,6 +131,8 @@ def auth(tenant_id=None, username=None,
     elif client_id and client_secret:
         out = context.acquire_token_with_client_credentials(resource, client_id,
                                                             client_secret)
+        # for service principal, we store the secret in the credential object for use when refreshing.
+        out.update({'secret': client_secret})
     else:
         raise ValueError("No authentication method found for credentials")
 
@@ -159,7 +164,7 @@ class DataLakeCredential(Authentication):
         authority: string
             The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
         """
-        if self.token.get('refresh', False) is False:
+        if self.token.get('refresh', False) is False and (not self.token.get('secret') or not self.token.get('client')):
             raise ValueError("Token cannot be auto-refreshed.")
 
         if not authority:
@@ -167,10 +172,17 @@ class DataLakeCredential(Authentication):
 
         context = adal.AuthenticationContext(authority +
                                              self.token['tenant'])
-        out = context.acquire_token_with_refresh_token(self.token['refresh'],
-                                                       client_id=self.token['client'],
-                                                       resource=self.token['resource'])
-        out.update({'access': out['accessToken'], 'refresh': out['refreshToken'],
+        if self.token.get('secret') and self.token.get('client'):
+            out = context.acquire_token_with_client_credentials(self.token['resource'], self.token['client'],
+                                                                self.token['secret'])
+            out.update({'secret': self.token['secret']})
+        else:
+            out = context.acquire_token_with_refresh_token(self.token['refresh'],
+                                                           client_id=self.token['client'],
+                                                           resource=self.token['resource'])
+            out.update({'refresh': out['refreshToken']})
+        # common items to update
+        out.update({'access': out['accessToken'],
                     'time': time.time(), 'tenant': self.token['tenant'],
                     'resource': self.token['resource'], 'client': self.token['client']})
     
