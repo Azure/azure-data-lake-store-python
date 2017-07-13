@@ -111,6 +111,35 @@ File = namedtuple('File', 'src dst state length chunks exception')
 Chunk = namedtuple('Chunk', 'name state offset expected actual exception')
 
 
+class NoSerLock(object):
+    """
+    Pickle friendly wrapper for threading.Lock (which is non-inheritable
+     so we wrap relevant functions)
+    The main part of this wrapper is that __getstate__ will return an empty
+    tuple so that the actual lock isn't serialized
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+
+    def acquire(self):
+        self._lock.acquire()
+
+    def release(self):
+        self._lock.release()
+
+    __enter__ = acquire
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+    def __getstate__(self):
+        return ()
+
+    def __setstate__(self, state):
+        self._lock = threading.Lock()
+
+
 class ADLTransferClient(object):
     """
     Client for transferring data from/to Azure DataLake Store
@@ -159,7 +188,11 @@ class ADLTransferClient(object):
         files for transferring on that delimiter.
     parent: ADLDownloader, ADLUploader or None
         In typical usage, the transfer client is created in the context of an
-        upload or download, which can be persisted between sessions.
+        upload or download, which can be persisted between sessions.        
+    progress_callback: callable [None]
+        Callback for progress with signature function(current, total) where
+        current is the number of bytes transferred so far, and total is the
+        size of the blob, or None if the total size is unknown.
 
     Temporary Files
     ---------------
@@ -190,7 +223,7 @@ class ADLTransferClient(object):
     `fn(adlfs, outfile, files, shutdown_event)`. `adlfs` is the ADL filesystem
     instance. `outfile` is the result of merging `files`.
 
-    For both callables, `shutdown_event` is optional. In particular,
+    For both transfer callables, `shutdown_event` is optional. In particular,
     `shutdown_event` is a `threading.Event` that is passed to the callable.
     The event will be set when a shutdown is requested. It is good practice
     to listen for this.
@@ -228,7 +261,8 @@ class ADLTransferClient(object):
     def __init__(self, adlfs, transfer, merge=None, nthreads=None,
                  chunksize=2**28, blocksize=2**25, chunked=True,
                  unique_temporary=True, delimiter=None,
-                 parent=None, verbose=False, buffersize=2**25):
+                 parent=None, verbose=False, buffersize=2**25,
+                 progress_callback=None):
         self._adlfs = adlfs
         self._parent = parent
         self._transfer = transfer
@@ -240,9 +274,14 @@ class ADLTransferClient(object):
         self._chunked = chunked
         self._unique_temporary = unique_temporary
         self._unique_str = uuid.uuid4().hex
+        self._progress_callback=progress_callback
+        self._progress_lock = NoSerLock()
         self.verbose = verbose
 
         # Internal state tracking files/chunks/futures
+        self._progress_total_bytes = 0
+        self._transfer_total_bytes = 0
+
         self._files = {}
         self._chunks = {}
         self._ffutures = {}
@@ -300,7 +339,7 @@ class ADLTransferClient(object):
             "length": length,
             "cstates": cstates,
             "exception": None}
-
+        self._transfer_total_bytes += length
 
     def _submit(self, fn, *args, **kwargs):
         kwargs['shutdown_event'] = self._shutdown_event
@@ -382,7 +421,14 @@ class ADLTransferClient(object):
     
         logger.debug('Renamed %r to %r', src, dst)
 
+    def _update_progress(self, length):
+        if self._progress_callback is not None:
+            with self._progress_lock:
+                self._progress_total_bytes += length
+            self._progress_callback(self._progress_total_bytes, self._transfer_total_bytes)
+
     def _update(self, future):
+
         if future in self._cfutures:
             obj = self._cfutures[future]
             parent = self._chunks[obj]['parent']
@@ -412,6 +458,7 @@ class ADLTransferClient(object):
                                  src, dst, repr(exception))
                 else:
                     cstates[obj] = 'finished'
+                    self._update_progress(nbytes)
 
             if cstates.contains_all('finished'):
                 logger.debug("Chunks transferred")
