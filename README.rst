@@ -56,10 +56,8 @@ To play with the code, here is a starting point:
 
 Progress can be tracked using a callback function in the form `track(current, total)`
 When passed, this will keep track of transferred bytes and be called on each complete chunk.
-We use a `threading.Lock` to protect against race conditions when updating the total and
-when calling the callback function so
 
-Here's an example from the Azure CLI:
+Here's an example using the Azure CLI progress controller as the `progress_callback`:
 
 .. code-block:: python
 
