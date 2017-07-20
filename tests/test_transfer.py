@@ -71,7 +71,6 @@ def test_update_progress(azure):
         calls.append((progress, total))
 
     def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, shutdown_event=None):
-        time.sleep(0.01)
         return size, None
 
     client = ADLTransferClient(azure, transfer=transfer, chunksize=8,
