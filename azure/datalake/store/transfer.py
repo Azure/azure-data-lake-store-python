@@ -111,35 +111,6 @@ File = namedtuple('File', 'src dst state length chunks exception')
 Chunk = namedtuple('Chunk', 'name state offset expected actual exception')
 
 
-class NoSerLock(object):
-    """
-    Pickle friendly wrapper for threading.Lock (which is non-inheritable
-     so we wrap relevant functions)
-    The main part of this wrapper is that __getstate__ will return an empty
-    tuple so that the actual lock isn't serialized
-    """
-
-    def __init__(self):
-        self._lock = threading.Lock()
-
-    def acquire(self):
-        self._lock.acquire()
-
-    def release(self):
-        self._lock.release()
-
-    __enter__ = acquire
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.release()
-
-    def __getstate__(self):
-        return ()
-
-    def __setstate__(self, state):
-        self._lock = threading.Lock()
-
-
 class ADLTransferClient(object):
     """
     Client for transferring data from/to Azure DataLake Store
@@ -275,7 +246,7 @@ class ADLTransferClient(object):
         self._unique_temporary = unique_temporary
         self._unique_str = uuid.uuid4().hex
         self._progress_callback=progress_callback
-        self._progress_lock = NoSerLock()
+        self._progress_lock = threading.Lock()
         self.verbose = verbose
 
         # Internal state tracking files/chunks/futures
@@ -599,6 +570,7 @@ class ADLTransferClient(object):
         dic2.pop('_ffutures', None)
         dic2.pop('_pool', None)
         dic2.pop('_shutdown_event', None)
+        dic2.pop('_progress_lock', None)
 
         dic2['_files'] = dic2.get('_files', {}).copy()
         dic2['_chunks'] = dic2.get('_chunks', {}).copy()

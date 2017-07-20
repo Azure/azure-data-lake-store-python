@@ -66,7 +66,7 @@ def test_submit_and_run(azure):
 def test_update_progress(azure):
     """
     Upload a 32 bytes file in chunks of 8 and test that the progress is incrementally
-        updated
+    updated.
     """
     calls = []
 

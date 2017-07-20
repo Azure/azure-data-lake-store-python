@@ -64,7 +64,7 @@ Here's an example using the Azure CLI progress controller as the `progress_callb
     from cli.core.application import APPLICATION
 
     def _update_progress(current, total):
-        hook = APPLICATION.get_progress_controller(True)
+        hook = APPLICATION.get_progress_controller(det=True)
         hook.add(message='Alive', value=current, total_val=total)
         if total == current:
             hook.end()
