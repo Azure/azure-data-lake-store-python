@@ -16,7 +16,6 @@ from tests.testing import azure, posix
 
 def test_shutdown(azure):
     def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, retries=5, shutdown_event=None):
-        time.sleep(1.0)
         while shutdown_event and not shutdown_event.is_set():
             time.sleep(0.1)
         return size, None
@@ -25,7 +24,6 @@ def test_shutdown(azure):
                                chunked=False)
     client.submit('foo', 'bar', 16)
     client.run(monitor=False)
-    time.sleep(0.1)
     client.shutdown()
 
     assert client.progress[0].state == 'finished'
@@ -33,7 +31,6 @@ def test_shutdown(azure):
 
 def test_submit_and_run(azure):
     def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, shutdown_event=None):
-        time.sleep(0.1)
         return size, None
 
     client = ADLTransferClient(azure, transfer=transfer, chunksize=8,
@@ -65,7 +62,6 @@ def test_submit_and_run(azure):
 
 def test_temporary_path(azure):
     def transfer(adlfs, src, dst, offset, size, blocksize, buffersize):
-        time.sleep(0.1)
         return size, None
 
     client = ADLTransferClient(azure, transfer=transfer, chunksize=8,
