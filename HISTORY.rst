@@ -2,6 +2,10 @@
 
 Release History
 ===============
+unreleased
+----------
+* Enable Data Lake Store progress controller callback #174
+
 0.0.14 (2017-07-10)
 -------------------
 * Fix an issue where common prefixes in paths for upload and download were collapsed into only unique paths.

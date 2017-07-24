@@ -94,6 +94,10 @@ class ADLDownloader(object):
         local path is a directory, will quit regardless if any files would be
         overwritten or not. If True, only matching filenames are actually
         overwritten.
+    progress_callback: callable [None]
+        Callback for progress with signature function(current, total) where
+        current is the number of bytes transfered so far, and total is the
+        size of the blob, or None if the total size is unknown.
 
     See Also
     --------
@@ -101,7 +105,7 @@ class ADLDownloader(object):
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
-                 overwrite=False, verbose=False):
+                 overwrite=False, verbose=False, progress_callback=None):
         
         # validate that the src exists and the current user has access to it
         # this only validates access to the top level folder. If there are files
@@ -125,7 +129,8 @@ class ADLDownloader(object):
                 blocksize=blocksize,
                 chunked=False,
                 verbose=verbose,
-                parent=self)
+                parent=self,
+                progress_callback=progress_callback)
         self._name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = rpath
         self.lpath = lpath
@@ -347,6 +352,10 @@ class ADLUploader(object):
         remote path is a directory, will quit regardless if any files would be
         overwritten or not. If True, only matching filenames are actually
         overwritten.
+    progress_callback: callable [None]
+        Callback for progress with signature function(current, total) where
+        current is the number of bytes transfered so far, and total is the
+        size of the blob, or None if the total size is unknown.
 
     See Also
     --------
@@ -354,7 +363,7 @@ class ADLUploader(object):
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
-                 overwrite=False, verbose=False):
+                 overwrite=False, verbose=False, progress_callback=None):
 
         if client:
             self.client = client
@@ -370,7 +379,8 @@ class ADLUploader(object):
                 delimiter=None, # TODO: see utils.cs for what is required to support delimiters.
                 parent=self,
                 verbose=verbose,
-                unique_temporary=True)
+                unique_temporary=True,
+                progress_callback=progress_callback)
         self._name = tokenize(adlfs, rpath, lpath, chunksize, blocksize)
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath

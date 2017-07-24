@@ -63,6 +63,29 @@ def test_submit_and_run(azure):
                                                for chunk in f.chunks])
 
 
+def test_update_progress(azure):
+    """
+    Upload a 32 bytes file in chunks of 8 and test that the progress is incrementally
+    updated.
+    """
+    calls = []
+
+    def recording_callback(progress, total):
+        calls.append((progress, total))
+
+    def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, shutdown_event=None):
+        time.sleep(0.01)
+        return size, None
+
+    client = ADLTransferClient(azure, transfer=transfer, chunksize=8,
+                               chunked=True, progress_callback=recording_callback)
+
+    client.submit('foo', AzureDLPath('bar'), 32)
+    client.run()
+
+    assert calls == [(8, 32), (16, 32), (24, 32), (32, 32)]
+
+
 def test_temporary_path(azure):
     def transfer(adlfs, src, dst, offset, size, blocksize, buffersize):
         time.sleep(0.1)

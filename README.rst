@@ -54,6 +54,36 @@ To play with the code, here is a starting point:
     # 16MB chunks
     multithread.ADLDownloader(adl, "", 'my_temp_dir', 5, 2**24)
 
+Progress can be tracked using a callback function in the form `track(current, total)`
+When passed, this will keep track of transferred bytes and be called on each complete chunk.
+
+Here's an example using the Azure CLI progress controller as the `progress_callback`:
+
+.. code-block:: python
+
+    from cli.core.application import APPLICATION
+
+    def _update_progress(current, total):
+        hook = APPLICATION.get_progress_controller(det=True)
+        hook.add(message='Alive', value=current, total_val=total)
+        if total == current:
+            hook.end()
+
+    ...
+    ADLUploader(client, destination_path, source_path, thread_count, overwrite=overwrite,
+            chunksize=chunk_size,
+            buffersize=buffer_size,
+            blocksize=block_size,
+            progress_callback=_update_progress)
+
+
+This will output a progress bar to the stdout:
+```
+    Alive[#########################                                       ]  40.0881%
+    ...
+    Finished[#############################################################]  100.0000%
+```
+
 Command Line Sample Usage
 -------------------------
 To interact with the API at a higher-level, you can use the provided
