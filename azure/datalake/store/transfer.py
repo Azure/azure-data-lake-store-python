@@ -312,12 +312,6 @@ class ADLTransferClient(object):
             "exception": None}
         self._transfer_total_bytes += length
 
-    def _submit(self, fn, *args, **kwargs):
-        kwargs['shutdown_event'] = self._shutdown_event
-        future = self._pool.submit(fn, *args, **kwargs)
-        future.add_done_callback(self._update)
-        return future
-
     def _start(self, src, dst):
         key = (src, dst)
         self._fstates[key] = 'transferring'
@@ -327,11 +321,12 @@ class ADLTransferClient(object):
             if obj in cs.objects and cs[obj] == 'finished':
                 continue
             cs[obj] = 'running'
-            future = self._submit(
+            future = self._pool.submit(
                 self._transfer, self._adlfs, src, name, offset,
                 self._chunks[obj]['expected'], self._buffersize,
-                self._blocksize)
+                self._blocksize, shutdown_event=self._shutdown_event)
             self._cfutures[future] = obj
+            future.add_done_callback(self._update)
 
     @property
     def active(self):
@@ -473,6 +468,9 @@ class ADLTransferClient(object):
         # TODO: Re-enable progress saving when a less IO intensive solution is available.
         # See issue: https://github.com/Azure/azure-data-lake-store-python/issues/117
         #self.save()
+        else:
+            raise ValueError("Illegal state future {} not found in either file futures {} nor chunk futures {}"
+                             .format(future, self._ffutures, self._cfutures))
         if self.verbose:
             print('\b' * 200, self.status, end='')
             sys.stdout.flush()
