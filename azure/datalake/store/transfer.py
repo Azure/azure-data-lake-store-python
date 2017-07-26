@@ -446,7 +446,7 @@ class ADLTransferClient(object):
 
                     self._fstates[parent] = 'finished'
                     logger.info("Transferred %s -> %s", src, dst)
-            elif cstates.contains_none('running'):
+            elif cstates.contains_none('running', 'pending'):
                 logger.error("Transfer failed: %s -> %s", src, dst)
                 self._fstates[parent] = 'errored'
         elif future in self._ffutures:
