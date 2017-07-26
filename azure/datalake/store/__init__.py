@@ -6,7 +6,7 @@
 # license information.
 # --------------------------------------------------------------------------
 
-__version__ = "0.0.14"
+__version__ = "0.0.15"
 
 from .core import AzureDLFileSystem
 from .multithread import ADLDownloader

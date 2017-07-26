@@ -2,7 +2,7 @@
 
 Release History
 ===============
-unreleased
+0.0.15 (2017-07-26)
 ----------
 * Enable Data Lake Store progress controller callback #174
 
