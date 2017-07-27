@@ -6,6 +6,7 @@ unreleased
 ----------
 * Enable Data Lake Store progress controller callback #174
 * Fix File state incorrectly marked as "errored" if contains chunks is "pending" state #182
+* Fix Race condition due to `transfer` future `done_callback` #177
 
 0.0.14 (2017-07-10)
 -------------------
