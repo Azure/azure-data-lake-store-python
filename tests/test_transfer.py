@@ -82,6 +82,30 @@ def test_update_progress(azure):
     assert calls == [(8, 32), (16, 32), (24, 32), (32, 32)]
 
 
+def test_merge(azure):
+
+    calls = []
+
+    def merge(adlfs, outfile, files, shutdown_event=None, overwrite=False):
+        calls.append(files)
+
+    def transfer(adlfs, src, dst, offset, size, blocksize, buffersize, shutdown_event=None):
+        return size, None
+
+    class XLoaderMock(object):
+        _overwrite = False
+
+    file_size = 32
+    chunk_size = 8
+    client = ADLTransferClient(azure, parent=XLoaderMock(), transfer=transfer, merge=merge,
+                               chunksize=chunk_size, chunked=True)
+
+    client.submit('foo', AzureDLPath('bar'), file_size)
+    client.run()
+
+    assert len(calls[0]) == file_size / chunk_size
+
+
 def test_temporary_path(azure):
     def transfer(adlfs, src, dst, offset, size, blocksize, buffersize):
         return size, None
