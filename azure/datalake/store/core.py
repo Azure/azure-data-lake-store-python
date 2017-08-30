@@ -19,6 +19,8 @@ import io
 import logging
 import sys
 import time
+import uuid
+
 
 # local imports
 from .exceptions import DatalakeBadOffsetException
@@ -667,6 +669,9 @@ class AzureDLFile(object):
         self.buffer = io.BytesIO()
         self.blocksize = blocksize
         self.first_write = True
+        uniqueid = str(uuid.uuid4())
+        self.filesessionid = uniqueid
+        self.leaseid = uniqueid
         
         # always invalidate the cache when checking for existence of a file
         # that may be created or written to (for the first time).
@@ -823,10 +828,10 @@ class AzureDLFile(object):
         out = self.buffer.write(ensure_writable(data))
         self.loc += out
         if self.buffer.tell() >= self.blocksize:
-            self.flush()
+            self.flush(syncFlag='DATA')
         return out
 
-    def flush(self, force=False):
+    def flush(self, syncFlag='METADATA', force=False):
         """
         Write buffered data to ADL.
 
@@ -841,7 +846,7 @@ class AzureDLFile(object):
         """
         if not self.writable() or self.closed:
             return
-
+        
         if self.buffer.tell() == 0:
             if force and self.first_write:
                 _put_data_with_retry(
@@ -850,7 +855,10 @@ class AzureDLFile(object):
                     path=self.path.as_posix(),
                     data=None,
                     overwrite='true',
-                    write='true')
+                    write='true',
+                    syncFlag=syncFlag,
+                    leaseid=self.leaseid,
+                    filesessionid=self.filesessionid)
                 self.first_write = False
             return
 
@@ -872,7 +880,10 @@ class AzureDLFile(object):
                         path=self.path.as_posix(),
                         data=data[:limit],
                         overwrite='true',
-                        write='true')
+                        write='true',
+                        syncFlag=syncFlag,
+                        leaseid=self.leaseid,
+                        filesessionid=self.filesessionid)
                     self.first_write = False
                 else:
                     _put_data_with_retry(
@@ -880,7 +891,10 @@ class AzureDLFile(object):
                         'APPEND',
                         path=self.path.as_posix(),
                         data=data[:limit],
-                        append='true')
+                        append='true',
+                        syncFlag=syncFlag,
+                        leaseid=self.leaseid,
+                        filesessionid=self.filesessionid)
                 logger.debug('Wrote %d bytes to %s' % (limit, self))
                 data = data[limit:]
             self.buffer = io.BytesIO(data)
@@ -899,7 +913,10 @@ class AzureDLFile(object):
                         path=self.path.as_posix(),
                         data=d2,
                         overwrite='true',
-                        write='true')
+                        write='true',
+                        syncFlag=syncFlag,
+                        leaseid=self.leaseid,
+                        filesessionid=self.filesessionid)
                     self.first_write = False
                 else:
                     _put_data_with_retry(
@@ -908,7 +925,10 @@ class AzureDLFile(object):
                         path=self.path.as_posix(),
                         data=d2,
                         offset=offset,
-                        append='true')
+                        append='true',
+                        syncFlag=syncFlag,
+                        leaseid=self.leaseid,
+                        filesessionid=self.filesessionid)
                 logger.debug('Wrote %d bytes to %s' % (len(d2), self))
             self.buffer = io.BytesIO()
 
@@ -917,10 +937,11 @@ class AzureDLFile(object):
 
         If in write mode, causes flush of any unwritten data.
         """
+        logger.info("closing stream")
         if self.closed:
             return
         if self.writable():
-            self.flush(force=True)
+            self.flush(syncFlag='CLOSE', force=True)
             self.azure.invalidate_cache(self.path.as_posix())
         self.closed = True
 
@@ -953,7 +974,7 @@ def _fetch_range(rest, path, start, end, stream=False):
     # if the caller gives a bad start/end combination, OPEN will throw and
     # this call will bubble it up
     return rest.call(
-        'OPEN', path, offset=start, length=end-start, read='true', stream=stream)
+        'OPEN', path, offset=start, length=end-start, read='true', stream=stream, filesessionid=self.filesessionid)
 
 
 def _fetch_range_with_retry(rest, path, start, end, stream=False, retries=10,
