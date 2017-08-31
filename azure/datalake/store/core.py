@@ -5,6 +5,7 @@
 # Licensed under the MIT License. See License.txt in the project root for
 # license information.
 # --------------------------------------------------------------------------
+from test.test_dis import outer
 
 """
 The main file-system class and functionality.
@@ -763,11 +764,11 @@ class AzureDLFile(object):
             self.start = start
             self.end = min(end + self.blocksize, self.size)
             response = _fetch_range_with_retry(
-                self.azure.azure, self.path.as_posix(), start, self.end)
+                self.azure.azure, self.path.as_posix(), start, self.end, filesessionid=self.filesessionid)
             self.cache = getattr(response, 'content', response)
         if start < self.start:
             response = _fetch_range_with_retry(
-                self.azure.azure, self.path.as_posix(), start, self.start)
+                self.azure.azure, self.path.as_posix(), start, self.start, filesessionid=self.filesessionid)
             new = getattr(response, 'content', response)
             self.start = start
             self.cache = new + self.cache
@@ -776,7 +777,7 @@ class AzureDLFile(object):
                 return
             newend = min(self.size, end + self.blocksize)
             response = _fetch_range_with_retry(
-                self.azure.azure, self.path.as_posix(), self.end, newend)
+                self.azure.azure, self.path.as_posix(), self.end, newend, filesessionid=self.filesessionid)
             new = getattr(response, 'content', response)
             self.end = newend
             self.cache = self.cache + new
@@ -825,11 +826,12 @@ class AzureDLFile(object):
             raise ValueError('File not in write mode')
         if self.closed:
             raise ValueError('I/O operation on closed file.')
+        
         out = self.buffer.write(ensure_writable(data))
         self.loc += out
-        if self.buffer.tell() >= self.blocksize:
-            self.flush(syncFlag='DATA')
+        self.flush(syncFlag='DATA')
         return out
+        
 
     def flush(self, syncFlag='METADATA', force=False):
         """
@@ -864,44 +866,48 @@ class AzureDLFile(object):
 
         self.buffer.seek(0)
         data = self.buffer.read()
-
-        if self.delimiter:
-            syncFlagLocal = 'DATA'
-            while len(data) >= self.blocksize:
+        
+        syncFlagLocal = 'DATA'
+        while len(data) > self.blocksize:
+            if self.delimiter:
                 place = data[:self.blocksize].rfind(self.delimiter)
-                if place < 0:
-                    # not found - write whole block
-                    limit = self.blocksize
-                else:
-                    limit = place + len(self.delimiter)
-                if self.first_write:
-                    _put_data_with_retry(
-                        self.azure.azure,
-                        'CREATE',
-                        path=self.path.as_posix(),
-                        data=data[:limit],
-                        overwrite='true',
-                        write='true',
-                        syncFlag=syncFlagLocal,
-                        leaseid=self.leaseid,
-                        filesessionid=self.filesessionid)
-                    self.first_write = False
-                else:
-                    _put_data_with_retry(
-                        self.azure.azure,
-                        'APPEND',
-                        path=self.path.as_posix(),
-                        data=data[:limit],
-                        append='true',
-                        syncFlag=syncFlagLocal,
-                        leaseid=self.leaseid,
-                        filesessionid=self.filesessionid)
-                logger.debug('Wrote %d bytes to %s' % (limit, self))
-                data = data[limit:]
-            self.buffer = io.BytesIO(data)
-            self.buffer.seek(0, 2)
-
-        if not self.delimiter or force:
+            else:
+                place = -1
+            if place < 0:
+                # not found - write whole block
+                limit = self.blocksize
+            else:
+                limit = place + len(self.delimiter)
+            if self.first_write:
+                _put_data_with_retry(
+                    self.azure.azure,
+                    'CREATE',
+                    path=self.path.as_posix(),
+                    data=data[:limit],
+                    overwrite='true',
+                    write='true',
+                    syncFlag=syncFlagLocal,
+                    leaseid=self.leaseid,
+                    filesessionid=self.filesessionid)
+                self.first_write = False
+            else:
+                _put_data_with_retry(
+                    self.azure.azure,
+                    'APPEND',
+                    path=self.path.as_posix(),
+                    data=data[:limit],
+                    append='true',
+                    syncFlag=syncFlagLocal,
+                    leaseid=self.leaseid,
+                    filesessionid=self.filesessionid)
+            logger.debug('Wrote %d bytes to %s' % (limit, self))
+            data = data[limit:]
+            
+                
+        self.buffer = io.BytesIO(data)
+        self.buffer.seek(0, 2)
+            
+        if force:
             zero_offset = self.tell() - len(data)
             offsets = range(0, len(data), self.blocksize)
             for o in offsets:
@@ -931,6 +937,21 @@ class AzureDLFile(object):
                         leaseid=self.leaseid,
                         filesessionid=self.filesessionid)
                 logger.debug('Wrote %d bytes to %s' % (len(d2), self))
+            if len(offsets) == 0:
+                offset = zero_offset
+                d2 = data[0:0]
+                _put_data_with_retry(
+                    self.azure.azure,
+                    'APPEND',
+                    path=self.path.as_posix(),
+                    data=d2,
+                    offset=offset,
+                    append='true',
+                    syncFlag=syncFlag,
+                    leaseid=self.leaseid,
+                    filesessionid=self.filesessionid)
+                logger.debug('Wrote %d bytes to %s' % (len(d2), self))
+                        
             self.buffer = io.BytesIO()
 
     def close(self):
@@ -970,20 +991,20 @@ class AzureDLFile(object):
         self.close()
 
 
-def _fetch_range(rest, path, start, end, stream=False):
+def _fetch_range(rest, path, start, end, stream=False, **kwargs):
     logger.debug('Fetch: %s, %s-%s', path, start, end)
     # if the caller gives a bad start/end combination, OPEN will throw and
     # this call will bubble it up
     return rest.call(
-        'OPEN', path, offset=start, length=end-start, read='true', stream=stream, filesessionid=self.filesessionid)
+        'OPEN', path, offset=start, length=end-start, read='true', stream=stream, **kwargs)
 
 
 def _fetch_range_with_retry(rest, path, start, end, stream=False, retries=10,
-                            delay=0.01, backoff=3):
+                            delay=0.01, backoff=3, **kwargs):
     err = None
     for i in range(retries):
         try:
-            return _fetch_range(rest, path, start, end, stream=False)
+            return _fetch_range(rest, path, start, end, stream=False, **kwargs)
         except Exception as e:
             err = e
             logger.debug('Exception %s on ADL download on attempt: %s, retrying in %s seconds',
