@@ -12,9 +12,3 @@ class ExpiryOptionType(Enum):
     relative_to_now = "RelativeToNow"
     relative_to_creation_date = "RelativeToCreationDate"
     absolute = "Absolute"
-
-
-class SyncFlac(Enum):
-    data="DATA"
-    metadata="METADATA"
-    close="CLOSE"

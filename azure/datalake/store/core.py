@@ -866,6 +866,7 @@ class AzureDLFile(object):
         data = self.buffer.read()
 
         if self.delimiter:
+            syncFlagLocal = 'DATA'
             while len(data) >= self.blocksize:
                 place = data[:self.blocksize].rfind(self.delimiter)
                 if place < 0:
@@ -881,7 +882,7 @@ class AzureDLFile(object):
                         data=data[:limit],
                         overwrite='true',
                         write='true',
-                        syncFlag=syncFlag,
+                        syncFlag=syncFlagLocal,
                         leaseid=self.leaseid,
                         filesessionid=self.filesessionid)
                     self.first_write = False
@@ -892,7 +893,7 @@ class AzureDLFile(object):
                         path=self.path.as_posix(),
                         data=data[:limit],
                         append='true',
-                        syncFlag=syncFlag,
+                        syncFlag=syncFlagLocal,
                         leaseid=self.leaseid,
                         filesessionid=self.filesessionid)
                 logger.debug('Wrote %d bytes to %s' % (limit, self))
