@@ -5,7 +5,6 @@
 # Licensed under the MIT License. See License.txt in the project root for
 # license information.
 # --------------------------------------------------------------------------
-from test.test_dis import outer
 
 """
 The main file-system class and functionality.
