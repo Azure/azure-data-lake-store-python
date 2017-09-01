@@ -9,11 +9,23 @@
 import base64
 import os
 import time
-
+from azure.datalake.store import core, lib, multithread
 from azure.datalake.store.lib import auth, DataLakeCredential
 from tests import fake_settings
-
-
+PRINCIPAL_TOKEN = lib.auth(tenant_id='72f988bf-86f1-41af-91ab-2d7cd011db47', client_secret='MbFXo5YJjSje1KUU7xVNYmdXnW+6mnqQoZ0aAxv15Kc=', client_id='2945c57f-a9a0-4700-93d0-94bc78bec18b')
+TOKEN = PRINCIPAL_TOKEN
+STORE_NAME = 'chdevalaus2'
+TENANT_ID = fake_settings.TENANT_ID
+SUBSCRIPTION_ID = fake_settings.SUBSCRIPTION_ID
+RESOURCE_GROUP_NAME = fake_settings.RESOURCE_GROUP_NAME
+RECORD_MODE = os.environ.get('RECORD_MODE', 'all').lower()
+os.environ['azure_data_lake_store_name'] = 'chdevalaus2'
+os.environ['azure_subscription_id'] = SUBSCRIPTION_ID
+os.environ['azure_resource_group_name'] = RESOURCE_GROUP_NAME
+os.environ['azure_service_principal'] = '2945c57f-a9a0-4700-93d0-94bc78bec18b'
+os.environ['azure_service_principal_secret'] = 'MbFXo5YJjSje1KUU7xVNYmdXnW+6mnqQoZ0aAxv15Kc='
+os.environ['azure_tenant_id'] = '72f988bf-86f1-41af-91ab-2d7cd011db47'
+'''
 RECORD_MODE = os.environ.get('RECORD_MODE', 'none').lower()
 
 if RECORD_MODE == 'none':
@@ -61,3 +73,4 @@ else:
 
     SUBSCRIPTION_ID = os.environ['azure_subscription_id']
     RESOURCE_GROUP_NAME = os.environ['azure_resource_group_name']
+'''
