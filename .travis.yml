@@ -32,7 +32,7 @@ env:
 
 
 script:
-  - py.test -x -vvv --doctest-modules --cov=azure/datalake/store --pyargs azure.datalake.store tests
+  - py.test --maxfail=100 -vvv --doctest-modules --cov=azure/datalake/store --pyargs azure.datalake.store tests
 
 after_success:
   - coveralls
