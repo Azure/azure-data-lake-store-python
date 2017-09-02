@@ -247,7 +247,7 @@ class DatalakeRESTInterface:
         # the service itself decides on the API version to use (it's default).
         self.api_version = api_version or None
         self.head = {'Authorization': token.signed_session().headers['Authorization']}
-        self.url = 'https://%s.%s/' % (None, url_suffix)
+        self.url = 'https://%s.%s/' % (store_name, url_suffix)
         self.webhdfs = 'webhdfs/v1/'
         self.extended_operations = 'webhdfsext/'
         self.user_agent = "python/{} ({}) {}/{} Azure-Data-Lake-Store-SDK-For-Python".format(
