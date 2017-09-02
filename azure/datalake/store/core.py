@@ -848,6 +848,10 @@ class AzureDLFile(object):
         if not self.writable() or self.closed:
             return
         
+        if not (syncFlag == 'METADATA' or syncFlag == 'DATA' or syncFlag == 'CLOSE'):
+            raise ValueError('syncFlag must be one of these: METADAT, DATA or CLOSE')
+        
+        
         if self.buffer.tell() == 0:
             if force and self.first_write:
                 _put_data_with_retry(
@@ -908,49 +912,30 @@ class AzureDLFile(object):
             
         if force:
             zero_offset = self.tell() - len(data)
-            offsets = range(0, len(data), self.blocksize)
-            for o in offsets:
-                offset = zero_offset + o
-                d2 = data[o:o+self.blocksize]
-                if self.first_write:
-                    _put_data_with_retry(
-                        self.azure.azure,
-                        'CREATE',
-                        path=self.path.as_posix(),
-                        data=d2,
-                        overwrite='true',
-                        write='true',
-                        syncFlag=syncFlag,
-                        leaseid=self.leaseid,
-                        filesessionid=self.filesessionid)
-                    self.first_write = False
-                else:
-                    _put_data_with_retry(
-                        self.azure.azure,
-                        'APPEND',
-                        path=self.path.as_posix(),
-                        data=d2,
-                        offset=offset,
-                        append='true',
-                        syncFlag=syncFlag,
-                        leaseid=self.leaseid,
-                        filesessionid=self.filesessionid)
-                logger.debug('Wrote %d bytes to %s' % (len(d2), self))
-            if len(offsets) == 0:
-                offset = zero_offset
-                d2 = data[0:0]
+            if self.first_write:
+                _put_data_with_retry(
+                    self.azure.azure,
+                    'CREATE',
+                    path=self.path.as_posix(),
+                    data=data,
+                    overwrite='true',
+                    write='true',
+                    syncFlag=syncFlag,
+                    leaseid=self.leaseid,
+                    filesessionid=self.filesessionid)
+                self.first_write = False
+            else:
                 _put_data_with_retry(
                     self.azure.azure,
                     'APPEND',
                     path=self.path.as_posix(),
-                    data=d2,
-                    offset=offset,
+                    data=data,
+                    offset=zero_offset,
                     append='true',
                     syncFlag=syncFlag,
                     leaseid=self.leaseid,
                     filesessionid=self.filesessionid)
-                logger.debug('Wrote %d bytes to %s' % (len(d2), self))
-                        
+            logger.debug('Wrote %d bytes to %s' % (len(data), self))
             self.buffer = io.BytesIO()
 
     def close(self):
