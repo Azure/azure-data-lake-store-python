@@ -618,7 +618,7 @@ def test_write_blocks(azure):
             f.write(b'000')
             assert f.buffer.tell() == 3
             f.write(b'000')  # forces flush
-            assert f.buffer.tell() == 0
+            assert f.buffer.tell() == 1
             f.write(b'000')
             assert f.tell() == 9
         assert azure.du(a)[a] == 9
@@ -713,7 +713,8 @@ def write_delimited_data(azure, delimiter):
         f.write(b'123' + delimiter)
         assert f.buffer.tell() == 3 + len(delimiter)
         f.write(b'456' + delimiter) # causes flush
-        assert azure.cat(a) == b'123' + delimiter
+        azure.cat(a)
+        assert azure.cat(a) == (b'123' + delimiter + b'456' + delimeter)
         f.write(b'789')
     # close causes forced flush
     assert azure.cat(a) == data
