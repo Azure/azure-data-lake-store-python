@@ -714,7 +714,7 @@ def write_delimited_data(azure, delimiter):
         assert f.buffer.tell() == 3 + len(delimiter)
         f.write(b'456' + delimiter) # causes flush
         azure.cat(a)
-        assert azure.cat(a) == (b'123' + delimiter + b'456' + delimeter)
+        assert azure.cat(a) == b'123' + delimiter
         f.write(b'789')
     # close causes forced flush
     assert azure.cat(a) == data
