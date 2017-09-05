@@ -14,7 +14,7 @@ from azure.datalake.store.lib import auth, DataLakeCredential
 from tests import fake_settings
 
 
-RECORD_MODE = os.environ.get('RECORD_MODE', 'none').lower()
+RECORD_MODE = os.environ.get('RECORD_MODE', 'all').lower()
 
 if RECORD_MODE == 'none':
     STORE_NAME = fake_settings.STORE_NAME
