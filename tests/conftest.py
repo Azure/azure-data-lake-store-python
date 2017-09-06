@@ -16,7 +16,7 @@ from tests.testing import working_dir
 @pytest.fixture(scope="session", autouse=True)
 def setup_env(request):
     home = working_dir()
-    fs = AzureDLFileSystem(store='chdevala', token=settings.TOKEN)
+    fs = AzureDLFileSystem(store='chdevalaus2', token=settings.TOKEN)
     if settings.RECORD_MODE != 'none':
         if not fs.exists(home):
             fs.mkdir(home)
