@@ -12,7 +12,7 @@ import time
 from azure.datalake.store import core, lib, multithread
 from azure.datalake.store.lib import auth, DataLakeCredential
 from tests import fake_settings
-PRINCIPAL_TOKEN = lib.auth(tenant_id=os.environ['azure_tenant_id'], client_secret=os.environ['azure_service_principle_secret'], client_id=os.environ['azure_service_principle'])
+PRINCIPAL_TOKEN = lib.auth(tenant_id=os.environ['azure_tenant_id'], client_secret=os.environ['azure_service_principal_secret'], client_id=os.environ['azure_service_principal'])
 TOKEN = PRINCIPAL_TOKEN
 STORE_NAME = os.environ['azure_data_lake_store_name']
 TENANT_ID = fake_settings.TENANT_ID
