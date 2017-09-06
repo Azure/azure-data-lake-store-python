@@ -5,6 +5,7 @@
 # Licensed under the MIT License. See License.txt in the project root for
 # license information.
 # --------------------------------------------------------------------------
+import os
 
 STORE_NAME = os.environ['azure_data_lake_store_name']
 TENANT_ID = os.environ['azure_tenant_id']
