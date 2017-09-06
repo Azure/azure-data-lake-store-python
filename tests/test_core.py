@@ -746,6 +746,7 @@ def test_chmod(azure):
             with azure.open(a, 'ab') as f:
                 try:
                     f.write(b'data')
+                    f.flush(force=True)
                 except Exception as e:
                     print(e)
                     raise e
