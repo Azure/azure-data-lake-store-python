@@ -431,12 +431,14 @@ class ADLTransferClient(object):
                 if self._merge and len(cstates.objects) > 1:
                     logger.debug("Merging file: %s", self._fstates[parent])
                     self._fstates[parent] = 'merging'
-                    merge_future = self._submit(
+                    merge_future = self._pool.submit(
                         self._merge, self._adlfs, dst,
                         [chunk for chunk, _ in sorted(cstates.objects,
                                                       key=operator.itemgetter(1))], 
-                        overwrite=self._parent._overwrite)
+                        overwrite=self._parent._overwrite,
+                        shutdown_event=self._shutdown_event)
                     self._ffutures[merge_future] = parent
+                    merge_future.add_done_callback(self._update)
                 else:
                     if not self._chunked and str(dst).endswith('.inprogress'):
                         logger.debug("Renaming file to remove .inprogress: %s", self._fstates[parent])
