@@ -2,9 +2,12 @@
 
 Release History
 ===============
-unreleased
-----------
+
+0.0.16 (2017-09-11)
+-------------------
 * Fixed Multi chunk transfer hangs as merging chunks fails #187
+* Added syncflag and leaseid in create, append calls. 
+* Added filesessionid in create, append and open calls.
 
 0.0.15 (2017-07-26)
 -------------------
