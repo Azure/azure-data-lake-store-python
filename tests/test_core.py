@@ -74,6 +74,33 @@ def test_ls_touch_invalidate_cache(azure, second_azure):
         assert L == L_second
 
 @my_vcr.use_cassette
+def test_ls_batch(azure):
+    with azure_teardown(azure):
+        for x in range(20):
+            child_dir = posix(test_dir / str(x))
+            azure.touch(child_dir)
+
+        L = azure.ls_batch(test_dir)
+        assert len(L) == 10
+
+@my_vcr.use_cassette
+def test_ls_batch_with_list_after(azure):
+    with azure_teardown(azure):
+        for x in range(20):
+            child_dir = posix(test_dir / str(x))
+            azure.touch(child_dir)
+
+        L = azure.ls_batch(test_dir)
+        assert len(L) == 10
+
+        last_file = L[-1].split('/')[-1]
+        L2 = azure.ls_batch(test_dir, list_after=last_file)
+        assert len(L2) == 10
+
+        final_set = set(L)^set(L2)
+        assert len(final_set) == 20
+
+@my_vcr.use_cassette
 def test_rm(azure):
     with azure_teardown(azure):
         assert not azure.exists(a, invalidate_cache=False)
