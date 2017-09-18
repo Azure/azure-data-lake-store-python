@@ -1,4 +1,4 @@
-# Links / guidance for Data Lake Python SDKs
+# Links and Guidance for Azure Data Lake Python SDKs
 
 _Last updated: 7/8/2016_
 
