@@ -53,7 +53,7 @@ default_store = os.environ.get('azure_data_lake_store_name', None)
 default_adls_suffix = os.environ.get('azure_data_lake_store_url_suffix', 'azuredatalakestore.net')
 
 # Constants
-DEFAULT_RESOURCE_ENDPOINT = "https://management.core.windows.net/"
+DEFAULT_RESOURCE_ENDPOINT = "https://datalake.azure.net/"
 MAX_CONTENT_LENGTH = 2**16
 
 # This is the maximum number of active pool connections
