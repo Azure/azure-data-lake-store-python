@@ -76,13 +76,13 @@ Here's an example using the Azure CLI progress controller as the `progress_callb
             blocksize=block_size,
             progress_callback=_update_progress)
 
-
 This will output a progress bar to the stdout:
-```
+
+.. code-block:: bash
+
     Alive[#########################                                       ]  40.0881%
-    ...
+    
     Finished[#############################################################]  100.0000%
-```
 
 Command Line Sample Usage
 -------------------------
