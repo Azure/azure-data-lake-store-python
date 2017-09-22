@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.17 (2017-09-21)
+-------------------
+* Fixed README.rst indentation error
+* Changed resource endpoint
+
 0.0.16 (2017-09-11)
 -------------------
 * Fixed Multi chunk transfer hangs as merging chunks fails #187
