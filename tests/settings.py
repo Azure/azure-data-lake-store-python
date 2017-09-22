@@ -30,7 +30,7 @@ if RECORD_MODE == 'none':
             access=str(base64.b64encode(os.urandom(1420))),
             refresh=str(base64.b64encode(os.urandom(718))),
             time=time.time(), client='common',
-            resource="https://management.core.windows.net/",
+            resource="https://datalake.azure.net/",
             tenant=TENANT_ID, expiresIn=3600,
             tokenType='Bearer'))
     SUBSCRIPTION_ID = fake_settings.SUBSCRIPTION_ID
@@ -42,7 +42,7 @@ if RECORD_MODE == 'none':
             secret=str(base64.b64encode(os.urandom(1420))),
             refresh=None,
             time=time.time(),
-            resource="https://management.core.windows.net/",
+            resource="https://datalake.azure.net/",
             tenant=TENANT_ID, expiresIn=3600,
             tokenType='Bearer'))
 else:
