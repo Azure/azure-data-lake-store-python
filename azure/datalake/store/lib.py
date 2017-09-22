@@ -84,7 +84,7 @@ def auth(tenant_id=None, username=None,
     client_secret : str
         the secret associated with the client_id
     resource : str
-        resource for auth (e.g., https://management.core.windows.net/)
+        resource for auth (e.g., https://datalake.azure.net/)
     require_2fa : bool
         indicates this authentication attempt requires two-factor authentication
     authority: string
