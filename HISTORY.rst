@@ -2,6 +2,24 @@
 
 Release History
 ===============
+
+0.0.17 (2017-09-21)
+-------------------
+* Fixed README.rst indentation error
+* Changed management endpoint
+
+0.0.16 (2017-09-11)
+-------------------
+* Fixed Multi chunk transfer hangs as merging chunks fails #187
+* Added syncflag and leaseid in create, append calls. 
+* Added filesessionid in create, append and open calls.
+
+0.0.15 (2017-07-26)
+-------------------
+* Enable Data Lake Store progress controller callback #174
+* Fix File state incorrectly marked as "errored" if contains chunks is "pending" state #182
+* Fix Race condition due to `transfer` future `done_callback` #177
+
 0.0.14 (2017-07-10)
 -------------------
 * Fix an issue where common prefixes in paths for upload and download were collapsed into only unique paths.

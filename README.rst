@@ -1,13 +1,15 @@
-azure-datalake-store
-====================
+Microsoft Azure Data Lake Store Filesystem Library for Python
+=============================================================
 
 .. image:: https://travis-ci.org/Azure/azure-data-lake-store-python.svg?branch=dev
     :target: https://travis-ci.org/Azure/azure-data-lake-store-python
 .. image:: https://coveralls.io/repos/github/Azure/azure-data-lake-store-python/badge.svg?branch=master
     :target: https://coveralls.io/github/Azure/azure-data-lake-store-python?branch=master
 
-azure-datalake-store is a file-system management system in python for the
-Azure Data-Lake Store.
+This project is the Python filesystem library for Azure Data Lake Store.
+
+INSTALLATION
+============
 
 To install from source instead of pip (for local testing and development):
 
@@ -16,9 +18,8 @@ To install from source instead of pip (for local testing and development):
     > pip install -r dev_requirements.txt
     > python setup.py develop
 
-
-To run tests, you are required to set the following environment variables:
-azure_tenant_id, azure_username, azure_password, azure_data_lake_store_name
+Usage: Sample Code
+==================
 
 To play with the code, here is a starting point:
 
@@ -54,8 +55,39 @@ To play with the code, here is a starting point:
     # 16MB chunks
     multithread.ADLDownloader(adl, "", 'my_temp_dir', 5, 2**24)
 
-Command Line Sample Usage
--------------------------
+Progress can be tracked using a callback function in the form `track(current, total)`
+When passed, this will keep track of transferred bytes and be called on each complete chunk.
+
+Here's an example using the Azure CLI progress controller as the `progress_callback`:
+
+.. code-block:: python
+
+    from cli.core.application import APPLICATION
+
+    def _update_progress(current, total):
+        hook = APPLICATION.get_progress_controller(det=True)
+        hook.add(message='Alive', value=current, total_val=total)
+        if total == current:
+            hook.end()
+
+    ...
+    ADLUploader(client, destination_path, source_path, thread_count, overwrite=overwrite,
+            chunksize=chunk_size,
+            buffersize=buffer_size,
+            blocksize=block_size,
+            progress_callback=_update_progress)
+
+This will output a progress bar to the stdout:
+
+.. code-block:: bash
+
+    Alive[#########################                                       ]  40.0881%
+    
+    Finished[#############################################################]  100.0000%
+
+Usage: Command Line Sample
+==========================
+
 To interact with the API at a higher-level, you can use the provided
 command-line interface in "samples/cli.py". You will need to set
 the appropriate environment variables as described above to connect to the
@@ -151,3 +183,35 @@ Also, downloading a remote file:
     2016-08-04 18:57:49,726 - ADLFS - DEBUG - Downloaded to xyz.csv, byte offset 0
     2016-08-04 18:57:49,734 - ADLFS - DEBUG - File downloaded (xyz.csv -> xyz.csv)
     >
+
+Tests
+=====
+
+For detailed documentation about our test framework, please visit the 
+`tests folder <https://github.com/ro-joowan/azure-data-lake-store-python/tree/master/tests>`__.
+
+Need Help?
+==========
+
+Be sure to check out the Microsoft Azure `Developer Forums on Stack Overflow <http://go.microsoft.com/fwlink/?LinkId=234489>`__
+if you have trouble with the provided code. Most questions are tagged `azure and python <https://stackoverflow.com/questions/tagged/azure+python>`__.
+
+
+Contribute Code or Provide Feedback
+===================================
+
+If you would like to become an active contributor to this project please
+follow the instructions provided in `Microsoft Azure Projects Contribution Guidelines <http://azure.github.io/guidelines/>`__. 
+Furthermore, check out `GUIDANCE.md <https://github.com/Azure/azure-data-lake-store-python/blob/master/GUIDANCE.md>`__ 
+for specific information related to this project.
+
+If you encounter any bugs with the library please file an issue in the
+`Issues <https://github.com/Azure/azure-data-lake-store-python/issues>`__
+section of the project.
+
+
+Code of Conduct
+===============
+This project has adopted the `Microsoft Open Source Code of Conduct <https://opensource.microsoft.com/codeofconduct/>`__. 
+For more information see the `Code of Conduct FAQ <https://opensource.microsoft.com/codeofconduct/faq/>`__ or contact 
+`opencode@microsoft.com <mailto:opencode@microsoft.com>`__ with any additional questions or comments.

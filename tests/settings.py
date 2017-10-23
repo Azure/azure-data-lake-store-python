@@ -9,11 +9,17 @@
 import base64
 import os
 import time
-
+from azure.datalake.store import core, lib, multithread
 from azure.datalake.store.lib import auth, DataLakeCredential
 from tests import fake_settings
-
-
+PRINCIPAL_TOKEN = lib.auth(tenant_id=os.environ['azure_tenant_id'], client_secret=os.environ['azure_service_principal_secret'], client_id=os.environ['azure_service_principal'])
+TOKEN = PRINCIPAL_TOKEN
+STORE_NAME = os.environ['azure_data_lake_store_name']
+TENANT_ID = fake_settings.TENANT_ID
+SUBSCRIPTION_ID = fake_settings.SUBSCRIPTION_ID
+RESOURCE_GROUP_NAME = fake_settings.RESOURCE_GROUP_NAME
+RECORD_MODE = os.environ.get('RECORD_MODE', 'all').lower()
+'''
 RECORD_MODE = os.environ.get('RECORD_MODE', 'none').lower()
 
 if RECORD_MODE == 'none':
@@ -24,7 +30,7 @@ if RECORD_MODE == 'none':
             access=str(base64.b64encode(os.urandom(1420))),
             refresh=str(base64.b64encode(os.urandom(718))),
             time=time.time(), client='common',
-            resource="https://management.core.windows.net/",
+            resource="https://datalake.azure.net/",
             tenant=TENANT_ID, expiresIn=3600,
             tokenType='Bearer'))
     SUBSCRIPTION_ID = fake_settings.SUBSCRIPTION_ID
@@ -36,7 +42,7 @@ if RECORD_MODE == 'none':
             secret=str(base64.b64encode(os.urandom(1420))),
             refresh=None,
             time=time.time(),
-            resource="https://management.core.windows.net/",
+            resource="https://datalake.azure.net/",
             tenant=TENANT_ID, expiresIn=3600,
             tokenType='Bearer'))
 else:
@@ -61,3 +67,4 @@ else:
 
     SUBSCRIPTION_ID = os.environ['azure_subscription_id']
     RESOURCE_GROUP_NAME = os.environ['azure_resource_group_name']
+'''

@@ -159,7 +159,11 @@ class ADLTransferClient(object):
         files for transferring on that delimiter.
     parent: ADLDownloader, ADLUploader or None
         In typical usage, the transfer client is created in the context of an
-        upload or download, which can be persisted between sessions.
+        upload or download, which can be persisted between sessions.        
+    progress_callback: callable [None]
+        Callback for progress with signature function(current, total) where
+        current is the number of bytes transferred so far, and total is the
+        size of the blob, or None if the total size is unknown.
 
     Temporary Files
     ---------------
@@ -190,7 +194,7 @@ class ADLTransferClient(object):
     `fn(adlfs, outfile, files, shutdown_event)`. `adlfs` is the ADL filesystem
     instance. `outfile` is the result of merging `files`.
 
-    For both callables, `shutdown_event` is optional. In particular,
+    For both transfer callables, `shutdown_event` is optional. In particular,
     `shutdown_event` is a `threading.Event` that is passed to the callable.
     The event will be set when a shutdown is requested. It is good practice
     to listen for this.
@@ -228,7 +232,8 @@ class ADLTransferClient(object):
     def __init__(self, adlfs, transfer, merge=None, nthreads=None,
                  chunksize=2**28, blocksize=2**25, chunked=True,
                  unique_temporary=True, delimiter=None,
-                 parent=None, verbose=False, buffersize=2**25):
+                 parent=None, verbose=False, buffersize=2**25,
+                 progress_callback=None):
         self._adlfs = adlfs
         self._parent = parent
         self._transfer = transfer
@@ -240,9 +245,14 @@ class ADLTransferClient(object):
         self._chunked = chunked
         self._unique_temporary = unique_temporary
         self._unique_str = uuid.uuid4().hex
+        self._progress_callback=progress_callback
+        self._progress_lock = threading.Lock()
         self.verbose = verbose
 
         # Internal state tracking files/chunks/futures
+        self._progress_total_bytes = 0
+        self._transfer_total_bytes = 0
+
         self._files = {}
         self._chunks = {}
         self._ffutures = {}
@@ -300,13 +310,7 @@ class ADLTransferClient(object):
             "length": length,
             "cstates": cstates,
             "exception": None}
-
-
-    def _submit(self, fn, *args, **kwargs):
-        kwargs['shutdown_event'] = self._shutdown_event
-        future = self._pool.submit(fn, *args, **kwargs)
-        future.add_done_callback(self._update)
-        return future
+        self._transfer_total_bytes += length
 
     def _start(self, src, dst):
         key = (src, dst)
@@ -317,11 +321,12 @@ class ADLTransferClient(object):
             if obj in cs.objects and cs[obj] == 'finished':
                 continue
             cs[obj] = 'running'
-            future = self._submit(
+            future = self._pool.submit(
                 self._transfer, self._adlfs, src, name, offset,
                 self._chunks[obj]['expected'], self._buffersize,
-                self._blocksize)
+                self._blocksize, shutdown_event=self._shutdown_event)
             self._cfutures[future] = obj
+            future.add_done_callback(self._update)
 
     @property
     def active(self):
@@ -382,7 +387,14 @@ class ADLTransferClient(object):
     
         logger.debug('Renamed %r to %r', src, dst)
 
+    def _update_progress(self, length):
+        if self._progress_callback is not None:
+            with self._progress_lock:
+                self._progress_total_bytes += length
+            self._progress_callback(self._progress_total_bytes, self._transfer_total_bytes)
+
     def _update(self, future):
+
         if future in self._cfutures:
             obj = self._cfutures[future]
             parent = self._chunks[obj]['parent']
@@ -412,18 +424,21 @@ class ADLTransferClient(object):
                                  src, dst, repr(exception))
                 else:
                     cstates[obj] = 'finished'
+                    self._update_progress(nbytes)
 
             if cstates.contains_all('finished'):
                 logger.debug("Chunks transferred")
                 if self._merge and len(cstates.objects) > 1:
                     logger.debug("Merging file: %s", self._fstates[parent])
                     self._fstates[parent] = 'merging'
-                    merge_future = self._submit(
+                    merge_future = self._pool.submit(
                         self._merge, self._adlfs, dst,
                         [chunk for chunk, _ in sorted(cstates.objects,
                                                       key=operator.itemgetter(1))], 
-                        overwrite=self._parent._overwrite)
+                        overwrite=self._parent._overwrite,
+                        shutdown_event=self._shutdown_event)
                     self._ffutures[merge_future] = parent
+                    merge_future.add_done_callback(self._update)
                 else:
                     if not self._chunked and str(dst).endswith('.inprogress'):
                         logger.debug("Renaming file to remove .inprogress: %s", self._fstates[parent])
@@ -433,7 +448,7 @@ class ADLTransferClient(object):
 
                     self._fstates[parent] = 'finished'
                     logger.info("Transferred %s -> %s", src, dst)
-            elif cstates.contains_none('running'):
+            elif cstates.contains_none('running', 'pending'):
                 logger.error("Transfer failed: %s -> %s", src, dst)
                 self._fstates[parent] = 'errored'
         elif future in self._ffutures:
@@ -455,6 +470,9 @@ class ADLTransferClient(object):
         # TODO: Re-enable progress saving when a less IO intensive solution is available.
         # See issue: https://github.com/Azure/azure-data-lake-store-python/issues/117
         #self.save()
+        else:
+            raise ValueError("Illegal state future {} not found in either file futures {} nor chunk futures {}"
+                             .format(future, self._ffutures, self._cfutures))
         if self.verbose:
             print('\b' * 200, self.status, end='')
             sys.stdout.flush()
@@ -552,6 +570,7 @@ class ADLTransferClient(object):
         dic2.pop('_ffutures', None)
         dic2.pop('_pool', None)
         dic2.pop('_shutdown_event', None)
+        dic2.pop('_progress_lock', None)
 
         dic2['_files'] = dic2.get('_files', {}).copy()
         dic2['_chunks'] = dic2.get('_chunks', {}).copy()

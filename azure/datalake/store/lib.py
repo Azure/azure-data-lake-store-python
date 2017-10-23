@@ -53,7 +53,7 @@ default_store = os.environ.get('azure_data_lake_store_name', None)
 default_adls_suffix = os.environ.get('azure_data_lake_store_url_suffix', 'azuredatalakestore.net')
 
 # Constants
-DEFAULT_RESOURCE_ENDPOINT = "https://management.core.windows.net/"
+DEFAULT_RESOURCE_ENDPOINT = "https://datalake.azure.net/"
 MAX_CONTENT_LENGTH = 2**16
 
 # This is the maximum number of active pool connections
@@ -84,7 +84,7 @@ def auth(tenant_id=None, username=None,
     client_secret : str
         the secret associated with the client_id
     resource : str
-        resource for auth (e.g., https://management.core.windows.net/)
+        resource for auth (e.g., https://datalake.azure.net/)
     require_2fa : bool
         indicates this authentication attempt requires two-factor authentication
     authority: string
@@ -211,17 +211,17 @@ class DatalakeRESTInterface:
 
     ends = {
         # OP: (HTTP method, required fields, allowed fields)
-        'APPEND': ('post', set(), {'append', 'offset'}),
+        'APPEND': ('post', set(), {'append', 'offset', 'syncFlag', 'filesessionid', 'leaseid'}),
         'CHECKACCESS': ('get', set(), {'fsaction'}),
         'CONCAT': ('post', {'sources'}, {'sources'}),
         'MSCONCAT': ('post', set(), {'deleteSourceDirectory'}),
-        'CREATE': ('put', set(), {'overwrite', 'write'}),
+        'CREATE': ('put', set(), {'overwrite', 'write', 'syncFlag', 'filesessionid', 'leaseid'}),
         'DELETE': ('delete', set(), {'recursive'}),
         'GETCONTENTSUMMARY': ('get', set(), set()),
         'GETFILESTATUS': ('get', set(), set()),
         'LISTSTATUS': ('get', set(), set()),
         'MKDIRS': ('put', set(), set()),
-        'OPEN': ('get', set(), {'offset', 'length', 'read'}),
+        'OPEN': ('get', set(), {'offset', 'length', 'read', 'filesessionid'}),
         'RENAME': ('put', {'destination'}, {'destination'}),
         'SETOWNER': ('put', set(), {'owner', 'group'}),
         'SETPERMISSION': ('put', set(), {'permission'}),

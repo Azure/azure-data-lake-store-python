@@ -12,6 +12,7 @@ from hashlib import md5
 import os
 import shutil
 import tempfile
+import uuid
 
 import pytest
 import vcr
@@ -66,7 +67,8 @@ my_vcr = vcr.VCR(
 
 def working_dir():
     if not hasattr(working_dir, "path"):
-        working_dir.path = AzureDLPath('azure_test_dir')
+        unique_dir = 'azure_python_sdk_test_dir' + str(uuid.uuid4())
+        working_dir.path = AzureDLPath(unique_dir)
     return working_dir.path
 
 
