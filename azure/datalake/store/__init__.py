@@ -6,13 +6,14 @@
 # license information.
 # --------------------------------------------------------------------------
 
-__version__ = "0.0.14"
 
 from .core import AzureDLFileSystem
 from .multithread import ADLDownloader
+from . import dask
 
 # Set default logging handler
 import logging
 from logging import NullHandler
 
 logging.getLogger(__name__).addHandler(NullHandler())
+__version__ = "0.0.14"
