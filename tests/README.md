@@ -13,7 +13,7 @@ responses from Azure. Borrowing from VCR's
 [usage](https://vcrpy.readthedocs.io/en/latest/usage.html#record-modes), this
 test suite has four recording modes: `once`, `new_episodes`, `none`, `all`. The
 recording mode can be changed using the `RECORD_MODE` environment variable when
-invoking the test suite (defaults to `none`).
+invoking the test suite (defaults to `all`).
 
 To record responses for a new test without updating previous recordings:
 
