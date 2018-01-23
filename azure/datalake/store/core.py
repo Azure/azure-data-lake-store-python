@@ -737,7 +737,8 @@ class AzureDLFile(object):
         line = b''
         while True:
 
-            if self.end >= self.size:
+            # if cache has last bytes of file and its read, return line and exit loop
+            if self.end >= self.size and self.loc >= self.end:
                 return line
 
             self._read_blocksize()
@@ -822,6 +823,8 @@ class AzureDLFile(object):
                              min(self.loc - self.start + length, self.end - self.start)]
             self.loc += len(out)
             length -= len(out)
+            if self.loc >= self.size:
+                length = 0
 
         return out
 
