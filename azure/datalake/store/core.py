@@ -662,8 +662,8 @@ class AzureDLFile(object):
         self.cache = b""
         self.loc = 0
         self.delimiter = delimiter
-        self.start = None
-        self.end = None
+        self.start = 0
+        self.end = 0
         self.closed = False
         self.trim = True
         self.buffer = io.BytesIO()
@@ -734,7 +734,7 @@ class AzureDLFile(object):
         if length < 0:
             length = self.size
 
-        line = b''
+        line = b""
         while True:
 
             # if cache has last bytes of file and its read, return line and exit loop
@@ -792,7 +792,7 @@ class AzureDLFile(object):
         if offset >= self.size:
             self.start = self.size
             self.end = self.size
-            self.cache = b''
+            self.cache = b""
             return
         if offset >= self.start and offset < self.end:
             return
@@ -816,7 +816,7 @@ class AzureDLFile(object):
         if self.closed:
             raise ValueError('I/O operation on closed file.')
 
-        out = b''
+        out = b""
         while length > 0:
             self._read_blocksize()
             out += self.cache[self.loc - self.start:
