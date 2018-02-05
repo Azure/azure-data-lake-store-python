@@ -699,7 +699,7 @@ def test_cache_read_multiple_reads(azure):
             assert f.start == 5
             assert f.end == 9
             data = f.read(3)
-            print data
+
             assert data == b'789'
             assert f.start == 9
             assert f.end == 13
@@ -726,7 +726,7 @@ def test_cache_read_multiple_reads_big(azure):
             assert f.start == 5
             assert f.end == 9
             data = f.read(9)
-            print data
+
             assert data == b'789abcdef'
             assert f.start == 13
             assert f.end == 17
