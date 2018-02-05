@@ -399,6 +399,7 @@ def test_exists_remove_invalidate_cache(azure, second_azure):
         # now ensure it does not exist when we do invalidate the cache
         assert not second_azure.exists(a, invalidate_cache=True)
 
+
 @my_vcr.use_cassette
 def test_cat(azure):
     with azure_teardown(azure):
@@ -430,6 +431,353 @@ def test_full_read(azure):
             assert f.tell() == 7
             assert f.read(4) == b'789'
             assert f.tell() == 10
+
+
+def __ready_and_read_file_for_cache_test(azure, data=b'0123456789abcdef'):
+    with azure.open(a, 'wb') as f:
+        f.write(data)
+
+    f = azure.open(a, 'rb', blocksize=4)
+    # start cache @ 2
+    f.seek(2)
+    # end cache @ 6
+    f.read(4)
+    return f
+
+
+@my_vcr.use_cassette
+def test_cache_read_overlapping_end(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 4
+            f.seek(4)
+            data = f.read(4)
+
+            assert data == b'4567'
+            assert f.start == 6
+            assert f.end == 10
+
+
+@my_vcr.use_cassette
+def test_cache_read_overlapping_start(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(1)
+            data = f.read(3)
+
+            assert data == b'123'
+            assert f.start == 1
+            assert f.end == 5
+
+
+@my_vcr.use_cassette
+def test_cache_read_subset(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(4)
+            data = f.read(1)
+
+            assert data == b'4'
+            assert f.start == 2
+            assert f.end == 6
+
+
+@my_vcr.use_cassette
+def test_cache_read_superset(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(1)
+            data = f.read(7)
+
+            assert data == b'1234567'
+            assert f.start == 5
+            assert f.end == 9
+
+
+@my_vcr.use_cassette
+def test_cache_read_continuous_end(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(6)
+            data = f.read(2)
+
+            assert data == b'67'
+            assert f.start == 6
+            assert f.end == 10
+
+
+@my_vcr.use_cassette
+def test_cache_read_continuous_start(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(0)
+            data = f.read(2)
+
+            assert data == b'01'
+            assert f.start == 0
+            assert f.end == 4
+
+
+@my_vcr.use_cassette
+def test_cache_read_within_start(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(2)
+            data = f.read(2)
+
+            assert data == b'23'
+            assert f.start == 2
+            assert f.end == 6
+
+
+@my_vcr.use_cassette
+def test_cache_read_within_end(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(4)
+            data = f.read(2)
+
+            assert data == b'45'
+            assert f.start == 2
+            assert f.end == 6
+
+
+@my_vcr.use_cassette
+def test_cache_read_zero_start(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(2)
+            data = f.read(0)
+
+            assert data == b''
+            assert f.start == 2
+            assert f.end == 6
+
+
+@my_vcr.use_cassette
+def test_cache_read_zero_end(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(6)
+            data = f.read(0)
+
+            assert data == b''
+            assert f.start == 2
+            assert f.end == 6
+
+
+@my_vcr.use_cassette
+def test_cache_read_outside_end(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(8)
+            data = f.read(2)
+
+            assert data == b'89'
+            assert f.start == 8
+            assert f.end == 12
+
+
+@my_vcr.use_cassette
+def test_cache_read_superset_big(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(2)
+            data = f.read(20)
+
+            assert data == b'23456789abcdef'
+            assert f.start == 14
+            assert f.end == 16
+
+
+@my_vcr.use_cassette
+def test_cache_read_superset_verybig(azure):
+    with azure_teardown(azure):
+        data = b'0123456789abcdefghijklmnopqrstuvwxyz'
+        with __ready_and_read_file_for_cache_test(azure, data) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(2)
+            data = f.read(36)
+
+            assert data == b'23456789abcdefghijklmnopqrstuvwxyz'
+            assert f.start == 34
+            assert f.end == 36
+
+
+@my_vcr.use_cassette
+def test_cache_read_multiple_reads(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(1)
+            data = f.read(3)
+            assert data == b'123'
+            assert f.start == 1
+            assert f.end == 5
+            data = f.read(3)
+            assert data == b'456'
+            assert f.start == 5
+            assert f.end == 9
+            data = f.read(3)
+            print data
+            assert data == b'789'
+            assert f.start == 9
+            assert f.end == 13
+            data = f.read(3)
+            assert data == b'abc'
+            assert f.start == 9
+            assert f.end == 13
+
+
+@my_vcr.use_cassette
+def test_cache_read_multiple_reads_big(azure):
+    with azure_teardown(azure):
+
+        data = b'0123456789abcdefghijklmnopqrstuvwxyz'
+        with __ready_and_read_file_for_cache_test(azure, data) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(1)
+            data = f.read(6)
+            assert data == b'123456'
+            assert f.start == 5
+            assert f.end == 9
+            data = f.read(9)
+            print data
+            assert data == b'789abcdef'
+            assert f.start == 13
+            assert f.end == 17
+            data = f.read(6)
+            assert data == b'ghijkl'
+            assert f.start == 21
+            assert f.end == 25
+            data = f.read(9)
+            assert data == b'mnopqrstu'
+            assert f.start == 29
+            assert f.end == 33
+            data = f.read(9)
+            assert data == b'vwxyz'
+            assert f.start == 33
+            assert f.end == 36
+
+
+@my_vcr.use_cassette
+def test_cache_read_full_read(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(3)
+            data = f.read(40)
+
+            assert data == b'3456789abcdef'
+            assert f.start == 14
+            assert f.end == 16
+
+
+@my_vcr.use_cassette
+def test_cache_read_outside_start(azure):
+    with azure_teardown(azure):
+
+        with __ready_and_read_file_for_cache_test(azure) as f:
+            assert f.start == 2
+            assert f.end == 6
+            assert f.cache == b'2345'
+
+            # offset/loc @ 1
+            f.seek(0)
+            data = f.read(1)
+
+            assert data == b'0'
+            assert f.start == 0
+            assert f.end == 4
 
 
 @my_vcr.use_cassette

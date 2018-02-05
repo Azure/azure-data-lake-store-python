@@ -819,10 +819,11 @@ class AzureDLFile(object):
         out = b""
         while length > 0:
             self._read_blocksize()
-            out += self.cache[self.loc - self.start:
+            data_read = self.cache[self.loc - self.start:
                              min(self.loc - self.start + length, self.end - self.start)]
-            self.loc += len(out)
-            length -= len(out)
+            out += data_read
+            self.loc += len(data_read)
+            length -= len(data_read)
             if self.loc >= self.size:
                 length = 0
 
