@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.18 (2018-02-05)
+-------------------
+* Fixed read issue where whole file was cached while doing positional reads #198
+* Fixed readline as well for the same
+
 0.0.17 (2017-09-21)
 -------------------
 * Fixed README.rst indentation error
