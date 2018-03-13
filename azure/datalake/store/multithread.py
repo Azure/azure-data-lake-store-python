@@ -441,6 +441,7 @@ class ADLUploader(object):
     def _setup(self):
         """ Create set of parameters to loop over
         """
+        is_path_walk_empty = False
         if "*" not in self.lpath:
             out = os.walk(self.lpath)
             lfiles = sum(([os.path.join(dir, f) for f in fnames] for
@@ -448,10 +449,11 @@ class ADLUploader(object):
             if (not lfiles and os.path.exists(self.lpath) and
                     not os.path.isdir(self.lpath)):
                 lfiles = [self.lpath]
+                is_path_walk_empty = True
         else:
             lfiles = glob.glob(self.lpath)
         
-        if len(lfiles) > 1:
+        if len(lfiles) > 0 and not is_path_walk_empty:
             local_rel_lpath = str(AzureDLPath(self.lpath).globless_prefix)
             file_pairs = [(f, self.rpath / AzureDLPath(f).relative_to(local_rel_lpath)) for f in lfiles]
         elif lfiles:

@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.19 (2018-03-14)
+-------------------
+* Fixed upload issue where destination filename was wrong while upload of directory with single file #208
+
 0.0.18 (2018-02-05)
 -------------------
 * Fixed read issue where whole file was cached while doing positional reads #198
