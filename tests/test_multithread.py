@@ -226,7 +226,6 @@ def local_files(tempdir):
             f.write(b'0123456789')
     yield filenames
 
-
 @my_vcr.use_cassette
 def test_upload_one(local_files, azure):
     with azure_teardown(azure):
@@ -253,6 +252,23 @@ def test_upload_one(local_files, azure):
 
         azure.rm(test_dir / 'bigfile')
 
+@my_vcr.use_cassette
+def test_upload_single_file_in_dir(tempdir, azure):
+    with azure_teardown(azure):
+        lpath_dir = tempdir
+        lfilename = os.path.join(lpath_dir, 'singlefile')
+        with open(lfilename, 'wb') as f:
+            f.write(b'0123456789')
+
+        # transfer client w/ deterministic temporary directory
+        from azure.datalake.store.multithread import put_chunk
+        client = ADLTransferClient(azure, transfer=put_chunk,
+                                   unique_temporary=False)
+
+        up = ADLUploader(azure, test_dir / 'singlefiledir', lpath_dir, nthreads=1,
+                         overwrite=True)
+        assert azure.info(test_dir / 'singlefiledir' / 'singlefile')['length'] == 10
+        azure.rm(test_dir / 'singlefiledir' / 'singlefile')
 
 @my_vcr.use_cassette
 def test_upload_one_empty_file(local_files, azure):
