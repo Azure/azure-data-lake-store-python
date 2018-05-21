@@ -48,7 +48,7 @@ setup(name='azure-datalake-store',
       install_requires=[
           'cffi',
           'adal>=0.4.2',
-          'msrest~=0.4.5'
+          'msrest>=0.4.28,<2.0.0',
       ],
       extras_require={
           ":python_version<'3.4'": ['pathlib2'],
