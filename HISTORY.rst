@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.20 (2018-05-25)
++++++++++++++++++++
+* Compatibility of the sdist with wheel 0.31.0
+
 0.0.19 (2018-03-14)
 -------------------
 * Fixed upload issue where destination filename was wrong while upload of directory with single file #208
