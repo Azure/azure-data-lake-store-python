@@ -20,7 +20,7 @@ import logging
 import sys
 import time
 import uuid
-
+import json
 
 # local imports
 from .exceptions import DatalakeBadOffsetException
@@ -524,10 +524,14 @@ class AzureDLFileSystem(object):
             directory, and delete that whole directory when done.
         """
         outfile = AzureDLPath(outfile).trim()
-        filelist = ','.join(AzureDLPath(f).as_posix() for f in filelist)
+        sourceList = []
+        sourceList.append(AzureDLPath(f).as_posix() for f in filelist)
+        sources = {}
+        sources["sources"] = sourceList
+        
         delete = 'true' if delete_source else 'false'
         self.azure.call('MSCONCAT', outfile.as_posix(),
-                        data='sources='+filelist,
+                        data=json.dumps(sources),
                         deleteSourceDirectory=delete)
         self.invalidate_cache(outfile)
 
