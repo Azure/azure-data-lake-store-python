@@ -88,6 +88,8 @@ def auth(tenant_id=None, username=None,
         indicates this authentication attempt requires two-factor authentication
     authority: string
         The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
+    kwargs : key/values
+        Other parameters, for future use
 
     Returns
     -------
