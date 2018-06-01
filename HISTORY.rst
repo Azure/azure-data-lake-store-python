@@ -3,9 +3,12 @@
 Release History
 ===============
 
-0.0.20 (2018-05-29)
+0.0.21 (2018-06-01)
 +++++++++++++++++++
 * Remove unused msrest dependency
+
+0.0.20 (2018-05-29)
++++++++++++++++++++
 * Compatibility of the sdist with wheel 0.31.0
 
 0.0.19 (2018-03-14)
