@@ -46,7 +46,6 @@ except ImportError:
 if enforce_no_py_open_ssl:
     enforce_no_py_open_ssl()
 
-from msrest.authentication import Authentication
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
 from .exceptions import FileNotFoundError, PermissionError
 from . import __version__
@@ -96,12 +95,11 @@ def auth(tenant_id=None, username=None,
     authority: string
         The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
     kwargs : key/values
-        Other parameters, see http://msrestazure.readthedocs.io/en/latest/msrestazure.html#module-msrestazure.azure_active_directory
-        Examples: auth_uri, token_uri, keyring
+        Other parameters, for future use
 
     Returns
     -------
-    :type AADTokenCredentials :mod: `A msrestazure Credentials object<msrestazure.azure_active_directory>`
+    :type DataLakeCredential :mod: `A DataLakeCredential object`
     """
     if not authority:
         authority = 'https://login.microsoftonline.com/'
@@ -114,7 +112,7 @@ def auth(tenant_id=None, username=None,
 
     if tenant_id is None or client_id is None:
         raise ValueError("tenant_id and client_id must be supplied for authentication")
-    
+
     if not username:
         username = os.environ.get('azure_username', None)
 
@@ -124,7 +122,7 @@ def auth(tenant_id=None, username=None,
     if not client_secret:
         client_secret = os.environ.get('azure_client_secret', None)
 
-    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call and 
+    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call and
     # and the user will be prompted to login interactively through a browser.
     if require_2fa or (username is None and password is None and client_secret is None):
         code = context.acquire_user_code(resource, client_id)
@@ -148,12 +146,17 @@ def auth(tenant_id=None, username=None,
 
     return DataLakeCredential(out)
 
-class DataLakeCredential(Authentication):
+class DataLakeCredential:
     def __init__(self, token):
         self.token = token
 
     def signed_session(self):
-        session = super(DataLakeCredential, self).signed_session()
+        # type: () -> requests.Session
+        """Create requests session with any required auth headers applied.
+
+        :rtype: requests.Session
+        """
+        session = requests.Session()
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.refresh_token()
 
@@ -161,7 +164,7 @@ class DataLakeCredential(Authentication):
         header = "{} {}".format(scheme, token)
         session.headers['Authorization'] = header
         return session
-    
+
     def refresh_token(self, authority=None):
         """ Refresh an expired authorization token
 
@@ -191,7 +194,7 @@ class DataLakeCredential(Authentication):
         out.update({'access': out['accessToken'],
                     'time': time.time(), 'tenant': self.token['tenant'],
                     'resource': self.token['resource'], 'client': self.token['client']})
-    
+
         self.token = out
 
 class DatalakeRESTInterface:
@@ -382,7 +385,7 @@ class DatalakeRESTInterface:
             r = func(url, params=params, headers=headers, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: ' + repr(e))
-        
+
         exception_log_level = logging.ERROR
         if expected_error_code and r.status_code == expected_error_code:
             logger.log(logging.DEBUG, 'Error code: {} was an expected potential error from the caller. Logging the exception to the debug stream'.format(r.status_code))
