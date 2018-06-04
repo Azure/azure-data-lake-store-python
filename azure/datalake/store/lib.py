@@ -365,7 +365,7 @@ class DatalakeRESTInterface:
             params['api-version'] = self.api_version
 
         params.update(kwargs)
-        func = getattr(self.session, method)
+        restcall = getattr(self.session, method)
         if is_extended:
             url = self.url + self.extended_operations
         else:
@@ -376,7 +376,7 @@ class DatalakeRESTInterface:
             headers['x-ms-client-request-id'] = str(uuid.uuid1())
             headers['User-Agent'] = self.user_agent
             self._log_request(method, url, op, path, kwargs, headers)
-            r = func(url, params=params, headers=headers, data=data, stream=stream)
+            r = restcall(url, params=params, headers=headers, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: ' + repr(e))
 
