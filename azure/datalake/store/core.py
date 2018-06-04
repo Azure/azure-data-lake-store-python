@@ -45,7 +45,7 @@ class AzureDLFileSystem(object):
     ----------
     store_name : str ("")
         Store name to connect to
-    token : credentials object<msrestazure.azure_active_directory>
+    token : credentials object
         When setting up a new connection, this contains the authorization
         credentials (see `lib.auth()`).
     url_suffix: str (None)
@@ -113,7 +113,7 @@ class AzureDLFileSystem(object):
         """ List files at given path """
         path = AzureDLPath(path).trim()
         key = path.as_posix()
-        
+
         if invalidate_cache:
             self.invalidate_cache(key)
 
@@ -148,13 +148,13 @@ class AzureDLFileSystem(object):
         path_as_posix = path.as_posix()
         root = path.parent
         root_as_posix = root.as_posix()
-        
+
         # in the case of getting info about the root itself or if the cache won't be hit
         # simply return the result of a GETFILESTATUS from the service
         if invalidate_cache or path_as_posix in {'/', '.'}:
             to_return  = self.azure.call('GETFILESTATUS', path_as_posix, expected_error_code=expected_error_code)['FileStatus']
             to_return['name'] = path_as_posix
-            
+
             # add the key/value pair back to the cache so long as it isn't the root
             if path_as_posix not in {'/', '.'}:
                 if root_as_posix not in self.dirs:
@@ -173,7 +173,7 @@ class AzureDLFileSystem(object):
         for f in self._ls(root, invalidate_cache):
             if f['name'] == path_as_posix:
                 return f
-        
+
         raise FileNotFoundError(path)
 
     def _walk(self, path, invalidate_cache=True):
@@ -232,12 +232,12 @@ class AzureDLFileSystem(object):
         path = AzureDLPath(path).trim()
         self.azure.call('SETPERMISSION', path.as_posix(), permission=mod)
         self.invalidate_cache(path.as_posix())
-    
+
     def set_expiry(self, path, expiry_option, expire_time=None):
         """
-        Sets or removes the expiration time on the specified file. 
-        This operation can only be executed against files. 
-        
+        Sets or removes the expiration time on the specified file.
+        This operation can only be executed against files.
+
         Note: Folders are not supported.
 
         Parameters
@@ -247,17 +247,17 @@ class AzureDLFileSystem(object):
         expire_time: int
             The time that the file will expire, corresponding to the expiry_option that was set
         expiry_option: str
-            Indicates the type of expiration to use for the file: 
-                1. NeverExpire: ExpireTime is ignored. 
-                2. RelativeToNow: ExpireTime is an integer in milliseconds representing the expiration date relative to when file expiration is updated. 
-                3. RelativeToCreationDate: ExpireTime is an integer in milliseconds representing the expiration date relative to file creation. 
+            Indicates the type of expiration to use for the file:
+                1. NeverExpire: ExpireTime is ignored.
+                2. RelativeToNow: ExpireTime is an integer in milliseconds representing the expiration date relative to when file expiration is updated.
+                3. RelativeToCreationDate: ExpireTime is an integer in milliseconds representing the expiration date relative to file creation.
                 4. Absolute: ExpireTime is an integer in milliseconds, as a Unix timestamp relative to 1/1/1970 00:00:00.
         """
         parms = {}
         value_to_use = [x for x in valid_expire_types if x.lower() == expiry_option.lower()]
         if len(value_to_use) != 1:
             raise ValueError('expiry_option must be one of: {}. Value given: {}'.format(valid_expire_types, expiry_option))
-        
+
         if value_to_use[0] != ExpiryOptionType.never_expire.value and not expire_time:
             raise ValueError('expire_time must be specified if the expiry_option is not NeverExpire. Value of expiry_option: {}'.format(expiry_option))
 
@@ -281,7 +281,7 @@ class AzureDLFileSystem(object):
         path: str
             The path the action is being executed on (file or folder)
         acl_spec: str
-            The optional ACL specification to set on the path in the format 
+            The optional ACL specification to set on the path in the format
             '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
 
             Note that for remove acl entries the permission (rwx) portion is not required.
@@ -294,11 +294,11 @@ class AzureDLFileSystem(object):
         posix_path = path.as_posix()
         if acl_spec:
             parms['aclSpec'] = acl_spec
-        
+
         to_return = self.azure.call(action, posix_path, **parms)
         if invalidate_cache:
             self.invalidate_cache(posix_path)
-        
+
         return to_return
 
     def set_acl(self, path, acl_spec):
@@ -306,13 +306,13 @@ class AzureDLFileSystem(object):
         Sets the Access Control List (ACL) for a file or folder.
 
         Note: this is not recursive, and applies only to the file or folder specified.
-            
+
         Parameters
         ----------
         path: str
             Location to set the ACL on.
         acl_spec: str
-            The ACL specification to set on the path in the format 
+            The ACL specification to set on the path in the format
             '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
         """
 
@@ -332,7 +332,7 @@ class AzureDLFileSystem(object):
         path: str
             Location to set the ACL entries on.
         acl_spec: str
-            The ACL specification to use in modifying the ACL at the path in the format 
+            The ACL specification to use in modifying the ACL at the path in the format
             '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
         """
         self._acl_call('MODIFYACLENTRIES', path, acl_spec, invalidate_cache=True)
@@ -343,7 +343,7 @@ class AzureDLFileSystem(object):
         Removes existing, named, Access Control List (ACL) entries on a file or folder.
         If the entry does not exist already it is ignored.
         Default entries cannot be removed this way, please use remove_default_acl for that.
-        Unnamed entries cannot be removed in this way, please use remove_acl for that. 
+        Unnamed entries cannot be removed in this way, please use remove_acl for that.
 
         Note: this is not recursive, and applies only to the file or folder specified.
 
@@ -357,7 +357,7 @@ class AzureDLFileSystem(object):
         """
         self._acl_call('REMOVEACLENTRIES', path, acl_spec, invalidate_cache=True)
 
-        
+
     def get_acl_status(self, path):
         """
         Gets Access Control List (ACL) entries for the specified file or directory.
@@ -676,16 +676,16 @@ class AzureDLFile(object):
         uniqueid = str(uuid.uuid4())
         self.filesessionid = uniqueid
         self.leaseid = uniqueid
-        
+
         # always invalidate the cache when checking for existence of a file
         # that may be created or written to (for the first time).
         exists = self.azure.exists(path, invalidate_cache=True)
-        
+
         # cannot create a new file object out of a directory
         if exists and self.info()['type'] == 'DIRECTORY':
             raise IOError('path: {} is a directory, not a file, and cannot be opened for reading or writing'.format(path))
-        
-        if mode == 'ab' and exists:    
+
+        if mode == 'ab' and exists:
             self.loc = self.info()['length']
             self.first_write = False
         elif mode == 'rb':
@@ -851,12 +851,12 @@ class AzureDLFile(object):
             raise ValueError('File not in write mode')
         if self.closed:
             raise ValueError('I/O operation on closed file.')
-        
+
         out = self.buffer.write(ensure_writable(data))
         self.loc += out
         self.flush(syncFlag='DATA')
         return out
-        
+
 
     def flush(self, syncFlag='METADATA', force=False):
         """
@@ -873,11 +873,11 @@ class AzureDLFile(object):
         """
         if not self.writable() or self.closed:
             return
-        
+
         if not (syncFlag == 'METADATA' or syncFlag == 'DATA' or syncFlag == 'CLOSE'):
             raise ValueError('syncFlag must be one of these: METADAT, DATA or CLOSE')
-        
-        
+
+
         if self.buffer.tell() == 0:
             if force and self.first_write:
                 _put_data_with_retry(
@@ -895,7 +895,7 @@ class AzureDLFile(object):
 
         self.buffer.seek(0)
         data = self.buffer.read()
-        
+
         syncFlagLocal = 'DATA'
         while len(data) > self.blocksize:
             if self.delimiter:
@@ -931,11 +931,11 @@ class AzureDLFile(object):
                     filesessionid=self.filesessionid)
             logger.debug('Wrote %d bytes to %s' % (limit, self))
             data = data[limit:]
-            
-                
+
+
         self.buffer = io.BytesIO(data)
         self.buffer.seek(0, 2)
-            
+
         if force:
             zero_offset = self.tell() - len(data)
             if self.first_write:
