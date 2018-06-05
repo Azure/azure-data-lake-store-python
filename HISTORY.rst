@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.22 (2018-06-02)
++++++++++++++++++++
+* Encoding filepaths in URI
+
 0.0.21 (2018-06-01)
 +++++++++++++++++++
 * Remove unused msrest dependency

@@ -20,6 +20,7 @@ a = posix(test_dir / 'a')
 b = posix(test_dir / 'b')
 c = posix(test_dir / 'c')
 d = posix(test_dir / 'd')
+specialCharFile = posix(test_dir / '12,+3#456?.txt')
 
 
 @my_vcr.use_cassette
@@ -425,6 +426,29 @@ def test_full_read(azure):
             assert len(f.read()) == 10
 
         with azure.open(a, 'rb') as f:
+            assert f.tell() == 0
+            f.seek(3)
+            assert f.read(4) == b'3456'
+            assert f.tell() == 7
+            assert f.read(4) == b'789'
+            assert f.tell() == 10
+
+
+@my_vcr.use_cassette
+def test_filename_specialchar(azure):
+    with azure_teardown(azure):
+        with azure.open(specialCharFile, 'wb') as f:
+            f.write(b'0123456789')
+
+        with azure.open(specialCharFile, 'rb') as f:
+            assert len(f.read(4)) == 4
+            assert len(f.read(4)) == 4
+            assert len(f.read(4)) == 2
+
+        with azure.open(specialCharFile, 'rb') as f:
+            assert len(f.read()) == 10
+
+        with azure.open(specialCharFile, 'rb') as f:
             assert f.tell() == 0
             f.seek(3)
             assert f.read(4) == b'3456'

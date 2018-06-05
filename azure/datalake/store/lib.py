@@ -19,6 +19,12 @@ import threading
 import time
 import uuid
 import platform
+import sys
+
+if sys.version_info >= (3, 4):
+    import urllib.parse as urllib
+else:
+    import urllib
 
 # 3rd party imports
 import adal
@@ -370,12 +376,12 @@ class DatalakeRESTInterface:
             url = self.url + self.extended_operations
         else:
             url = self.url + self.webhdfs
-        url += path
+        url += urllib.quote(path)
         try:
             headers = self.head.copy()
             headers['x-ms-client-request-id'] = str(uuid.uuid1())
             headers['User-Agent'] = self.user_agent
-            self._log_request(method, url, op, path, kwargs, headers)
+            self._log_request(method, url, op, urllib.quote(path), kwargs, headers)
             r = func(url, params=params, headers=headers, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: ' + repr(e))
