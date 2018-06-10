@@ -324,7 +324,7 @@ class DatalakeRESTInterface:
             return False
         return response.headers['content-type'].startswith('application/json')
 
-    def call(self, op, path='', is_extended=False, expected_error_code=None, **kwargs):
+    def call(self, op, path='', is_extended=False, expected_error_code=None, headers=None, **kwargs):
         """ Execute a REST call
 
         Parameters
@@ -372,11 +372,12 @@ class DatalakeRESTInterface:
             url = self.url + self.webhdfs
         url += path
         try:
-            headers = self.head.copy()
-            headers['x-ms-client-request-id'] = str(uuid.uuid1())
-            headers['User-Agent'] = self.user_agent
-            self._log_request(method, url, op, path, kwargs, headers)
-            r = func(url, params=params, headers=headers, data=data, stream=stream)
+            request_headers = self.head.copy()
+            request_headers.update(headers)
+            request_headers['x-ms-client-request-id'] = str(uuid.uuid1())
+            request_headers['User-Agent'] = self.user_agent
+            self._log_request(method, url, op, path, kwargs, request_headers)
+            r = func(url, params=params, headers=request_headers, data=data, stream=stream)
         except requests.exceptions.RequestException as e:
             raise DatalakeRESTException('HTTP error: ' + repr(e))
 
