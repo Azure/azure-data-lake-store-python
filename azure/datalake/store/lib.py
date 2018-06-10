@@ -334,7 +334,7 @@ class DatalakeRESTInterface:
             return False
         return response.headers['content-type'].startswith('application/json')
 
-    def call(self, op, path='', is_extended=False, expected_error_code=None, retry_policy=None, **kwargs):
+    def call(self, op, path='', is_extended=False, expected_error_code=None, retry_policy=None, headers=None, **kwargs):
         """ Execute a REST call
 
         Parameters
@@ -381,6 +381,7 @@ class DatalakeRESTInterface:
             url = self.url + self.extended_operations
         else:
             url = self.url + self.webhdfs
+<<<<<<< HEAD
         url += urllib.quote(path)
 
         retry_count = -1
@@ -410,6 +411,19 @@ class DatalakeRESTInterface:
         if not request_successful and last_exception is not None:
             raise DatalakeRESTException('HTTP error: ' + repr(last_exception))
         
+=======
+        url += path
+        try:
+            request_headers = self.head.copy()
+            request_headers.update(headers)
+            request_headers['x-ms-client-request-id'] = str(uuid.uuid1())
+            request_headers['User-Agent'] = self.user_agent
+            self._log_request(method, url, op, path, kwargs, request_headers)
+            r = func(url, params=params, headers=request_headers, data=data, stream=stream)
+        except requests.exceptions.RequestException as e:
+            raise DatalakeRESTException('HTTP error: ' + repr(e))
+
+>>>>>>> application/json content-type required for json body in requests
         exception_log_level = logging.ERROR
         if expected_error_code and response.status_code == expected_error_code:
             logger.log(logging.DEBUG, 'Error code: {} was an expected potential error from the caller. Logging the exception to the debug stream'.format(response.status_code))

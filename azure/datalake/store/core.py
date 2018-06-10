@@ -531,6 +531,7 @@ class AzureDLFileSystem(object):
         
         delete = 'true' if delete_source else 'false'
         self.azure.call('MSCONCAT', outfile.as_posix(),
+                        headers={'Content-Type': "application/json"},
                         data=json.dumps(sources),
                         deleteSourceDirectory=delete)
         self.invalidate_cache(outfile)
