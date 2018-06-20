@@ -32,38 +32,44 @@ class NoRetryPolicy(RetryPolicy):
 
 class ExponentialRetryPolicy(RetryPolicy):
 
-    # max_retries = 4
-    # # Initial retry interval in seconds
-    # exponential_retry_interval = 1
-    # exponential_factor = 4
+    def __init__(self, max_retries=None, exponential_retry_interval=None, exponential_factor=None):
+        self.exponential_factor = 4 if exponential_factor is None else exponential_factor
+        self.max_retries = 4 if max_retries is None else max_retries
+        self.exponential_retry_interval = 1 if exponential_retry_interval is None else exponential_retry_interval
 
-    def __init__(self, max_retries=4, exponential_retry_interval=1, exponential_factor=4):
-        self.exponential_factor = exponential_factor
-        self.max_retries = max_retries
-        self.exponential_retry_interval = exponential_retry_interval
+    def should_retry(self, response, last_exception, retry_count):
+        if retry_count >= self.max_retries:
+            return False
 
-    def should_retry(self, status_code, last_exception, retry_count):
+        if last_exception is not None:
+            self.__backoff()
+            return True
+
+        status_code = response.status_code
+
         if(status_code == 501
             or status_code == 505
             or (300 <= status_code < 500
+                and status_code != 401
+                and status_code != 404
                 and status_code != 408
-                and status_code != 429
-                and status_code != 401)):
+                and status_code != 429)):
             return False
 
-        if(last_exception is not None
-            or status_code >= 500
+        if(status_code >= 500
+            or status_code == 401
             or status_code == 404
             or status_code == 408
-            or status_code == 429
-            or status_code == 401):
-            if retry_count >= self.max_retries:
-                return False
-            time.sleep(self.exponential_retry_interval)
-            self.exponential_retry_interval *= self.exponential_factor
+            or status_code == 429):
+
+            self.__backoff()
             return True
 
         if 100 <= status_code < 300:
             return False
 
         return False
+
+    def __backoff(self):
+        time.sleep(self.exponential_retry_interval)
+        self.exponential_retry_interval *= self.exponential_factor

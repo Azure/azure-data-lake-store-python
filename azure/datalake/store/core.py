@@ -28,6 +28,7 @@ from .exceptions import FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
 from .enums import ExpiryOptionType
+from .retry import ExponentialRetryPolicy
 
 if sys.version_info >= (3, 4):
     import pathlib
@@ -997,58 +998,48 @@ class AzureDLFile(object):
         self.close()
 
 
-def _fetch_range(rest, path, start, end, stream=False, **kwargs):
+def _fetch_range(rest, path, start, end, stream=False, retry_policy=ExponentialRetryPolicy(), **kwargs):
     logger.debug('Fetch: %s, %s-%s', path, start, end)
     # if the caller gives a bad start/end combination, OPEN will throw and
     # this call will bubble it up
     return rest.call(
-        'OPEN', path, offset=start, length=end-start, read='true', stream=stream, **kwargs)
+        'OPEN', path, offset=start, length=end-start, read='true', stream=stream, retry_policy=retry_policy, **kwargs)
 
 
 def _fetch_range_with_retry(rest, path, start, end, stream=False, retries=10,
                             delay=0.01, backoff=3, **kwargs):
     err = None
-    for i in range(retries):
-        try:
-            return _fetch_range(rest, path, start, end, stream=False, **kwargs)
-        except Exception as e:
-            err = e
-            logger.debug('Exception %s on ADL download on attempt: %s, retrying in %s seconds',
-                         repr(err), i, delay, exc_info=True)
-        time.sleep(delay)
-        delay *= backoff
-    exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
-    rest.log_response_and_raise(None, exception)
+    retry_policy = ExponentialRetryPolicy(max_retries=retries, exponential_retry_interval=delay, exponential_factor=backoff)
+    try:
+        return _fetch_range(rest, path, start, end, stream=False, retry_policy=retry_policy, **kwargs)
+    except Exception as e:
+        err = e
+        exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
+        rest.log_response_and_raise(None, exception)
 
 
-def _put_data(rest, op, path, data, **kwargs):
+def _put_data(rest, op, path, data, retry_policy=ExponentialRetryPolicy(), **kwargs):
     logger.debug('Put: %s %s, %s', op, path, kwargs)
-    return rest.call(op, path=path, data=data, **kwargs)
+    return rest.call(op, path=path, data=data, retry_policy=retry_policy, **kwargs)
 
 
 def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=3,
                          **kwargs):
     err = None
-    for i in range(retries):
-        try:
-            return _put_data(rest, op, path, data, **kwargs)
-        except (PermissionError, FileNotFoundError) as e:
-            rest.log_response_and_raise(None, e)
-        except DatalakeBadOffsetException as e:
-            if i == 0:
-                # on first attempt: if data already exists, this is a
-                # true error
-                rest.log_response_and_raise(None, e)
-            # on any other attempt: previous attempt succeeded, continue
-            return
-        except Exception as e:
-            err = e
-            logger.debug('Exception %s on ADL upload on attempt: %s, retrying in %s seconds',
-                         repr(err), i, delay, exc_info=True)
-        time.sleep(delay)
-        delay *= backoff
-    exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
-    rest.log_response_and_raise(None, exception)
+    retry_policy = ExponentialRetryPolicy(max_retries=retries, exponential_retry_interval=delay,
+                                          exponential_factor=backoff)
+    try:
+        return _put_data(rest, op, path, data, retry_policy=retry_policy, **kwargs)
+    except (PermissionError, FileNotFoundError) as e:
+        rest.log_response_and_raise(None, e)
+    except DatalakeBadOffsetException as e:
+        rest.log_response_and_raise(None, e)
+    except Exception as e:
+        err = e
+        logger.debug('Exception %s on ADL upload',
+                     repr(err))
+        exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
+        rest.log_response_and_raise(None, exception)
 
 
 class AzureDLPath(type(pathlib.PurePath())):

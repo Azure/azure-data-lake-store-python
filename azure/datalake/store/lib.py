@@ -331,7 +331,7 @@ class DatalakeRESTInterface:
             return False
         return response.headers['content-type'].startswith('application/json')
 
-    def call(self, op, path='', is_extended=False, expected_error_code=None, retry_policy=ExponentialRetryPolicy(), **kwargs):
+    def call(self, op, path='', is_extended=False, expected_error_code=None, retry_policy=None, **kwargs):
         """ Execute a REST call
 
         Parameters
@@ -353,6 +353,7 @@ class DatalakeRESTInterface:
             other parameters, as defined by the webHDFS standard and
             https://msdn.microsoft.com/en-us/library/mt710547.aspx
         """
+        retry_policy = ExponentialRetryPolicy() if retry_policy is None else retry_policy
         if op not in self.ends:
             raise ValueError("No such op: %s", op)
         self._check_token()
@@ -385,8 +386,7 @@ class DatalakeRESTInterface:
             retry_count += 1
             last_exception = None
             try:
-                response = self.__call_once(self,
-                                            method,
+                response = self.__call_once(method,
                                             url,
                                             params,
                                             data,
@@ -394,13 +394,14 @@ class DatalakeRESTInterface:
                                             request_id,
                                             retry_count,
                                             op,
-                                            path='',
+                                            path,
                                             **kwargs)
             except requests.exceptions.RequestException as e:
                 last_exception = e
+                response = None
 
             request_successful = self.is_successful_response(response, last_exception)
-            if request_successful or not retry_policy.should_retry(response.status_code, last_exception, retry_count):
+            if request_successful or not retry_policy.should_retry(response, last_exception, retry_count):
                 break
 
         if not request_successful and last_exception is not None:
@@ -448,7 +449,7 @@ class DatalakeRESTInterface:
     def __call_once(self, method, url, params, data, stream, request_id, retry_count, op, path='', **kwargs):
         func = getattr(self.session, method)
         headers = self.head.copy()
-        headers['x-ms-client-request-id'] = request_id + "." + retry_count
+        headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
         headers['User-Agent'] = self.user_agent
         self._log_request(method, url, op, urllib.quote(path), kwargs, headers, retry_count)
         return func(url, params=params, headers=headers, data=data, stream=stream)
