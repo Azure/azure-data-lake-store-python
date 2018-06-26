@@ -51,14 +51,12 @@ class ExponentialRetryPolicy(RetryPolicy):
             or status_code == 505
             or (300 <= status_code < 500
                 and status_code != 401
-                and status_code != 404
                 and status_code != 408
                 and status_code != 429)):
             return False
 
         if(status_code >= 500
             or status_code == 401
-            or status_code == 404
             or status_code == 408
             or status_code == 429):
 
