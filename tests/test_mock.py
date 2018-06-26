@@ -45,9 +45,6 @@ def test_retry_500(azure):
 def test_retry_401(azure):
     __test_retry_error(azure, 401, 3)
 
-def test_retry_404(azure):
-    __test_retry_error(azure, 404, 3)
-
 def test_retry_408(azure):
     __test_retry_error(azure, 408, 4)
 
