@@ -19,7 +19,7 @@ This was introduced to test the Retry Policy but can be carefully used for other
 import responses
 from requests import ConnectionError, ConnectTimeout, ReadTimeout, Timeout
 
-import settings
+from tests import settings
 from azure.datalake.store.exceptions import DatalakeRESTException
 from tests.testing import azure, azure_teardown, posix, working_dir
 test_dir = working_dir()
