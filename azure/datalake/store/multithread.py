@@ -195,7 +195,7 @@ class ADLDownloader(object):
         else:
             rfiles = self.client._adlfs.glob(self.rpath, details=True, invalidate_cache=True)
         if len(rfiles) > 1:
-            local_rel_rpath = str(AzureDLPath(self.rpath).globless_prefix)
+            local_rel_rpath = str(AzureDLPath(self.rpath).trim().globless_prefix)
             file_pairs = [(os.path.join(self.lpath, os.path.relpath(f['name'] +'.inprogress', local_rel_rpath)), f)
                           for f in rfiles]
         elif len(rfiles) == 1:
