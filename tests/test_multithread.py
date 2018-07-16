@@ -142,6 +142,19 @@ def test_download_many(tempdir, azure):
             nfiles += len(filenames)
         assert nfiles > 1
 
+@my_vcr.use_cassette
+def test_download_path(azure):
+    with setup_tree(azure):
+        down = ADLDownloader(
+            azure,
+            lpath="/lpath/test/testfolder",
+            rpath='/' + test_dir.name,
+            run=False)
+        for lfile, rfile in down._file_pairs:
+            if 'data' in lfile:
+                lfile = AzureDLPath(lfile)
+                assert lfile.as_posix().startswith('/lpath/test/testfolder/data')
+
 
 @my_vcr.use_cassette
 def test_download_glob(tempdir, azure):
@@ -150,7 +163,7 @@ def test_download_glob(tempdir, azure):
         down = ADLDownloader(azure, remote_path, tempdir, run=False,
                              overwrite=True)
         file_pair_dict = dict(down._file_pairs)
-        
+
         assert len(file_pair_dict.keys()) == 2
 
         lfiles = [os.path.relpath(f, tempdir) for f in file_pair_dict.keys()]
@@ -344,7 +357,7 @@ def test_upload_glob(tempdir, azure):
 
         rfiles = [posix(AzureDLPath(f).relative_to(test_dir))
                   for f in file_pair_dict.values()]
-        
+
         assert sorted(rfiles) == sorted([posix('a', 'z.txt'), posix('b', 'z.txt')])
 
 
