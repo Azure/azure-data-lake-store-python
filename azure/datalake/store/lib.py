@@ -26,6 +26,8 @@ if sys.version_info >= (3, 4):
 else:
     import urllib
 
+from .retry import ExponentialRetryPolicy
+
 # 3rd party imports
 import adal
 import requests
@@ -286,13 +288,15 @@ class DatalakeRESTInterface:
             self.head = {'Authorization': cur_session.headers['Authorization']}
             self.local.session = None
 
-    def _log_request(self, method, url, op, path, params, headers):
+    def  _log_request(self, method, url, op, path, params, headers, retry_count):
         msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
         msg += "{} '{}' {}\n\n".format(
             op, path,
             " ".join(["{}={}".format(key, params[key]) for key in params]))
         msg += "\n".join(["{}: {}".format(header, headers[header])
                           for header in headers])
+        if retry_count > 0:
+            msg += "retry-count:{}".format(retry_count)
         logger.debug(msg)
 
     def _content_truncated(self, response):
@@ -330,7 +334,7 @@ class DatalakeRESTInterface:
             return False
         return response.headers['content-type'].startswith('application/json')
 
-    def call(self, op, path='', is_extended=False, expected_error_code=None, **kwargs):
+    def call(self, op, path='', is_extended=False, expected_error_code=None, retry_policy=None, **kwargs):
         """ Execute a REST call
 
         Parameters
@@ -352,6 +356,7 @@ class DatalakeRESTInterface:
             other parameters, as defined by the webHDFS standard and
             https://msdn.microsoft.com/en-us/library/mt710547.aspx
         """
+        retry_policy = ExponentialRetryPolicy() if retry_policy is None else retry_policy
         if op not in self.ends:
             raise ValueError("No such op: %s", op)
         self._check_token()
@@ -371,52 +376,86 @@ class DatalakeRESTInterface:
             params['api-version'] = self.api_version
 
         params.update(kwargs)
-        func = getattr(self.session, method)
+
         if is_extended:
             url = self.url + self.extended_operations
         else:
             url = self.url + self.webhdfs
         url += urllib.quote(path)
-        try:
-            headers = self.head.copy()
-            headers['x-ms-client-request-id'] = str(uuid.uuid1())
-            headers['User-Agent'] = self.user_agent
-            self._log_request(method, url, op, urllib.quote(path), kwargs, headers)
-            r = func(url, params=params, headers=headers, data=data, stream=stream)
-        except requests.exceptions.RequestException as e:
-            raise DatalakeRESTException('HTTP error: ' + repr(e))
 
+        retry_count = -1
+        request_id = str(uuid.uuid1())
+        while True:
+            retry_count += 1
+            last_exception = None
+            try:
+                response = self.__call_once(method,
+                                            url,
+                                            params,
+                                            data,
+                                            stream,
+                                            request_id,
+                                            retry_count,
+                                            op,
+                                            path,
+                                            **kwargs)
+            except requests.exceptions.RequestException as e:
+                last_exception = e
+                response = None
+
+            request_successful = self.is_successful_response(response, last_exception)
+            if request_successful or not retry_policy.should_retry(response, last_exception, retry_count):
+                break
+
+        if not request_successful and last_exception is not None:
+            raise DatalakeRESTException('HTTP error: ' + repr(last_exception))
+        
         exception_log_level = logging.ERROR
-        if expected_error_code and r.status_code == expected_error_code:
-            logger.log(logging.DEBUG, 'Error code: {} was an expected potential error from the caller. Logging the exception to the debug stream'.format(r.status_code))
+        if expected_error_code and response.status_code == expected_error_code:
+            logger.log(logging.DEBUG, 'Error code: {} was an expected potential error from the caller. Logging the exception to the debug stream'.format(response.status_code))
             exception_log_level = logging.DEBUG
 
-        if r.status_code == 403:
-            self.log_response_and_raise(r, PermissionError(path), level=exception_log_level)
-        elif r.status_code == 404:
-            self.log_response_and_raise(r, FileNotFoundError(path), level=exception_log_level)
-        elif r.status_code >= 400:
+        if response.status_code == 403:
+            self.log_response_and_raise(response, PermissionError(path), level=exception_log_level)
+        elif response.status_code == 404:
+            self.log_response_and_raise(response, FileNotFoundError(path), level=exception_log_level)
+        elif response.status_code >= 400:
             err = DatalakeRESTException(
                 'Data-lake REST exception: %s, %s' % (op, path))
-            if self._is_json_response(r):
-                out = r.json()
+            if self._is_json_response(response):
+                out = response.json()
                 if 'RemoteException' in out:
                     exception = out['RemoteException']['exception']
                     if exception == 'BadOffsetException':
                         err = DatalakeBadOffsetException(path)
-                        self.log_response_and_raise(r, err, level=logging.DEBUG)
-            self.log_response_and_raise(r, err, level=exception_log_level)
+                        self.log_response_and_raise(response, err, level=logging.DEBUG)
+            self.log_response_and_raise(response, err, level=exception_log_level)
         else:
-            self._log_response(r)
+            self._log_response(response)
 
-        if self._is_json_response(r):
-            out = r.json()
+        if self._is_json_response(response):
+            out = response.json()
             if out.get('boolean', True) is False:
                 err = DatalakeRESTException(
                     'Operation failed: %s, %s' % (op, path))
-                self.log_response_and_raise(r, err)
+                self.log_response_and_raise(response, err)
             return out
-        return r
+        return response
+
+    def is_successful_response(self, response, exception):
+        if exception is not None:
+            return False
+        if 100 <= response.status_code < 300:
+            return True
+        return False
+
+    def __call_once(self, method, url, params, data, stream, request_id, retry_count, op, path='', **kwargs):
+        func = getattr(self.session, method)
+        headers = self.head.copy()
+        headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
+        headers['User-Agent'] = self.user_agent
+        self._log_request(method, url, op, urllib.quote(path), kwargs, headers, retry_count)
+        return func(url, params=params, headers=headers, data=data, stream=stream)
 
     def __getstate__(self):
         state = self.__dict__.copy()

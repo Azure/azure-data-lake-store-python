@@ -270,47 +270,46 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
     """
     err = None
     total_bytes_downloaded = 0
-    for i in range(retries):
-        try:
-            nbytes = 0
-            with closing(_fetch_range(adlfs.azure, src, start=offset,
-                                      end=offset+size, stream=True)) as response:
-                with open(dst, 'rb+') as fout:
-                    fout.seek(offset)
-                    for chunk in response.iter_content(chunk_size=blocksize):
-                        if shutdown_event and shutdown_event.is_set():
-                            return total_bytes_downloaded, None
-                        if chunk:
-                            nwritten = fout.write(chunk)
-                            if nwritten:
-                                nbytes += nwritten
-            logger.debug('Downloaded %s bytes to %s, byte offset %s', nbytes, dst, offset)
-            
-            # There are certain cases where we will be throttled and recieve less than the expected amount of data.
-            # In these cases, instead of failing right away, instead indicate a retry is occuring and update offset and
-            # size to attempt another read to get the rest of the data. We will only do this if the amount of bytes read
-            # is less than size, because if somehow we recieved too much data we are not clear on how to proceed.
-            if nbytes < size:
-                errMsg = 'Did not recieve total bytes requested from server. This can be due to server side throttling and will be retried. Data Expected: {}. Data Received: {}.'.format(size, nbytes)
-                size -= nbytes
-                offset += nbytes
-                total_bytes_downloaded += nbytes
-                raise IOError(errMsg)
-            elif nbytes > size:
-                raise IOError('Received more bytes than expected from the server. Expected: {}. Received: {}.'.format(size, nbytes))
-            else:
-                total_bytes_downloaded += nbytes
+    from azure.datalake.store.retry import ExponentialRetryPolicy
+    retry_policy = ExponentialRetryPolicy(max_retries=retries, exponential_retry_interval=delay,
+                                          exponential_factor=backoff)
+    try:
+        nbytes = 0
+        with closing(_fetch_range(adlfs.azure, src, start=offset,
+                                  end=offset+size, stream=True, retry_policy=retry_policy)) as response:
+            with open(dst, 'rb+') as fout:
+                fout.seek(offset)
+                for chunk in response.iter_content(chunk_size=blocksize):
+                    if shutdown_event and shutdown_event.is_set():
+                        return total_bytes_downloaded, None
+                    if chunk:
+                        nwritten = fout.write(chunk)
+                        if nwritten:
+                            nbytes += nwritten
+        logger.debug('Downloaded %s bytes to %s, byte offset %s', nbytes, dst, offset)
 
-            return total_bytes_downloaded, None
-        except Exception as e:
-            err = e
-            logger.debug('Exception %s on ADL download on attempt: %s, retrying in %s seconds',
-                         repr(err), i, delay, exc_info=True)
-        time.sleep(delay)
-        delay *= backoff
-    exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
-    logger.error('Download failed %s; %s', dst, repr(exception))
-    return total_bytes_downloaded, exception
+        # There are certain cases where we will be throttled and recieve less than the expected amount of data.
+        # In these cases, instead of failing right away, instead indicate a retry is occuring and update offset and
+        # size to attempt another read to get the rest of the data. We will only do this if the amount of bytes read
+        # is less than size, because if somehow we recieved too much data we are not clear on how to proceed.
+        if nbytes < size:
+            errMsg = 'Did not recieve total bytes requested from server. This can be due to server side throttling and will be retried. Data Expected: {}. Data Received: {}.'.format(size, nbytes)
+            size -= nbytes
+            offset += nbytes
+            total_bytes_downloaded += nbytes
+            raise IOError(errMsg)
+        elif nbytes > size:
+            raise IOError('Received more bytes than expected from the server. Expected: {}. Received: {}.'.format(size, nbytes))
+        else:
+            total_bytes_downloaded += nbytes
+
+        return total_bytes_downloaded, None
+    except Exception as e:
+        err = e
+        logger.debug('Exception %s on ADL download on attempt', repr(err))
+        exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
+        logger.error('Download failed %s; %s', dst, repr(exception))
+        return total_bytes_downloaded, exception
 
 
 class ADLUploader(object):

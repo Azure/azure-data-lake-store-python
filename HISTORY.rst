@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.24 (2018-07-16)
++++++++++++++++++++
+* Retry policy implemented for all operations, default being Exponential Retry Policy
+
 0.0.23 (2018-07-11)
 +++++++++++++++++++
 * Fixed the incorrect download location in case of UNC local paths
