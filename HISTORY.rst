@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.23 (2018-07-11)
++++++++++++++++++++
+* Fixed the incorrect download location in case of UNC local paths
+
 0.0.22 (2018-06-02)
 +++++++++++++++++++
 * Encoding filepaths in URI
