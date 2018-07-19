@@ -240,6 +240,9 @@ class ADLDownloader(object):
             with open(dst, 'wb'):
                 pass
 
+        for empty_directory in self.client._adlfs._empty_dirs_to_add():
+            path = os.path.join(self.lpath, os.path.basename(empty_directory['name']))
+            os.makedirs(path, exist_ok=True)
         self.client.run(nthreads, monitor, before_start=touch)
 
     def active(self):

@@ -68,6 +68,7 @@ class AzureDLFileSystem(object):
         self.kwargs = kwargs
         self.connect()
         self.dirs = {}
+        self._emptyDirs = []
         AzureDLFileSystem._singleton[0] = self
 
     @classmethod
@@ -179,10 +180,19 @@ class AzureDLFileSystem(object):
 
     def _walk(self, path, invalidate_cache=True):
         fi = list(self._ls(path, invalidate_cache))
+        self._emptyDirs = []
         for apath in fi:
             if apath['type'] == 'DIRECTORY':
-                fi.extend(self._ls(apath['name'], invalidate_cache))
+                sub_elements = self._ls(apath['name'], invalidate_cache)
+                if not sub_elements:
+                    self._emptyDirs.append(apath)
+                else:
+                    fi.extend(sub_elements)
         return [f for f in fi if f['type'] == 'FILE']
+
+    def _empty_dirs_to_add(self):
+        """ Returns directories found empty during walk. Only for internal use"""
+        return self._emptyDirs
 
     def walk(self, path='', details=False, invalidate_cache=True):
         """ Get all files below given path
