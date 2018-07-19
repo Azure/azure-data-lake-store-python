@@ -244,7 +244,8 @@ class ADLDownloader(object):
                 pass
 
         for empty_directory in self.client._adlfs._empty_dirs_to_add():
-            path = os.path.join(self.lpath, os.path.basename(empty_directory['name']))
+            local_rel_rpath = str(AzureDLPath(self.rpath).trim().globless_prefix)
+            path = os.path.join(self.lpath, os.path.relpath(empty_directory['name'], local_rel_rpath))
             os.makedirs(path, exist_ok=True)
         self.client.run(nthreads, monitor, before_start=touch)
 
