@@ -489,11 +489,12 @@ class ADLTransferClient(object):
         self._nthreads = nthreads or self._nthreads
         self._ffutures = {}
         self._cfutures = {}
+
         for src, dst in self._files:
             if before_start:
                 before_start(self._adlfs, src, dst)
             self._start(src, dst)
-        before_start = None
+
         if monitor:
             self.monitor()
             has_errors = False
