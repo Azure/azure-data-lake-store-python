@@ -3,7 +3,7 @@
 Release History
 ===============
 
-0.0.25 (2018-07-20)
+0.0.25 (2018-07-26)
 +++++++++++++++++++
 * Fixed downloading of empty directories and download of directory structure with only a single file
 
