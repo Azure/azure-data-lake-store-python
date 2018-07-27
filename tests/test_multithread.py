@@ -46,6 +46,10 @@ def setup_tree(azure):
         for filename in ['x.csv', 'y.csv', 'z.txt']:
             with azure.open(test_dir / directory / filename, 'wb') as f:
                 f.write(b'123456')
+    azure.mkdir(test_dir / 'data/empty')
+    azure.mkdir(test_dir / 'data/single/single')
+    with azure.open(test_dir / 'data/single/single'/ 'single.txt', 'wb') as f:
+        f.write(b'123456')
     try:
         yield
     finally:
@@ -132,6 +136,20 @@ def test_download_single_to_dir(tempdir, azure):
             if os.path.isfile(fname):
                 os.remove(fname)
 
+@my_vcr.use_cassette
+def test_download_empty_directory(tempdir, azure):
+    with setup_tree(azure):
+        down = ADLDownloader(azure, test_dir, tempdir, 1, 2 ** 24, overwrite=True)
+        dirname = os.path.join(tempdir, 'data/empty')
+        assert os.path.isdir(dirname)
+
+@my_vcr.use_cassette
+def test_download_single_file_in_directory(tempdir, azure):
+    with setup_tree(azure):
+        down = ADLDownloader(azure, test_dir, tempdir, 1, 2 ** 24, overwrite=True)
+        dirname = os.path.join(tempdir, 'data/single/single')
+        assert os.path.isdir(dirname)
+        assert os.path.isfile(os.path.join(dirname,'single.txt'))
 
 @my_vcr.use_cassette
 def test_download_many(tempdir, azure):

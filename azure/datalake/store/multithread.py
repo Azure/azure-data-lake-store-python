@@ -194,16 +194,17 @@ class ADLDownloader(object):
             rfiles = self.client._adlfs.walk(self.rpath, details=True, invalidate_cache=True)
         else:
             rfiles = self.client._adlfs.glob(self.rpath, details=True, invalidate_cache=True)
-        if len(rfiles) > 1:
-            local_rel_rpath = str(AzureDLPath(self.rpath).trim().globless_prefix)
-            file_pairs = [(os.path.join(self.lpath, os.path.relpath(f['name'] +'.inprogress', local_rel_rpath)), f)
-                          for f in rfiles]
-        elif len(rfiles) == 1:
+
+        if len(rfiles) == 1 and os.path.abspath(rfiles[0]['name']) == os.path.abspath(self.rpath):
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
                 file_pairs = [(os.path.join(self.lpath, os.path.basename(rfiles[0]['name'] + '.inprogress')),
                                rfiles[0])]
             else:
                 file_pairs = [(self.lpath, rfiles[0])]
+        elif len(rfiles) >= 1:
+            local_rel_rpath = str(AzureDLPath(self.rpath).trim().globless_prefix)
+            file_pairs = [(os.path.join(self.lpath, os.path.relpath(f['name'] +'.inprogress', local_rel_rpath)), f)
+                          for f in rfiles]
         else:
             raise ValueError('No files to download')
 
@@ -242,6 +243,14 @@ class ADLDownloader(object):
             with open(dst, 'wb'):
                 pass
 
+        for empty_directory in self.client._adlfs._empty_dirs_to_add():
+            local_rel_rpath = str(AzureDLPath(self.rpath).trim().globless_prefix)
+            path = os.path.join(self.lpath, os.path.relpath(empty_directory['name'], local_rel_rpath))
+            try:
+                os.makedirs(path)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
         self.client.run(nthreads, monitor, before_start=touch)
 
     def active(self):

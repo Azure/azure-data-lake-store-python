@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.25 (2018-07-26)
++++++++++++++++++++
+* Fixed downloading of empty directories and download of directory structure with only a single file
+
 0.0.24 (2018-07-16)
 +++++++++++++++++++
 * Retry policy implemented for all operations, default being Exponential Retry Policy
