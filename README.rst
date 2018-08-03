@@ -90,8 +90,25 @@ Usage: Command Line Sample
 
 To interact with the API at a higher-level, you can use the provided
 command-line interface in "samples/cli.py". You will need to set
-the appropriate environment variables as described above to connect to the
-Azure Data Lake Store. Below is a simple sample, with more details beyond.
+the appropriate environment variables 
+
+* `azure_username`
+
+* `azure_password`
+
+* `azure_data_lake_store_name`
+
+* `azure_subscription_id`
+
+* `azure_resource_group_name`
+
+* `azure_service_principal`
+
+* `azure_service_principal_secret`
+
+to connect to the Azure Data Lake Store. Optionally, you may need to define `azure_tenant_id` or `azure_data_lake_store_url_suffix`.
+
+Below is a simple sample, with more details beyond.
 
 
 .. code-block:: bash
