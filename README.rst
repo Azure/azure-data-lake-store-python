@@ -188,7 +188,7 @@ Tests
 =====
 
 For detailed documentation about our test framework, please visit the 
-`tests folder <https://github.com/ro-joowan/azure-data-lake-store-python/tree/master/tests>`__.
+`tests folder <https://github.com/Azure/azure-data-lake-store-python/tree/master/tests>`__.
 
 Need Help?
 ==========
