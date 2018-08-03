@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.26 (2018-08-03)
++++++++++++++++++++
+* Fixed bug due to not importing errno
+* Updated Readme with correct environment variables and fixed some links
+
 0.0.25 (2018-07-26)
 +++++++++++++++++++
 * Fixed downloading of empty directories and download of directory structure with only a single file
