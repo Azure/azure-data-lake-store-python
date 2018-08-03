@@ -20,6 +20,7 @@ import logging
 import os
 import pickle
 import time
+import errno
 
 from io import open
 from .core import AzureDLPath, _fetch_range
