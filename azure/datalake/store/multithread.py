@@ -20,6 +20,7 @@ import logging
 import os
 import pickle
 import time
+import errno
 
 from io import open
 from .core import AzureDLPath, _fetch_range
@@ -238,7 +239,11 @@ class ADLDownloader(object):
             if not os.path.exists(root) and root:
                 # don't attempt to create current directory
                 logger.debug('Creating directory %s', root)
-                os.makedirs(root)
+                try:
+                    os.makedirs(root)
+                except OSError as e:
+                    if e.errno != errno.EEXIST:
+                        raise
             logger.debug('Creating empty file %s', dst)
             with open(dst, 'wb'):
                 pass
