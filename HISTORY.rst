@@ -6,6 +6,7 @@ Release History
 0.0.26 (2018-08-03)
 +++++++++++++++++++
 * Fixed bug due to not importing errno
+* Fixed bug in os.makedirs race condition
 * Updated Readme with correct environment variables and fixed some links
 
 0.0.25 (2018-07-26)
