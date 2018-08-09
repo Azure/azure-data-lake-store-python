@@ -24,7 +24,7 @@ import errno
 
 from io import open
 from .core import AzureDLPath, _fetch_range
-from .exceptions import FileExistsError
+from .exceptions import FileExistsError, FileNotFoundError
 from .transfer import ADLTransferClient
 from .utils import datadir, read_block, tokenize
 
@@ -196,7 +196,7 @@ class ADLDownloader(object):
         else:
             rfiles = self.client._adlfs.glob(self.rpath, details=True, invalidate_cache=True)
 
-        if len(rfiles) == 1 and os.path.abspath(rfiles[0]['name']) == os.path.abspath(self.rpath):
+        if len(rfiles) == 1 and self.client._adlfs.info(self.rpath)['type'] == 'FILE':
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
                 file_pairs = [(os.path.join(self.lpath, os.path.basename(rfiles[0]['name'] + '.inprogress')),
                                rfiles[0])]
