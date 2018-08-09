@@ -24,16 +24,11 @@ import errno
 
 from io import open
 from .core import AzureDLPath, _fetch_range
-from .exceptions import FileExistsError
+from .exceptions import FileExistsError, FileNotFoundError
 from .transfer import ADLTransferClient
 from .utils import datadir, read_block, tokenize
 
 logger = logging.getLogger(__name__)
-
-try:
-    FileNotFoundError
-except NameError:
-    FileNotFoundError = IOError
 
 
 def save(instance, filename, keep=True):
