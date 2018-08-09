@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.27 (2018-08-08)
++++++++++++++++++++
+* Fixed bug in single file check
+* Added Python2 exception compatibility
+
 0.0.26 (2018-08-03)
 +++++++++++++++++++
 * Fixed bug due to not importing errno
