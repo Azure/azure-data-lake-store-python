@@ -30,6 +30,11 @@ from .utils import datadir, read_block, tokenize
 
 logger = logging.getLogger(__name__)
 
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
 
 def save(instance, filename, keep=True):
     if os.path.exists(filename):
