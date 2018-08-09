@@ -405,3 +405,11 @@ def test_save_up(local_files, azure):
     up.save(keep=False)
     alluploads = ADLUploader.load()
     assert up.hash not in alluploads
+
+@my_vcr.use_cassette
+def test_download_root_folder(azure, tempdir):
+    with setup_tree(azure):
+        rpath = AzureDLPath('/'/test_dir / 'data/single/single'/ 'single.txt')
+        ADLDownloader(azure, rpath=rpath, lpath=tempdir)
+        assert os.path.isfile(os.path.join(tempdir, 'single.txt'))
+        
