@@ -18,7 +18,6 @@ which is compatible with the built-in File.
 import io
 import logging
 import sys
-import time
 import uuid
 
 
@@ -29,6 +28,7 @@ from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
 from .enums import ExpiryOptionType
 from .retry import ExponentialRetryPolicy
+from .multiprocessor import multi_processor_change_acl
 
 if sys.version_info >= (3, 4):
     import pathlib
@@ -312,11 +312,11 @@ class AzureDLFileSystem(object):
 
         return to_return
 
-    def set_acl(self, path, acl_spec):
+    def set_acl(self, path, acl_spec, recursive=False):
         """
         Sets the Access Control List (ACL) for a file or folder.
 
-        Note: this is not recursive, and applies only to the file or folder specified.
+        Note: this is by default not recursive, and applies only to the file or folder specified.
 
         Parameters
         ----------
@@ -325,18 +325,21 @@ class AzureDLFileSystem(object):
         acl_spec: str
             The ACL specification to set on the path in the format
             '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
+        recursive: bool
+            Specifies whether to set ACLs recursively or not
         """
+        if recursive:
+            multi_processor_change_acl(adl=self, path=path, method_name="set_acl", acl_spec=acl_spec)
+        else:
+            self._acl_call('SETACL', path, acl_spec, invalidate_cache=True)
 
-        self._acl_call('SETACL', path, acl_spec, invalidate_cache=True)
-
-
-    def modify_acl_entries(self, path, acl_spec):
+    def modify_acl_entries(self, path, acl_spec, recursive=False):
         """
         Modifies existing Access Control List (ACL) entries on a file or folder.
         If the entry does not exist it is added, otherwise it is updated based on the spec passed in.
         No entries are removed by this process (unlike set_acl).
 
-        Note: this is not recursive, and applies only to the file or folder specified.
+        Note: this is by default not recursive, and applies only to the file or folder specified.
 
         Parameters
         ----------
@@ -345,18 +348,22 @@ class AzureDLFileSystem(object):
         acl_spec: str
             The ACL specification to use in modifying the ACL at the path in the format
             '[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,[default:]user|group|other:[entity id or UPN]:r|-w|-x|-,...'
+        recursive: bool
+            Specifies whether to modify ACLs recursively or not
         """
-        self._acl_call('MODIFYACLENTRIES', path, acl_spec, invalidate_cache=True)
+        if recursive:
+            multi_processor_change_acl(adl=self, path=path, method_name="mod_acl", acl_spec=acl_spec)
+        else:
+            self._acl_call('MODIFYACLENTRIES', path, acl_spec, invalidate_cache=True)
 
-
-    def remove_acl_entries(self, path, acl_spec):
+    def remove_acl_entries(self, path, acl_spec, recursive=False):
         """
         Removes existing, named, Access Control List (ACL) entries on a file or folder.
         If the entry does not exist already it is ignored.
         Default entries cannot be removed this way, please use remove_default_acl for that.
         Unnamed entries cannot be removed in this way, please use remove_acl for that.
 
-        Note: this is not recursive, and applies only to the file or folder specified.
+        Note: this is by default not recursive, and applies only to the file or folder specified.
 
         Parameters
         ----------
@@ -365,8 +372,13 @@ class AzureDLFileSystem(object):
         acl_spec: str
             The ACL specification to remove from the ACL at the path in the format (note that the permission portion is missing)
             '[default:]user|group|other:[entity id or UPN],[default:]user|group|other:[entity id or UPN],...'
+        recursive: bool
+            Specifies whether to remove ACLs recursively or not
         """
-        self._acl_call('REMOVEACLENTRIES', path, acl_spec, invalidate_cache=True)
+        if recursive:
+            multi_processor_change_acl(adl=self, path=path, method_name="rem_acl", acl_spec=acl_spec)
+        else:
+            self._acl_call('REMOVEACLENTRIES', path, acl_spec, invalidate_cache=True)
 
 
     def get_acl_status(self, path):
