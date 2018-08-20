@@ -1,28 +1,62 @@
 from concurrent.futures import ThreadPoolExecutor
-import multiprocessing
 from .utils import CountUpDownLatch
+import threading
+import logging
+import multiprocessing
+import logging.handlers
+from  queue import Empty
 
+
+
+def listener_configurer():
+    print("Setting up logger")
+    root = logging.getLogger()
+    h = logging.handlers.RotatingFileHandler('mptest.log', 'a', 30000, 10)
+    f = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
+    h.setFormatter(f)
+    root.addHandler(h)
+
+def listener_process(queue):
+    print("Setting up logger listener")
+    while True:
+        try:
+            record = queue.get(timeout=0.1)
+            queue.task_done()
+            if record is None:  # We send this as a sentinel to tell the listener to quit.
+                break
+            logger = logging.getLogger(record.name)
+            logger.handle(record)  # No level or filter logic applied - just do it!
+        except Empty:
+            pass
+        except Exception:
+            import sys, traceback
+            print('Problem in logging:', file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+    print("Exiting logger process")
 
 def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
+    listener_configurer()
+    log_queue = multiprocessing.JoinableQueue()
+    log_listener = threading.Thread(target=listener_process, args=(log_queue,))
+    log_listener.start()
+    print(threading.enumerate())
     queue_bucket_size = 10
     worker_thread_num_per_process = 50
     finish_queue_processing_flag = multiprocessing.Event()
     file_path_queue = multiprocessing.JoinableQueue()
 
     def launch_processes(number_of_processes):
-        processes = [0 for _ in range(number_of_processes)]
         for i in range(number_of_processes):
-            # TODO Instead of text and function table, check if adl method can be transferred.
-            processes[i] = multiprocessing.Process(target=processor,
-                                                   args=(adl, file_path_queue, finish_queue_processing_flag,
-                                                         method_name, acl_spec))
-            processes[i].start()
-        return processes
+            multiprocessing.Process(target=processor,
+                                    args=(adl, file_path_queue, finish_queue_processing_flag,
+                                          method_name, acl_spec, log_queue))\
+                .start()
+
 
     cpu_count = multiprocessing.cpu_count()
-
-    # TODO Check if launching processes in a separate thread or process is better
-    launch_processes(cpu_count - 1)
+    launch_processes(cpu_count-1)
+    #process_start_thread = threading.Thread(target=launch_processes, args=(cpu_count-1,))
+    #$process_start_thread.start()
     dir_processed = CountUpDownLatch()
     walk_thread_pool = ThreadPoolExecutor(max_workers=worker_thread_num_per_process)
 
@@ -51,11 +85,31 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
         finish_queue_processing_flag.set()  # Set flag to break loop of child processes
 
     # Cleanup
+    log_queue.put(None)
+    log_queue.join()
+    log_queue.close()
+    print("Joining log listener")
+    log_listener.join()
+    print("Walk thread pool shutdown")
     walk_thread_pool.shutdown()
+    print("File path queue shutdown")
     file_path_queue.close()
+    #process_start_thread.join()
 
 
-def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, acl_spec):
+
+def processor_log_configurer(queue):
+    h = logging.handlers.QueueHandler(queue)  # Just the one handler needed
+    root = logging.getLogger()
+    root.addHandler(h)
+    # send all messages, for demo; no other level or filter logic applied.
+    root.setLevel(logging.DEBUG)
+
+def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, acl_spec, log_queue):
+
+    logger = logging.getLogger(__name__)
+    processor_log_configurer(log_queue)
+
     worker_thread_num_per_process = 50
     func_table = {"mod_acl": adl.modify_acl_entries, "set_acl": adl.set_acl, "rem_acl": adl.remove_acl_entries}
     running_thread_count = CountUpDownLatch()
@@ -72,10 +126,14 @@ def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, a
             file_path_queue.task_done()
             for file_path in file_paths:
                 running_thread_count.increment()
+                logger.log(logging.DEBUG, "Running on file" + file_path)
                 function_thread_pool.submit(func_wrapper, adl, adl_function, file_path, acl_spec)
+        except Empty:
+            pass
         except Exception as e:
             # TODO Logging
-            pass
+            # Multiprocessor complicates things
+            logger.log(logging.DEBUG, "Exception = "+str(e))
 
     if running_thread_count.is_zero():  # Blocking call. Will wait till all threads are finished.
         pass
