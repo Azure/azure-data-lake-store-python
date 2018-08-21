@@ -1043,13 +1043,25 @@ def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=3
     except (PermissionError, FileNotFoundError) as e:
         rest.log_response_and_raise(None, e)
     except DatalakeBadOffsetException as e:
-        rest.log_response_and_raise(None, e)
+        try:
+            # There is a possibility that a call in previous retry succeeded in the backend
+            # but didn't generate a response. In that case, any other retry will fail as the
+            # data is already written. We can try a zero byte append at len(data) + offset
+            # and see if it succeeds. If it does, we assume that data is written and carry on.
+            current_offset = kwargs.pop('offset', None)
+            if current_offset is None:
+                raise e
+            return _put_data(rest, op, path, [], retry_policy=retry_policy, offset=current_offset + len(data), **kwargs)
+        except:
+            rest.log_response_and_raise(None, e)
     except Exception as e:
         err = e
         logger.debug('Exception %s on ADL upload',
                      repr(err))
         exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
         rest.log_response_and_raise(None, exception)
+
+
 
 
 class AzureDLPath(type(pathlib.PurePath())):
