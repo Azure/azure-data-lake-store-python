@@ -1190,3 +1190,14 @@ def test_forward_slash():
     assert posix(AzureDLPath('/*').globless_prefix) == '/'
     assert posix(AzureDLPath('/foo/*').globless_prefix) == '/foo'
     assert posix(AzureDLPath('/foo/b*').globless_prefix) == '/foo'
+
+
+def test_DatalakeBadOffsetExceptionRecovery(azure):
+    from azure.datalake.store.core import _put_data_with_retry
+    data = b'abc'
+    _put_data_with_retry(azure.azure, 'CREATE', a, data=data)
+    _put_data_with_retry(azure.azure, 'APPEND', a, data=data, offset=len(data))
+    _put_data_with_retry(azure.azure, 'APPEND', a, data=data, offset=len(data))
+    assert azure.cat(a) == data*2
+    _put_data_with_retry(azure.azure, 'APPEND', a, data=data)
+    assert azure.cat(a) == data*3
