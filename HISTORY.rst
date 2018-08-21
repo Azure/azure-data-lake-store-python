@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.28 (2018-08-020)
++++++++++++++++++++
+* Added recovery from DatalakeBadOffsetException
+
 0.0.27 (2018-08-08)
 +++++++++++++++++++
 * Fixed bug in single file check
