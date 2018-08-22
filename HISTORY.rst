@@ -5,7 +5,7 @@ Release History
 
 0.0.29 (2018-08-22)
 +++++++++++++++++++
-* Fixed History.rst and pypi documentation
+* Fixed HISTORY.rst and Pypi documentation
 
 0.0.28 (2018-08-20)
 +++++++++++++++++++
