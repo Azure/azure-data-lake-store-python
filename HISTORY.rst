@@ -3,7 +3,11 @@
 Release History
 ===============
 
-0.0.28 (2018-08-020)
+0.0.29 (2018-08-22)
++++++++++++++++++++
+* Fixed HISTORY.rst and Pypi documentation
+
+0.0.28 (2018-08-20)
 +++++++++++++++++++
 * Added recovery from DatalakeBadOffsetException
 
