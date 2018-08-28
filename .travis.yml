@@ -6,9 +6,6 @@ cache: pip
 
 matrix:
   include:
-    - python: 2.7
-    - python: 3.4
-    - python: 3.5
     - python: 3.6
 
 install:
@@ -33,11 +30,10 @@ notifications:
 
 deploy:
   provider: pypi
-  user: akharit-ms
+  user: random_user_name
   skip_upload_docs: true
   # password: use $PYPI_PASSWORD
   distributions: "sdist bdist_wheel"
   on:
-    tags: true
     python: '3.6'
     repo: Azure/azure-data-lake-store-python
