@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.30 (2018-08-28)
++++++++++++++++++++
+* Fixed .travis.yml order to add azure-nspg dependency
+
 0.0.29 (2018-08-22)
 +++++++++++++++++++
 * Fixed HISTORY.rst and Pypi documentation
