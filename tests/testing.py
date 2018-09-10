@@ -89,8 +89,26 @@ def second_azure():
 
     # Clear filesystem cache to ensure we capture all requests from a test
     fs.invalidate_cache()
-
     yield fs
+
+
+@contextmanager
+def create_files(azure, number_of_files, root_path = working_dir(), prefix=''):
+    import itertools
+    from string import ascii_lowercase
+
+    def generate_paths():
+        def iter_all_strings():
+            for size in itertools.count(1):
+                for s in itertools.product(ascii_lowercase, repeat=size):
+                    yield "".join(s)
+
+        for s in itertools.islice(iter_all_strings(), number_of_files):
+            s = AzureDLPath(prefix + s + ".txt")
+            yield root_path / s
+    for f in generate_paths():
+        azure.touch(f)
+
 
 @contextmanager
 def azure_teardown(fs):
