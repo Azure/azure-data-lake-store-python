@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.31 (2018-08-28)
++++++++++++++++++++
+* Added support for batched ls
+
 0.0.30 (2018-08-28)
 +++++++++++++++++++
 * Fixed .travis.yml order to add azure-nspg dependency
