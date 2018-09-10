@@ -13,7 +13,7 @@ import pytest
 import datetime
 from azure.datalake.store import utils
 from azure.datalake.store.exceptions import PermissionError, FileNotFoundError
-from tests.testing import azure, second_azure, azure_teardown, my_vcr, posix, tmpfile, working_dir
+from tests.testing import azure, second_azure, azure_teardown, my_vcr, posix, tmpfile, working_dir, create_files
 test_dir = working_dir()
 
 a = posix(test_dir / 'a')
@@ -73,6 +73,30 @@ def test_ls_touch_invalidate_cache(azure, second_azure):
         L_second = second_azure.ls(test_dir, True, invalidate_cache=True)
         assert set(d['name'] for d in L) == set([a, b])
         assert L == L_second
+
+@my_vcr.use_cassette
+def test_ls_batched(azure):
+
+    test_dir = working_dir() / 'abc'
+    azure.mkdir(test_dir)
+    with azure_teardown(azure):
+        test_size = 10
+        assert azure._ls(test_dir, batch_size=10) == []
+        create_files(azure, n = 10, prefix='123', root_path=test_dir)
+        assert len(azure._ls(test_dir, batch_size=9)) == test_size
+        assert len(azure._ls(test_dir, batch_size=10)) == test_size
+        assert len(azure._ls(test_dir, batch_size=11)) == test_size
+        assert len(azure._ls(test_dir, batch_size=1)) == test_size
+        assert len(azure._ls(test_dir)) == test_size
+
+    azure.mkdir(test_dir)
+    with azure_teardown(azure):
+        test_size = 101
+        assert azure._ls(test_dir, batch_size=10) == []
+        create_files(azure, n = test_size, prefix='654', root_path=test_dir)
+        assert len(azure._ls(test_dir, batch_size=200)) == test_size
+        assert len(azure._ls(test_dir, batch_size=10)) == test_size
+        assert len(azure._ls(test_dir)) == test_size
 
 @my_vcr.use_cassette
 def test_rm(azure):
