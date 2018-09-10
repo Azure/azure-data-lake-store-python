@@ -111,6 +111,18 @@ class AzureDLFileSystem(object):
         return AzureDLFile(self, AzureDLPath(path), mode, blocksize=blocksize,
                            delimiter=delimiter)
 
+
+    def _ls_batched(self, path, batch_size=4000):
+        """Batched ListStatus calls. Internal Method"""
+        parms = {'listSize': batch_size}
+        ret = []
+        data = [None]
+        while data:
+            data = self.azure.call('LISTSTATUS', path, **parms)['FileStatuses']['FileStatus']
+            ret.extend(data)
+            parms['listAfter'] = ret[-1]['pathSuffix']  # Last path to be used as ListAfter
+        return ret
+
     def _ls(self, path, invalidate_cache=True):
         """ List files at given path """
         path = AzureDLPath(path).trim()
@@ -120,8 +132,7 @@ class AzureDLFileSystem(object):
             self.invalidate_cache(key)
 
         if key not in self.dirs:
-            out = self.azure.call('LISTSTATUS', key)
-            self.dirs[key] = out['FileStatuses']['FileStatus']
+            self.dirs[key] = self._ls_batched(key)
             for f in self.dirs[key]:
                 f['name'] = (path / f['pathSuffix']).as_posix()
         return self.dirs[key]
