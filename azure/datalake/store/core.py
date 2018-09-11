@@ -118,7 +118,7 @@ class AzureDLFileSystem(object):
         data = self.azure.call('LISTSTATUS', path, **parms)['FileStatuses']['FileStatus']
         ret.extend(data)
 
-        if len(data) == 1 and data['type'] == 'FILE':  # In case of ls on a single file
+        if len(data) == 1 and data[0]['type'] == 'FILE':  # In case of ls on a single file
             return ret
 
         while data:
