@@ -113,6 +113,8 @@ class AzureDLFileSystem(object):
 
     def _ls_batched(self, path, batch_size=4000):
         """Batched ListStatus calls. Internal Method"""
+        if batch_size <=1:
+            raise ValueError("Batch size must be strictly greater than 1")
         parms = {'listSize': batch_size}
         ret = []
         data = self.azure.call('LISTSTATUS', path, **parms)['FileStatuses']['FileStatus']
