@@ -113,23 +113,22 @@ class AzureDLFileSystem(object):
 
     def _ls_batched(self, path, batch_size=4000):
         """Batched ListStatus calls. Internal Method"""
-        if batch_size <=1:
+        if batch_size <= 1:
             raise ValueError("Batch size must be strictly greater than 1")
         parms = {'listSize': batch_size}
         ret = []
-        data = self.azure.call('LISTSTATUS', path, **parms)['FileStatuses']['FileStatus']
-        ret.extend(data)
-
-        if len(data) == 1 and data[0]['type'] == 'FILE':  # In case of ls on a single file
-            return ret
+        data = [None]
 
         while data:
-            parms['listAfter'] = ret[-1]['pathSuffix']  # Last path to be used as ListAfter
             data = self.azure.call('LISTSTATUS', path, **parms)['FileStatuses']['FileStatus']
             ret.extend(data)
+            if len(data) < batch_size:
+                break
+            parms['listAfter'] = ret[-1]['pathSuffix']  # Last path to be used as ListAfter
+
         return ret
 
-    def _ls(self, path, invalidate_cache=True, batch_size = 4000):
+    def _ls(self, path, invalidate_cache=True, batch_size=4000):
         """ List files at given path """
         path = AzureDLPath(path).trim()
         key = path.as_posix()
