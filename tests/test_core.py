@@ -82,21 +82,17 @@ def test_ls_batched(azure):
     with azure_teardown(azure):
         test_size = 10
         assert azure._ls(test_dir, batch_size=10) == []
-        create_files(azure, n = 10, prefix='123', root_path=test_dir)
+        create_files(azure, number_of_files = 10, prefix='123', root_path=test_dir)
+        with pytest.raises(ValueError):
+            assert len(azure._ls(test_dir, batch_size=1)) == test_size
+
         assert len(azure._ls(test_dir, batch_size=9)) == test_size
         assert len(azure._ls(test_dir, batch_size=10)) == test_size
         assert len(azure._ls(test_dir, batch_size=11)) == test_size
-        assert len(azure._ls(test_dir, batch_size=1)) == test_size
+        assert len(azure._ls(test_dir, batch_size=2)) == test_size
+        assert len(azure._ls(test_dir, batch_size=100)) == test_size
         assert len(azure._ls(test_dir)) == test_size
 
-    azure.mkdir(test_dir)
-    with azure_teardown(azure):
-        test_size = 101
-        assert azure._ls(test_dir, batch_size=10) == []
-        create_files(azure, n = test_size, prefix='654', root_path=test_dir)
-        assert len(azure._ls(test_dir, batch_size=200)) == test_size
-        assert len(azure._ls(test_dir, batch_size=10)) == test_size
-        assert len(azure._ls(test_dir)) == test_size
 
 @my_vcr.use_cassette
 def test_rm(azure):
