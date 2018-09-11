@@ -107,16 +107,16 @@ class AzureDLFileSystem(object):
         return AzureDLFile(self, AzureDLPath(path), mode, blocksize=blocksize,
                            delimiter=delimiter)
 
-    def _ls(self, path, invalidate_cache=True):
+    def _ls(self, path, invalidate_cache=True, list_size=-1, list_after="", list_before=""):
         """ List files at given path """
         path = AzureDLPath(path).trim()
         key = path.as_posix()
-        
+
         if invalidate_cache:
             self.invalidate_cache(key)
 
         if key not in self.dirs:
-            out = self.azure.call('LISTSTATUS', key)
+            out = self.azure.call('LISTSTATUS', key, listSize=list_size, listAfter=list_after, listBefore=list_before)
             self.dirs[key] = out['FileStatuses']['FileStatus']
             for f in self.dirs[key]:
                 f['name'] = (path / f['pathSuffix']).as_posix()
@@ -134,6 +134,15 @@ class AzureDLFileSystem(object):
                 return []
 
             raise FileNotFoundError(path)
+        if detail:
+            return files
+        else:
+            return [f['name'] for f in files]
+
+    def ls_batch(self, path, list_size=10, list_after="", list_before="", invalidate_cache=True, detail=False):
+        """ List files batch by batch """
+        files = self._ls(path, invalidate_cache, list_size, list_after, list_before)
+
         if detail:
             return files
         else:
