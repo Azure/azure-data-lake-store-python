@@ -117,6 +117,10 @@ class AzureDLFileSystem(object):
         ret = []
         data = self.azure.call('LISTSTATUS', path, **parms)['FileStatuses']['FileStatus']
         ret.extend(data)
+
+        if len(data) == 1 and data['type'] == 'FILE':  # In case of ls on a single file
+            return ret
+
         while data:
             parms['listAfter'] = ret[-1]['pathSuffix']  # Last path to be used as ListAfter
             data = self.azure.call('LISTSTATUS', path, **parms)['FileStatuses']['FileStatus']
