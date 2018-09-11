@@ -230,7 +230,7 @@ class DatalakeRESTInterface:
         'DELETE': ('delete', set(), {'recursive'}),
         'GETCONTENTSUMMARY': ('get', set(), set()),
         'GETFILESTATUS': ('get', set(), set()),
-        'LISTSTATUS': ('get', set(), set()),
+        'LISTSTATUS': ('get', set(), {'listSize', 'listAfter'}),
         'MKDIRS': ('put', set(), set()),
         'OPEN': ('get', set(), {'offset', 'length', 'read', 'filesessionid'}),
         'RENAME': ('put', {'destination'}, {'destination'}),
