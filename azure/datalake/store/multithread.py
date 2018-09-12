@@ -99,6 +99,8 @@ class ADLDownloader(object):
         Callback for progress with signature function(current, total) where
         current is the number of bytes transfered so far, and total is the
         size of the blob, or None if the total size is unknown.
+    nfiles: int [None]
+        Maximum number of files to download. If None, downloads all files.
 
     See Also
     --------
@@ -106,7 +108,7 @@ class ADLDownloader(object):
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
-                 overwrite=False, verbose=False, progress_callback=None):
+                 overwrite=False, verbose=False, progress_callback=None, nfiles=None):
         
         # validate that the src exists and the current user has access to it
         # this only validates access to the top level folder. If there are files
@@ -136,6 +138,7 @@ class ADLDownloader(object):
         self.rpath = rpath
         self.lpath = lpath
         self._overwrite = overwrite
+        self.nfiles = nfiles
         existing_files = self._setup()
         if existing_files:
             raise FileExistsError('Overwrite was not specified and the following files exist, blocking the transfer operation. Please specify overwrite to overwrite these files during transfer: {}'.format(','.join(existing_files)))
@@ -195,6 +198,8 @@ class ADLDownloader(object):
             rfiles = self.client._adlfs.walk(self.rpath, details=True, invalidate_cache=True)
         else:
             rfiles = self.client._adlfs.glob(self.rpath, details=True, invalidate_cache=True)
+        
+        rfiles = rfiles[:self.nfiles]
 
         if len(rfiles) == 1 and self.client._adlfs.info(self.rpath)['type'] == 'FILE':
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
@@ -369,6 +374,8 @@ class ADLUploader(object):
         Callback for progress with signature function(current, total) where
         current is the number of bytes transfered so far, and total is the
         size of the blob, or None if the total size is unknown.
+    nfiles: int [None]
+        Maximum number of files to upload. If None, uploads all files.
 
     See Also
     --------
@@ -376,7 +383,7 @@ class ADLUploader(object):
     """
     def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
-                 overwrite=False, verbose=False, progress_callback=None):
+                 overwrite=False, verbose=False, progress_callback=None, nfiles=None):
 
         if client:
             self.client = client
@@ -398,6 +405,7 @@ class ADLUploader(object):
         self.rpath = AzureDLPath(rpath)
         self.lpath = lpath
         self._overwrite = overwrite
+        self.nfiles = nfiles
         existing_files = self._setup()
         
         if existing_files:
@@ -465,6 +473,8 @@ class ADLUploader(object):
                 is_path_walk_empty = True
         else:
             lfiles = glob.glob(self.lpath)
+
+        lfiles = lfiles[:self.nfiles]
         
         if len(lfiles) > 0 and not is_path_walk_empty:
             local_rel_lpath = str(AzureDLPath(self.lpath).globless_prefix)
