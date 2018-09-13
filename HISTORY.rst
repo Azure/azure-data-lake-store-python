@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.32 (2018-09-12)
++++++++++++++++++++
+* Added parameter to set a maximum number of files to download or upload
+
 0.0.31 (2018-09-10)
 +++++++++++++++++++
 * Added support for batched ls
