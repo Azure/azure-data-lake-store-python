@@ -305,7 +305,7 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
                             start += nwritten
                         else:
                             # TODO Not Sure what to do here
-                            breakgit
+                            break
         logger.debug('Downloaded %s bytes to %s, byte offset %s', nbytes, dst, offset)
 
         # There are certain cases where we will be throttled and recieve less than the expected amount of data.
