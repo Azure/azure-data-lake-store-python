@@ -3,6 +3,12 @@
 Release History
 ===============
 
+0.0.32 (2018-09-24)
++++++++++++++++++++
+* Fixed test bug
+* Fixed empty folder upload bug
+* Fixed ADL Downloader block size bug
+
 0.0.31 (2018-09-10)
 +++++++++++++++++++
 * Added support for batched ls
