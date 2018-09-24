@@ -456,9 +456,12 @@ class ADLUploader(object):
         """
         is_path_walk_empty = False
         if "*" not in self.lpath:
-            out = os.walk(self.lpath)
-            lfiles = sum(([os.path.join(dir, f) for f in fnames] for
-                         (dir, _, fnames) in out), [])
+            lfiles = []
+            for directory, subdir, fnames in os.walk(self.lpath):
+                lfiles.extend([os.path.join(directory, f) for f in fnames])
+                if not subdir and not fnames: # Emopty Directory
+                    self.client._adlfs._emptyDirs.append(directory)
+
             if (not lfiles and os.path.exists(self.lpath) and
                     not os.path.isdir(self.lpath)):
                 lfiles = [self.lpath]
@@ -502,6 +505,11 @@ class ADLUploader(object):
         monitor: bool [True]
             To watch and wait (block) until completion.
         """
+        for empty_directory in self.client._adlfs._empty_dirs_to_add():
+            local_rel_path = os.path.relpath(empty_directory, self.lpath)
+            rel_rpath = str(AzureDLPath(self.rpath).trim().globless_prefix / local_rel_path)
+            self.client._adlfs.mkdir(rel_rpath)
+
         self.client.run(nthreads, monitor)
 
     def active(self):
