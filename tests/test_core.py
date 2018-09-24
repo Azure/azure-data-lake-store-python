@@ -836,7 +836,7 @@ def test_tail_head(azure):
 
 @my_vcr.use_cassette
 def test_read_delimited_block(azure):
-    fn = '/tmp/test/a'
+    fn = a
     delimiter = b'\n'
     data = delimiter.join([b'123', b'456', b'789'])    
     with azure_teardown(azure):
