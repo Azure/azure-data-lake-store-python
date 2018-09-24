@@ -289,17 +289,23 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
                                           exponential_factor=backoff)
     try:
         nbytes = 0
-        with closing(_fetch_range(adlfs.azure, src, start=offset,
-                                  end=offset+size, stream=True, retry_policy=retry_policy)) as response:
-            with open(dst, 'rb+') as fout:
-                fout.seek(offset)
-                for chunk in response.iter_content(chunk_size=blocksize):
+        start = offset
+        with open(dst, 'rb+') as fout:
+            while start < offset+size:
+                with closing(_fetch_range(adlfs.azure, src, start=start,
+                                          end=min(start+blocksize, offset+size), stream=True, retry_policy=retry_policy)) as response:
+                    fout.seek(start)
+                    chunk = response.content
                     if shutdown_event and shutdown_event.is_set():
                         return total_bytes_downloaded, None
                     if chunk:
                         nwritten = fout.write(chunk)
                         if nwritten:
                             nbytes += nwritten
+                            start += nwritten
+                        else:
+                            # TODO Not Sure what to do here
+                            breakgit
         logger.debug('Downloaded %s bytes to %s, byte offset %s', nbytes, dst, offset)
 
         # There are certain cases where we will be throttled and recieve less than the expected amount of data.
@@ -459,7 +465,7 @@ class ADLUploader(object):
             lfiles = []
             for directory, subdir, fnames in os.walk(self.lpath):
                 lfiles.extend([os.path.join(directory, f) for f in fnames])
-                if not subdir and not fnames: # Emopty Directory
+                if not subdir and not fnames: # Empty Directory
                     self.client._adlfs._emptyDirs.append(directory)
 
             if (not lfiles and os.path.exists(self.lpath) and
