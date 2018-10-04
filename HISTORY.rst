@@ -3,6 +3,22 @@
 Release History
 ===============
 
+0.0.31 (2018-09-10)
++++++++++++++++++++
+* Added support for batched ls
+
+0.0.30 (2018-08-28)
++++++++++++++++++++
+* Fixed .travis.yml order to add azure-nspg dependency
+
+0.0.29 (2018-08-22)
++++++++++++++++++++
+* Fixed HISTORY.rst and Pypi documentation
+
+0.0.28 (2018-08-20)
++++++++++++++++++++
+* Added recovery from DatalakeBadOffsetException
+
 0.0.27 (2018-08-08)
 +++++++++++++++++++
 * Fixed bug in single file check

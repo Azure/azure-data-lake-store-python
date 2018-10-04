@@ -111,7 +111,24 @@ class AzureDLFileSystem(object):
         return AzureDLFile(self, AzureDLPath(path), mode, blocksize=blocksize,
                            delimiter=delimiter)
 
-    def _ls(self, path, invalidate_cache=True):
+    def _ls_batched(self, path, batch_size=4000):
+        """Batched ListStatus calls. Internal Method"""
+        if batch_size <= 1:
+            raise ValueError("Batch size must be strictly greater than 1")
+        parms = {'listSize': batch_size}
+        ret = []
+        data = [None]
+
+        while data:
+            data = self.azure.call('LISTSTATUS', path, **parms)['FileStatuses']['FileStatus']
+            ret.extend(data)
+            if len(data) < batch_size:
+                break
+            parms['listAfter'] = ret[-1]['pathSuffix']  # Last path to be used as ListAfter
+
+        return ret
+
+    def _ls(self, path, invalidate_cache=True, batch_size=4000):
         """ List files at given path """
         path = AzureDLPath(path).trim()
         key = path.as_posix()
@@ -120,8 +137,7 @@ class AzureDLFileSystem(object):
             self.invalidate_cache(key)
 
         if key not in self.dirs:
-            out = self.azure.call('LISTSTATUS', key)
-            self.dirs[key] = out['FileStatuses']['FileStatus']
+            self.dirs[key] = self._ls_batched(key, batch_size=batch_size)
             for f in self.dirs[key]:
                 f['name'] = (path / f['pathSuffix']).as_posix()
         return self.dirs[key]
@@ -1055,13 +1071,25 @@ def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=3
     except (PermissionError, FileNotFoundError) as e:
         rest.log_response_and_raise(None, e)
     except DatalakeBadOffsetException as e:
-        rest.log_response_and_raise(None, e)
+        try:
+            # There is a possibility that a call in previous retry succeeded in the backend
+            # but didn't generate a response. In that case, any other retry will fail as the
+            # data is already written. We can try a zero byte append at len(data) + offset
+            # and see if it succeeds. If it does, we assume that data is written and carry on.
+            current_offset = kwargs.pop('offset', None)
+            if current_offset is None:
+                raise e
+            return _put_data(rest, op, path, [], retry_policy=retry_policy, offset=current_offset + len(data), **kwargs)
+        except:
+            rest.log_response_and_raise(None, e)
     except Exception as e:
         err = e
         logger.debug('Exception %s on ADL upload',
                      repr(err))
         exception = RuntimeError('Max number of ADL retries exceeded: exception ' + repr(err))
         rest.log_response_and_raise(None, exception)
+
+
 
 
 class AzureDLPath(type(pathlib.PurePath())):

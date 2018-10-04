@@ -13,7 +13,7 @@ import pytest
 import datetime
 from azure.datalake.store import utils
 from azure.datalake.store.exceptions import PermissionError, FileNotFoundError
-from tests.testing import azure, second_azure, azure_teardown, my_vcr, posix, tmpfile, working_dir
+from tests.testing import azure, second_azure, azure_teardown, my_vcr, posix, tmpfile, working_dir, create_files
 test_dir = working_dir()
 
 a = posix(test_dir / 'a')
@@ -73,6 +73,26 @@ def test_ls_touch_invalidate_cache(azure, second_azure):
         L_second = second_azure.ls(test_dir, True, invalidate_cache=True)
         assert set(d['name'] for d in L) == set([a, b])
         assert L == L_second
+
+@my_vcr.use_cassette
+def test_ls_batched(azure):
+
+    test_dir = working_dir() / 'abc'
+    azure.mkdir(test_dir)
+    with azure_teardown(azure):
+        test_size = 10
+        assert azure._ls(test_dir, batch_size=10) == []
+        create_files(azure, number_of_files = 10, prefix='123', root_path=test_dir)
+        with pytest.raises(ValueError):
+            assert len(azure._ls(test_dir, batch_size=1)) == test_size
+
+        assert len(azure._ls(test_dir, batch_size=9)) == test_size
+        assert len(azure._ls(test_dir, batch_size=10)) == test_size
+        assert len(azure._ls(test_dir, batch_size=11)) == test_size
+        assert len(azure._ls(test_dir, batch_size=2)) == test_size
+        assert len(azure._ls(test_dir, batch_size=100)) == test_size
+        assert len(azure._ls(test_dir)) == test_size
+
 
 @my_vcr.use_cassette
 def test_rm(azure):
@@ -1190,3 +1210,14 @@ def test_forward_slash():
     assert posix(AzureDLPath('/*').globless_prefix) == '/'
     assert posix(AzureDLPath('/foo/*').globless_prefix) == '/foo'
     assert posix(AzureDLPath('/foo/b*').globless_prefix) == '/foo'
+
+
+def test_DatalakeBadOffsetExceptionRecovery(azure):
+    from azure.datalake.store.core import _put_data_with_retry
+    data = b'abc'
+    _put_data_with_retry(azure.azure, 'CREATE', a, data=data)
+    _put_data_with_retry(azure.azure, 'APPEND', a, data=data, offset=len(data))
+    _put_data_with_retry(azure.azure, 'APPEND', a, data=data, offset=len(data))
+    assert azure.cat(a) == data*2
+    _put_data_with_retry(azure.azure, 'APPEND', a, data=data)
+    assert azure.cat(a) == data*3
