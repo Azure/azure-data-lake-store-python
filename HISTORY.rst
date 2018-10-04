@@ -3,7 +3,7 @@
 Release History
 ===============
 
-0.0.32 (2018-09-24)
+0.0.32 (2018-10-04)
 +++++++++++++++++++
 * Fixed test bug
 * Fixed empty folder upload bug
