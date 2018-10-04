@@ -290,11 +290,12 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
     try:
         nbytes = 0
         start = offset
+
         with open(dst, 'rb+') as fout:
+            fout.seek(start)
             while start < offset+size:
                 with closing(_fetch_range(adlfs.azure, src, start=start,
                                           end=min(start+blocksize, offset+size), stream=True, retry_policy=retry_policy)) as response:
-                    fout.seek(start)
                     chunk = response.content
                     if shutdown_event and shutdown_event.is_set():
                         return total_bytes_downloaded, None
@@ -304,8 +305,7 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
                             nbytes += nwritten
                             start += nwritten
                         else:
-                            # TODO Not Sure what to do here
-                            break
+                            raise IOError("Failed to write to disk for {0} at location {1} with blocksize {2}".format(dst, start, blocksize))
         logger.debug('Downloaded %s bytes to %s, byte offset %s', nbytes, dst, offset)
 
         # There are certain cases where we will be throttled and recieve less than the expected amount of data.
