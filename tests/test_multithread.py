@@ -412,4 +412,23 @@ def test_download_root_folder(azure, tempdir):
         rpath = AzureDLPath('/'/test_dir / 'data/single/single'/ 'single.txt')
         ADLDownloader(azure, rpath=rpath, lpath=tempdir)
         assert os.path.isfile(os.path.join(tempdir, 'single.txt'))
-        
+
+@my_vcr.use_cassette
+def test_upload_empty_folder(tempdir, azure):
+    with azure_teardown(azure):
+        os.mkdir(os.path.join(tempdir, "dir1"))
+        os.mkdir(os.path.join(tempdir, "dir1", "b"))
+
+        with open(os.path.join(tempdir, "dir1", "file.txt"), 'wb') as f:
+            f.write(b'0123456789')
+
+        # transfer client w/ deterministic temporary directory
+        from azure.datalake.store.multithread import put_chunk
+        client = ADLTransferClient(azure, transfer=put_chunk,
+                                   unique_temporary=False)
+
+        # single chunk, empty file
+        up = ADLUploader(azure, test_dir / "dir1", os.path.join(tempdir, "dir1") , nthreads=1,
+                         overwrite=True)
+        assert azure.info(test_dir / "dir1" /"b")['type'] == 'DIRECTORY'
+        azure.rm(test_dir / "dir1", recursive=True)

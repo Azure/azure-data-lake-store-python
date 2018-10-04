@@ -289,17 +289,23 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
                                           exponential_factor=backoff)
     try:
         nbytes = 0
-        with closing(_fetch_range(adlfs.azure, src, start=offset,
-                                  end=offset+size, stream=True, retry_policy=retry_policy)) as response:
-            with open(dst, 'rb+') as fout:
-                fout.seek(offset)
-                for chunk in response.iter_content(chunk_size=blocksize):
+        start = offset
+
+        with open(dst, 'rb+') as fout:
+            fout.seek(start)
+            while start < offset+size:
+                with closing(_fetch_range(adlfs.azure, src, start=start,
+                                          end=min(start+blocksize, offset+size), stream=True, retry_policy=retry_policy)) as response:
+                    chunk = response.content
                     if shutdown_event and shutdown_event.is_set():
                         return total_bytes_downloaded, None
                     if chunk:
                         nwritten = fout.write(chunk)
                         if nwritten:
                             nbytes += nwritten
+                            start += nwritten
+                        else:
+                            raise IOError("Failed to write to disk for {0} at location {1} with blocksize {2}".format(dst, start, blocksize))
         logger.debug('Downloaded %s bytes to %s, byte offset %s', nbytes, dst, offset)
 
         # There are certain cases where we will be throttled and recieve less than the expected amount of data.
@@ -456,9 +462,12 @@ class ADLUploader(object):
         """
         is_path_walk_empty = False
         if "*" not in self.lpath:
-            out = os.walk(self.lpath)
-            lfiles = sum(([os.path.join(dir, f) for f in fnames] for
-                         (dir, _, fnames) in out), [])
+            lfiles = []
+            for directory, subdir, fnames in os.walk(self.lpath):
+                lfiles.extend([os.path.join(directory, f) for f in fnames])
+                if not subdir and not fnames: # Empty Directory
+                    self.client._adlfs._emptyDirs.append(directory)
+
             if (not lfiles and os.path.exists(self.lpath) and
                     not os.path.isdir(self.lpath)):
                 lfiles = [self.lpath]
@@ -502,6 +511,11 @@ class ADLUploader(object):
         monitor: bool [True]
             To watch and wait (block) until completion.
         """
+        for empty_directory in self.client._adlfs._empty_dirs_to_add():
+            local_rel_path = os.path.relpath(empty_directory, self.lpath)
+            rel_rpath = str(AzureDLPath(self.rpath).trim().globless_prefix / local_rel_path)
+            self.client._adlfs.mkdir(rel_rpath)
+
         self.client.run(nthreads, monitor)
 
     def active(self):
