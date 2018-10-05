@@ -858,6 +858,20 @@ class AzureDLFile(object):
 
     read1 = read
 
+    def readinto(self, b):
+        """
+        Reads data into buffer b
+        Returns number of bytes read.
+
+        Parameters
+        ----------
+        b : bytearray
+            Buffer to which bytes are read into
+        """
+        temp = self.read(len(b))
+        b[:len(temp)] = temp
+        return len(temp)
+
     def write(self, data):
         """
         Write data to buffer.
