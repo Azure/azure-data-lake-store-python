@@ -121,6 +121,7 @@ def azure_teardown(fs):
             for path in fs.ls(working_dir(), invalidate_cache=False):
                 if fs.exists(path, invalidate_cache=False):
                     fs.rm(path, recursive=True)
+            fs.rm(working_dir(), recursive=True)
         except Exception as e:
             print('warning: cleanup failed with exception:')
             print(e)
