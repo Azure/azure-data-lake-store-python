@@ -3,8 +3,12 @@ from .utils import CountUpDownLatch
 import threading
 import logging
 import multiprocessing
-from queue import Empty
 import os
+import logging.handlers
+try:
+    from queue import Empty     # Python 3
+except ImportError:
+    from Queue import Empty     # Python 2
 log_sentinel = [None, None]
 
 
@@ -22,14 +26,12 @@ def log_listener_process(queue):
             pass
         except Exception as e:
             import sys, traceback
-            print('Problems in logging:', file=sys.stderr)
+            print('Problems in logging')
             traceback.print_exc(file=sys.stderr)
 
 
 def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
     log_queue = multiprocessing.JoinableQueue()
-    log_listener = threading.Thread(target=log_listener_process, args=(log_queue,))
-    log_listener.start()
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     queue_bucket_size = 10
@@ -62,7 +64,10 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
     finish_queue_processing_flag = multiprocessing.Event()
     file_path_queue = multiprocessing.JoinableQueue()
     cpu_count = multiprocessing.cpu_count()
-    child_processes = launch_processes(min(1, cpu_count))
+    child_processes = launch_processes(2)
+    log_listener = threading.Thread(target=log_listener_process, args=(log_queue,))
+    log_listener.start()
+
     dir_processed_counter = CountUpDownLatch()
     walk_thread_pool = ThreadPoolExecutor(max_workers=worker_thread_num_per_process)
 
@@ -94,8 +99,13 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
 def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, acl_spec, log_queue):
 
     logger = logging.getLogger(__name__)
-    logger.propagate = False                                                        # Prevents double logging
-    logger.addHandler(logging.handlers.QueueHandler(log_queue))
+
+    try:
+        logger.addHandler(logging.handlers.QueueHandler(log_queue))
+        logger.propagate = False                                                        # Prevents double logging
+    except AttributeError:
+        # Python 2 doesn't have Queue Handler. Default to best effort logging.
+        pass
     logger.setLevel(logging.DEBUG)
 
     try:
