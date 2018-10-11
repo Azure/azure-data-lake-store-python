@@ -3,8 +3,7 @@ from .utils import CountUpDownLatch
 import threading
 import logging
 import multiprocessing
-import logging.handlers
-from  queue import Empty
+from queue import Empty
 import os
 log_sentinel = [None, None]
 
@@ -63,7 +62,7 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
     finish_queue_processing_flag = multiprocessing.Event()
     file_path_queue = multiprocessing.JoinableQueue()
     cpu_count = multiprocessing.cpu_count()
-    child_processes = launch_processes(1)
+    child_processes = launch_processes(min(1, cpu_count))
     dir_processed_counter = CountUpDownLatch()
     walk_thread_pool = ThreadPoolExecutor(max_workers=worker_thread_num_per_process)
 
