@@ -16,6 +16,8 @@ from azure.datalake.store.core import AzureDLPath
 from azure.datalake.store.multithread import ADLDownloader, ADLUploader
 from tests.testing import azure, azure_teardown, md5sum, my_vcr, posix, working_dir
 from azure.datalake.store.transfer import ADLTransferClient
+from tests.settings import AZURE_ACL_TEST_APPID
+
 test_dir = working_dir()
 
 
@@ -391,6 +393,7 @@ def test_upload_overwrite(local_files, azure):
             ADLUploader(azure, test_dir, littlefile, nthreads=1)
         assert test_dir.as_posix() in str(e)
 
+
 @my_vcr.use_cassette
 def test_save_up(local_files, azure):
     bigfile, littlefile, emptyfile, a, b, c = local_files
@@ -406,12 +409,14 @@ def test_save_up(local_files, azure):
     alluploads = ADLUploader.load()
     assert up.hash not in alluploads
 
+
 @my_vcr.use_cassette
 def test_download_root_folder(azure, tempdir):
     with setup_tree(azure):
         rpath = AzureDLPath('/'/test_dir / 'data/single/single'/ 'single.txt')
         ADLDownloader(azure, rpath=rpath, lpath=tempdir)
         assert os.path.isfile(os.path.join(tempdir, 'single.txt'))
+
 
 @my_vcr.use_cassette
 def test_upload_empty_folder(tempdir, azure):
@@ -432,3 +437,74 @@ def test_upload_empty_folder(tempdir, azure):
                          overwrite=True)
         assert azure.info(test_dir / "dir1" /"b")['type'] == 'DIRECTORY'
         azure.rm(test_dir / "dir1", recursive=True)
+
+
+@my_vcr.use_cassette
+def test_modify_acl_entries_recursive(azure):
+    with setup_tree(azure):
+        acluser = AZURE_ACL_TEST_APPID
+
+        def check_acl_perms(path, permission):
+            current_acl = azure.get_acl_status(path)
+            acl_user_entry = [s for s in current_acl['entries'] if acluser in s]
+            assert len(acl_user_entry) == 1
+            assert acl_user_entry[0].split(':')[-1] == permission
+
+        files = list(azure.walk(test_dir))
+        directories = list(set([x[0] for x in map(os.path.split, files)]))
+
+        permission = "---"
+        azure.modify_acl_entries(test_dir, acl_spec="user:"+acluser+":"+permission, recursive=True)
+        for path in files+directories:
+            check_acl_perms(path, permission)
+
+        permission = "rwx"
+        azure.modify_acl_entries(test_dir, acl_spec="user:"+acluser+":"+permission, recursive=True)
+        for path in files+directories:
+            check_acl_perms(path, permission)
+
+
+@my_vcr.use_cassette
+def test_set_acl_recusrive(azure):
+    with setup_tree(azure):
+        acluser = AZURE_ACL_TEST_APPID
+        set_acl_base ="user::rwx,group::rwx,other::---,"
+
+        def check_acl_perms(path, permission):
+            current_acl = azure.get_acl_status(path)
+            acl_user_entry = [s for s in current_acl['entries'] if acluser in s]
+            assert len(acl_user_entry) == 1
+            assert acl_user_entry[0].split(':')[-1] == permission
+
+        files = list(azure.walk(test_dir))
+        directories = list(set([x[0] for x in map(os.path.split, files)]))
+
+        permission = "rwx"
+        azure.set_acl(test_dir, acl_spec=set_acl_base + "user:"+acluser+":"+permission, recursive=True)
+
+        for path in files+directories:
+            check_acl_perms(path, permission)
+
+
+@my_vcr.use_cassette
+def test_remove_acl_entries_recursive(azure):
+    with setup_tree(azure):
+        acluser = AZURE_ACL_TEST_APPID
+
+        permission = "rwx"
+        azure.modify_acl_entries(test_dir, acl_spec="user:"+acluser+":"+permission, recursive=True)
+
+        files = list(azure.walk(test_dir))
+        directories = list(set([x[0] for x in map(os.path.split, files)]))
+
+        for path in files+directories:
+            current_acl = azure.get_acl_status(path)
+            acl_user_entry= [s for s in current_acl['entries'] if acluser in s]
+            assert acl_user_entry != []
+
+        azure.remove_acl_entries(test_dir, acl_spec="user:" + acluser, recursive=True)
+
+        for path in files+directories:
+            current_acl = azure.get_acl_status(path)
+            acl_user_entry = [s for s in current_acl['entries'] if acluser in s]
+            assert acl_user_entry == []
