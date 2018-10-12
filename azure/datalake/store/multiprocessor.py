@@ -9,9 +9,29 @@ try:
     from queue import Empty     # Python 3
 except ImportError:
     from Queue import Empty     # Python 2
+log_sentinel = [None, None]
+
+
+def log_listener_process(queue):
+    while True:
+        try:
+            record = queue.get(timeout=0.1)
+            queue.task_done()
+            if record == log_sentinel:  # We send this as a sentinel to tell the listener to quit.
+                break
+            logger = logging.getLogger(record.name)
+            logger.handlers.clear()
+            logger.handle(record)  # No level or filter logic applied - just do it!
+        except Empty:               # Try again
+            pass
+        except Exception as e:
+            import sys, traceback
+            print('Problems in logging')
+            traceback.print_exc(file=sys.stderr)
 
 
 def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
+    log_queue = multiprocessing.JoinableQueue()
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     queue_bucket_size = 10
@@ -22,7 +42,7 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
         for i in range(number_of_processes):
             process_list.append(multiprocessing.Process(target=processor,
                                     args=(adl, file_path_queue, finish_queue_processing_flag,
-                                          method_name, acl_spec, )))
+                                          method_name, acl_spec, log_queue)))
             process_list[-1].start()
         return process_list
 
@@ -45,13 +65,15 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
     file_path_queue = multiprocessing.JoinableQueue()
     cpu_count = multiprocessing.cpu_count()
     child_processes = launch_processes(2)
+    log_listener = threading.Thread(target=log_listener_process, args=(log_queue,))
+    log_listener.start()
 
     dir_processed_counter = CountUpDownLatch()
     walk_thread_pool = ThreadPoolExecutor(max_workers=worker_thread_num_per_process)
 
-    file_path_queue.put([path])         # Root directory to initialize walk
+    file_path_queue.put([path])  # Root directory to initialize walk
     dir_processed_counter.increment()
-    walk(path)                          # Start processing root directory
+    walk(path)                  # Start processing root directory
 
     if dir_processed_counter.is_zero():  # Done processing all directories. Blocking call.
         file_path_queue.join()           # Wait for operations to be done
@@ -61,15 +83,29 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
             child.join()
 
     # Cleanup
+    logger.log(logging.DEBUG, "Sending logger sentinel")
+    log_queue.put(log_sentinel)
+    log_queue.join()
+    log_queue.close()
+    logger.log(logging.DEBUG, "Log queue closed")
+    log_listener.join()
+    logger.log(logging.DEBUG, "Log thread finished")
     walk_thread_pool.shutdown()
     logger.log(logging.DEBUG, "Thread pool for worked threads for walk shut down")
     file_path_queue.close()
     logger.log(logging.DEBUG, "File path queue closed")
 
 
-def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, acl_spec):
+def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, acl_spec, log_queue):
 
     logger = logging.getLogger(__name__)
+
+    try:
+        logger.addHandler(logging.handlers.QueueHandler(log_queue))
+        logger.propagate = False                                                        # Prevents double logging
+    except AttributeError:
+        # Python 2 doesn't have Queue Handler. Default to best effort logging.
+        pass
     logger.setLevel(logging.DEBUG)
 
     try:
