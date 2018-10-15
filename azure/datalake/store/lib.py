@@ -211,7 +211,7 @@ class DatalakeRESTInterface:
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
-    api_version: str (2016-11-01)
+    api_version: str (2018-05-01)
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
@@ -246,7 +246,7 @@ class DatalakeRESTInterface:
     }
 
     def __init__(self, store_name=default_store, token=None,
-                 url_suffix=default_adls_suffix, api_version='2016-11-01', **kwargs):
+                 url_suffix=default_adls_suffix, api_version='2018-05-01', **kwargs):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
         url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
@@ -288,7 +288,7 @@ class DatalakeRESTInterface:
             self.head = {'Authorization': cur_session.headers['Authorization']}
             self.local.session = None
 
-    def  _log_request(self, method, url, op, path, params, headers, retry_count):
+    def _log_request(self, method, url, op, path, params, headers, retry_count):
         msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
         msg += "{} '{}' {}\n\n".format(
             op, path,
@@ -334,7 +334,7 @@ class DatalakeRESTInterface:
             return False
         return response.headers['content-type'].startswith('application/json')
 
-    def call(self, op, path='', is_extended=False, expected_error_code=None, retry_policy=None, **kwargs):
+    def call(self, op, path='', is_extended=False, expected_error_code=None, retry_policy=None, headers = {},  **kwargs):
         """ Execute a REST call
 
         Parameters
@@ -389,15 +389,16 @@ class DatalakeRESTInterface:
             retry_count += 1
             last_exception = None
             try:
-                response = self.__call_once(method,
-                                            url,
-                                            params,
-                                            data,
-                                            stream,
-                                            request_id,
-                                            retry_count,
-                                            op,
-                                            path,
+                response = self.__call_once(method=method,
+                                            url=url,
+                                            params=params,
+                                            data=data,
+                                            stream=stream,
+                                            request_id=request_id,
+                                            retry_count=retry_count,
+                                            op=op,
+                                            path=path,
+                                            headers=headers,
                                             **kwargs)
             except requests.exceptions.RequestException as e:
                 last_exception = e
@@ -449,13 +450,14 @@ class DatalakeRESTInterface:
             return True
         return False
 
-    def __call_once(self, method, url, params, data, stream, request_id, retry_count, op, path='', **kwargs):
+    def __call_once(self, method, url, params, data, stream, request_id, retry_count, op, path='', headers={}, **kwargs):
         func = getattr(self.session, method)
-        headers = self.head.copy()
-        headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
-        headers['User-Agent'] = self.user_agent
-        self._log_request(method, url, op, urllib.quote(path), kwargs, headers, retry_count)
-        return func(url, params=params, headers=headers, data=data, stream=stream)
+        req_headers = self.head.copy()
+        req_headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
+        req_headers['User-Agent'] = self.user_agent
+        req_headers.update(headers)
+        self._log_request(method, url, op, urllib.quote(path), kwargs, req_headers, retry_count)
+        return func(url, params=params, headers=req_headers, data=data, stream=stream)
 
     def __getstate__(self):
         state = self.__dict__.copy()
