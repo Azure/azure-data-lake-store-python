@@ -181,6 +181,7 @@ class DataLakeCredential:
         if not authority:
             authority = 'https://login.microsoftonline.com/'
 
+
         context = adal.AuthenticationContext(authority +
                                              self.token['tenant'])
         if self.token.get('secret') and self.token.get('client'):
@@ -225,7 +226,7 @@ class DatalakeRESTInterface:
         'APPEND': ('post', set(), {'append', 'offset', 'syncFlag', 'filesessionid', 'leaseid'}),
         'CHECKACCESS': ('get', set(), {'fsaction'}),
         'CONCAT': ('post', {'sources'}, {'sources'}),
-        'MSCONCAT': ('post', set(), {'deleteSourceDirectory', 'headers'}),
+        'MSCONCAT': ('post', set(), {'deleteSourceDirectory'}),
         'CREATE': ('put', set(), {'overwrite', 'write', 'syncFlag', 'filesessionid', 'leaseid'}),
         'DELETE': ('delete', set(), {'recursive'}),
         'GETCONTENTSUMMARY': ('get', set(), set()),
