@@ -145,18 +145,21 @@ def test_seek(azure):
 
 @my_vcr.use_cassette
 def test_concat(azure):
-    with azure.open(a, 'wb') as f:
+    aplus= a+ "+file1"
+    bplus = b +"+file2"
+    cplus = c+ "+res"
+    with azure.open(aplus, 'wb') as f:
         f.write(b'hello ')
-    with azure.open(b, 'wb') as f:
+    with azure.open(bplus, 'wb') as f:
         f.write(b'world')
     try:
-        azure.rm(c)
+        azure.rm(cplus)
     except:
         pass
-    azure.concat(c, [a, b])
 
-    out = azure.cat(c)
-    azure.rm(c)
+    azure.concat(cplus, [aplus, bplus])
+    out = azure.cat(cplus)
+    azure.rm(cplus)
 
     assert out == b'hello world'
 
