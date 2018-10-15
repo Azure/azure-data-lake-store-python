@@ -371,9 +371,7 @@ class DatalakeRESTInterface:
         if keys - allowed > set():
             raise ValueError("Extra parameters given: %s",
                              keys - allowed)
-
         params = {'OP': op}
-
         if self.api_version:
             params['api-version'] = self.api_version
 
@@ -458,7 +456,7 @@ class DatalakeRESTInterface:
         req_headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
         req_headers['User-Agent'] = self.user_agent
         req_headers.update(headers)
-        self._log_request(method, url, op, urllib.quote(path), kwargs, headers, retry_count)
+        self._log_request(method, url, op, urllib.quote(path), kwargs, req_headers, retry_count)
         return func(url, params=params, headers=req_headers, data=data, stream=stream)
 
     def __getstate__(self):
