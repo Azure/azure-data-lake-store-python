@@ -453,6 +453,38 @@ def test_full_read(azure):
             assert f.read(4) == b'789'
             assert f.tell() == 10
 
+@my_vcr.use_cassette
+def test_readinto(azure):
+    with azure_teardown(azure):
+        with azure.open(a, 'wb') as f:
+            f.write(b'0123456789')
+
+        with azure.open(a, 'rb') as f:
+            buffer = bytearray(6)
+            l = f.readinto(buffer)
+            assert l == 6
+            assert buffer == b'012345'
+
+            buffer = bytearray(6)
+            l = f.readinto(buffer)
+            assert l == 4
+            assert buffer == b'6789\x00\x00'
+
+            buffer = bytearray(6)
+            l = f.readinto(buffer)
+            assert buffer == b'\x00\x00\x00\x00\x00\x00'
+            assert l == 0
+
+        with azure.open(a, 'rb') as f:
+            buffer = bytearray(6)
+            l = f.readinto(buffer)
+            assert l == 6
+            assert buffer == b'012345'
+
+            l = f.readinto(buffer)
+            assert l == 4
+            assert buffer == b'678945' # 45 from previous buffer fill should not be overwritten
+
 
 @my_vcr.use_cassette
 def test_filename_specialchar(azure):
