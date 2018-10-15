@@ -181,7 +181,6 @@ class DataLakeCredential:
         if not authority:
             authority = 'https://login.microsoftonline.com/'
 
-
         context = adal.AuthenticationContext(authority +
                                              self.token['tenant'])
         if self.token.get('secret') and self.token.get('client'):
@@ -396,15 +395,15 @@ class DatalakeRESTInterface:
             last_exception = None
             try:
                 response = self.__call_once(method=method,
-                                            url = url,
-                                            params = params,
-                                            data = data,
-                                            stream = stream,
-                                            request_id = request_id,
-                                            retry_count = retry_count,
-                                            op = op,
-                                            path =path,
-                                            headers = headers,
+                                            url=url,
+                                            params=params,
+                                            data=data,
+                                            stream=stream,
+                                            request_id=request_id,
+                                            retry_count=retry_count,
+                                            op=op,
+                                            path=path,
+                                            headers=headers,
                                             **kwargs)
             except requests.exceptions.RequestException as e:
                 last_exception = e

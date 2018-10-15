@@ -145,9 +145,9 @@ def test_seek(azure):
 
 @my_vcr.use_cassette
 def test_concat(azure):
-    aplus= a+ "+file1"
-    bplus = b +"+file2"
-    cplus = c+ "+res"
+    aplus = a + "+file1"
+    bplus = b + "+file2"
+    cplus = c + "+res"
     with azure.open(aplus, 'wb') as f:
         f.write(b'hello ')
     with azure.open(bplus, 'wb') as f:
