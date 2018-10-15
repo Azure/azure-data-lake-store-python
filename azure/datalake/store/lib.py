@@ -105,7 +105,6 @@ def auth(tenant_id=None, username=None,
     """
     if not authority:
         authority = 'https://login.microsoftonline.com/'
-        authority = 'https://login.windows-ppe.net/'
 
     if not tenant_id:
         tenant_id = os.environ.get('azure_tenant_id', "common")
@@ -160,7 +159,6 @@ class DataLakeCredential:
         :rtype: requests.Session
         """
         session = requests.Session()
-        session.verify = False
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.refresh_token()
 
@@ -246,6 +244,7 @@ class DatalakeRESTInterface:
         'MSGETACLSTATUS': ('get', set(), set()),
         'REMOVEDEFAULTACL': ('put', set(), set())
     }
+
     api_version_override = {'MSCONCAT' : '2018-05-01'}
 
     def __init__(self, store_name=default_store, token=None,
@@ -281,7 +280,6 @@ class DatalakeRESTInterface:
                 pool_connections=MAX_POOL_CONNECTIONS,
                 pool_maxsize=MAX_POOL_CONNECTIONS)
             s = requests.Session()
-            s.verify = False
             s.mount(self.url, adapter)
             self.local.session = s
         return s
@@ -292,7 +290,7 @@ class DatalakeRESTInterface:
             self.head = {'Authorization': cur_session.headers['Authorization']}
             self.local.session = None
 
-    def  _log_request(self, method, url, op, path, params, headers, retry_count):
+    def _log_request(self, method, url, op, path, params, headers, retry_count):
         msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
         msg += "{} '{}' {}\n\n".format(
             op, path,
