@@ -211,7 +211,7 @@ class DatalakeRESTInterface:
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
-    api_version: str (2016-11-01)
+    api_version: str (2018-05-01)
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
@@ -245,10 +245,8 @@ class DatalakeRESTInterface:
         'REMOVEDEFAULTACL': ('put', set(), set())
     }
 
-    api_version_override = {'MSCONCAT' : '2018-05-01'}
-
     def __init__(self, store_name=default_store, token=None,
-                 url_suffix=default_adls_suffix, api_version='2016-11-01', **kwargs):
+                 url_suffix=default_adls_suffix, api_version='2018-05-01', **kwargs):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
         url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
@@ -375,9 +373,8 @@ class DatalakeRESTInterface:
                              keys - allowed)
 
         params = {'OP': op}
-        if op in self.api_version_override:
-            params['api-version'] = self.api_version_override[op]
-        elif self.api_version:
+
+        if self.api_version:
             params['api-version'] = self.api_version
 
         params.update(kwargs)
