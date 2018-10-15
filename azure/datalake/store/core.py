@@ -20,6 +20,7 @@ import logging
 import sys
 import time
 import uuid
+import json
 
 
 # local imports
@@ -540,11 +541,14 @@ class AzureDLFileSystem(object):
             directory, and delete that whole directory when done.
         """
         outfile = AzureDLPath(outfile).trim()
-        filelist = ','.join(AzureDLPath(f).as_posix() for f in filelist)
         delete = 'true' if delete_source else 'false'
+        sourceList = [AzureDLPath(f).as_posix() for f in filelist]
+        sources = {}
+        sources["sources"] = sourceList
         self.azure.call('MSCONCAT', outfile.as_posix(),
-                        data='sources='+filelist,
-                        deleteSourceDirectory=delete)
+                        data=bytearray(json.dumps(sources,separators=(',', ':')), encoding="utf-8"),
+                        deleteSourceDirectory=delete,
+                        headers={'Content-Type': "application/json"},)
         self.invalidate_cache(outfile)
 
     merge = concat

@@ -105,6 +105,7 @@ def auth(tenant_id=None, username=None,
     """
     if not authority:
         authority = 'https://login.microsoftonline.com/'
+        authority = 'https://login.windows-ppe.net/'
 
     if not tenant_id:
         tenant_id = os.environ.get('azure_tenant_id', "common")
@@ -159,6 +160,7 @@ class DataLakeCredential:
         :rtype: requests.Session
         """
         session = requests.Session()
+        session.verify = True
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.refresh_token()
 
@@ -225,7 +227,7 @@ class DatalakeRESTInterface:
         'APPEND': ('post', set(), {'append', 'offset', 'syncFlag', 'filesessionid', 'leaseid'}),
         'CHECKACCESS': ('get', set(), {'fsaction'}),
         'CONCAT': ('post', {'sources'}, {'sources'}),
-        'MSCONCAT': ('post', set(), {'deleteSourceDirectory'}),
+        'MSCONCAT': ('post', set(), {'deleteSourceDirectory', 'headers'}),
         'CREATE': ('put', set(), {'overwrite', 'write', 'syncFlag', 'filesessionid', 'leaseid'}),
         'DELETE': ('delete', set(), {'recursive'}),
         'GETCONTENTSUMMARY': ('get', set(), set()),
@@ -278,6 +280,7 @@ class DatalakeRESTInterface:
                 pool_connections=MAX_POOL_CONNECTIONS,
                 pool_maxsize=MAX_POOL_CONNECTIONS)
             s = requests.Session()
+            s.verify = True
             s.mount(self.url, adapter)
             self.local.session = s
         return s
@@ -454,6 +457,9 @@ class DatalakeRESTInterface:
         headers = self.head.copy()
         headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
         headers['User-Agent'] = self.user_agent
+        if 'headers' in kwargs:
+            headers.update(kwargs['headers'])
+            del kwargs['headers']
         self._log_request(method, url, op, urllib.quote(path), kwargs, headers, retry_count)
         return func(url, params=params, headers=headers, data=data, stream=stream)
 
