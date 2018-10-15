@@ -160,7 +160,7 @@ class DataLakeCredential:
         :rtype: requests.Session
         """
         session = requests.Session()
-        session.verify = True
+        session.verify = False
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.refresh_token()
 
@@ -246,6 +246,7 @@ class DatalakeRESTInterface:
         'MSGETACLSTATUS': ('get', set(), set()),
         'REMOVEDEFAULTACL': ('put', set(), set())
     }
+    api_version_override = {'MSCONCAT' : '2018-05-01'}
 
     def __init__(self, store_name=default_store, token=None,
                  url_suffix=default_adls_suffix, api_version='2016-11-01', **kwargs):
@@ -280,7 +281,7 @@ class DatalakeRESTInterface:
                 pool_connections=MAX_POOL_CONNECTIONS,
                 pool_maxsize=MAX_POOL_CONNECTIONS)
             s = requests.Session()
-            s.verify = True
+            s.verify = False
             s.mount(self.url, adapter)
             self.local.session = s
         return s
@@ -337,7 +338,7 @@ class DatalakeRESTInterface:
             return False
         return response.headers['content-type'].startswith('application/json')
 
-    def call(self, op, path='', is_extended=False, expected_error_code=None, retry_policy=None, **kwargs):
+    def call(self, op, path='', is_extended=False, expected_error_code=None, retry_policy=None, headers = {},  **kwargs):
         """ Execute a REST call
 
         Parameters
@@ -374,8 +375,11 @@ class DatalakeRESTInterface:
         if keys - allowed > set():
             raise ValueError("Extra parameters given: %s",
                              keys - allowed)
+
         params = {'OP': op}
-        if self.api_version:
+        if op in self.api_version_override:
+            params['api-version'] = self.api_version_override[op]
+        elif self.api_version:
             params['api-version'] = self.api_version
 
         params.update(kwargs)
@@ -392,15 +396,16 @@ class DatalakeRESTInterface:
             retry_count += 1
             last_exception = None
             try:
-                response = self.__call_once(method,
-                                            url,
-                                            params,
-                                            data,
-                                            stream,
-                                            request_id,
-                                            retry_count,
-                                            op,
-                                            path,
+                response = self.__call_once(method=method,
+                                            url = url,
+                                            params = params,
+                                            data = data,
+                                            stream = stream,
+                                            request_id = request_id,
+                                            retry_count = retry_count,
+                                            op = op,
+                                            path =path,
+                                            headers = headers,
                                             **kwargs)
             except requests.exceptions.RequestException as e:
                 last_exception = e
@@ -452,16 +457,14 @@ class DatalakeRESTInterface:
             return True
         return False
 
-    def __call_once(self, method, url, params, data, stream, request_id, retry_count, op, path='', **kwargs):
+    def __call_once(self, method, url, params, data, stream, request_id, retry_count, op, path='', headers={}, **kwargs):
         func = getattr(self.session, method)
-        headers = self.head.copy()
-        headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
-        headers['User-Agent'] = self.user_agent
-        if 'headers' in kwargs:
-            headers.update(kwargs['headers'])
-            del kwargs['headers']
+        req_headers = self.head.copy()
+        req_headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
+        req_headers['User-Agent'] = self.user_agent
+        req_headers.update(headers)
         self._log_request(method, url, op, urllib.quote(path), kwargs, headers, retry_count)
-        return func(url, params=params, headers=headers, data=data, stream=stream)
+        return func(url, params=params, headers=req_headers, data=data, stream=stream)
 
     def __getstate__(self):
         state = self.__dict__.copy()
