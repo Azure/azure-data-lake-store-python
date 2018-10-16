@@ -31,7 +31,7 @@ environment variables should be defined:
 * `azure_data_lake_store_name`
 * `azure_subscription_id`
 * `azure_resource_group_name`
-* `azure_client_id`
-* `azure_client_secret`
+* `azure_service_principal`
+* `azure_service_princip_secret`
 
 Optionally, you may need to define `azure_tenant_id` or `azure_data_lake_store_url_suffix`.
