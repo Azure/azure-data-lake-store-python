@@ -3,7 +3,7 @@
 Release History
 ===============
 
-0.0.33 (2018-10-015)
+0.0.34 (2018-10-15)
 +++++++++++++++++++
 * Fixed concat issue with plus(or other symbols) in filename
 * Added readinto method
