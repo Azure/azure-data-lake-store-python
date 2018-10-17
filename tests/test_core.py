@@ -147,18 +147,21 @@ def test_seek(azure):
 
 @my_vcr.use_cassette
 def test_concat(azure):
-    with azure.open(a, 'wb') as f:
+    aplus = a + "+file1"
+    bplus = b + "+file2"
+    cplus = c + "+res"
+    with azure.open(aplus, 'wb') as f:
         f.write(b'hello ')
-    with azure.open(b, 'wb') as f:
+    with azure.open(bplus, 'wb') as f:
         f.write(b'world')
     try:
-        azure.rm(c)
+        azure.rm(cplus)
     except:
         pass
-    azure.concat(c, [a, b])
 
-    out = azure.cat(c)
-    azure.rm(c)
+    azure.concat(cplus, [aplus, bplus])
+    out = azure.cat(cplus)
+    azure.rm(cplus)
 
     assert out == b'hello world'
 
@@ -454,6 +457,38 @@ def test_full_read(azure):
             assert f.tell() == 7
             assert f.read(4) == b'789'
             assert f.tell() == 10
+
+@my_vcr.use_cassette
+def test_readinto(azure):
+    with azure_teardown(azure):
+        with azure.open(a, 'wb') as f:
+            f.write(b'0123456789')
+
+        with azure.open(a, 'rb') as f:
+            buffer = bytearray(6)
+            l = f.readinto(buffer)
+            assert l == 6
+            assert buffer == b'012345'
+
+            buffer = bytearray(6)
+            l = f.readinto(buffer)
+            assert l == 4
+            assert buffer == b'6789\x00\x00'
+
+            buffer = bytearray(6)
+            l = f.readinto(buffer)
+            assert buffer == b'\x00\x00\x00\x00\x00\x00'
+            assert l == 0
+
+        with azure.open(a, 'rb') as f:
+            buffer = bytearray(6)
+            l = f.readinto(buffer)
+            assert l == 6
+            assert buffer == b'012345'
+
+            l = f.readinto(buffer)
+            assert l == 4
+            assert buffer == b'678945' # 45 from previous buffer fill should not be overwritten
 
 
 @my_vcr.use_cassette

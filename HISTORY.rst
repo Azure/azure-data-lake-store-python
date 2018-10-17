@@ -3,6 +3,12 @@
 Release History
 ===============
 
+0.0.34 (2018-10-15)
++++++++++++++++++++
+* Fixed concat issue with plus(or other symbols) in filename
+* Added readinto method
+* Changed api-version to 2018-05-01 for all.
+
 0.0.32 (2018-10-04)
 +++++++++++++++++++
 * Fixed test bug
