@@ -5,12 +5,45 @@ import logging
 import multiprocessing
 import os
 import logging.handlers
+from .exceptions import  FileNotFoundError
+
 
 try:
     from queue import Empty     # Python 3
 except ImportError:
     from Queue import Empty     # Python 2
-log_sentinel = [None, None]
+end_queue_sentinel = [None, None]
+
+exception = None
+exception_lock = threading.Lock()
+
+
+threading
+def monitor_exception(exception_queue, process_ids):
+    global exception
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    while True:
+        try:
+            excep = exception_queue.get(timeout=0.1)
+            if excep == end_queue_sentinel:
+                break
+            logger.log(logging.DEBUG, "Setting global exception")
+            exception_lock.acquire()
+            exception = excep
+            exception_lock.release()
+            logger.log(logging.DEBUG, "Closing processes")
+            for p in process_ids:
+                p.terminate()
+            logger.log(logging.DEBUG, "Joining processes")
+            for p in process_ids:
+                p.join()
+            import thread
+            logger.log(logging.DEBUG, "Interrupting main")
+            raise Exception(excep)
+        except Empty:
+            pass
 
 
 def log_listener_process(queue):
@@ -18,7 +51,7 @@ def log_listener_process(queue):
         try:
             record = queue.get(timeout=0.1)
             queue.task_done()
-            if record == log_sentinel:  # We send this as a sentinel to tell the listener to quit.
+            if record == end_queue_sentinel:  # We send this as a sentinel to tell the listener to quit.
                 break
             logger = logging.getLogger(record.name)
             logger.handlers.clear()
@@ -31,8 +64,9 @@ def log_listener_process(queue):
             traceback.print_exc(file=sys.stderr)
 
 
-def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
+def multi_processor_change_acl(adl, path=None, method_name="", acl_spec="", number_of_sub_process=None):
     log_queue = multiprocessing.JoinableQueue()
+    exception_queue = multiprocessing.Queue()
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     queue_bucket_size = 10
@@ -43,14 +77,14 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
         for i in range(number_of_processes):
             process_list.append(multiprocessing.Process(target=processor,
                                     args=(adl, file_path_queue, finish_queue_processing_flag,
-                                          method_name, acl_spec, log_queue)))
+                                          method_name, acl_spec, log_queue, exception_queue)))
             process_list[-1].start()
         return process_list
 
     def walk(walk_path):
         try:
             paths = []
-            all_files = adl.ls(path=walk_path, detail=True)
+            all_files = adl._ls(path=walk_path)
 
             for files in all_files:
                 if files['type'] == 'DIRECTORY':
@@ -60,20 +94,25 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
                 if len(paths) == queue_bucket_size:
                     file_path_queue.put(list(paths))
                     paths = []
-            file_path_queue.put(list(paths))  # For leftover paths < bucket_size
+            if paths != []:
+                file_path_queue.put(list(paths))  # For leftover paths < bucket_size
+        except FileNotFoundError:
+            pass                    # Continue in case the file was deleted in between
         except:
-            import sys, traceback
+            import traceback
             logger.exception("Failed to walk for path: " + str(walk_path) + ". Exiting!")
-            for c in child_processes:
-                c.terminate()
-                c.join()
-            sys.exit(1)
-        dir_processed_counter.decrement()           # Processing complete for this directory
+            exception_queue.put(traceback.format_exc())
+        finally:
+            dir_processed_counter.decrement()           # Processing complete for this directory
 
     finish_queue_processing_flag = multiprocessing.Event()
     file_path_queue = multiprocessing.JoinableQueue()
-    cpu_count = multiprocessing.cpu_count()
-    child_processes = launch_processes(2)
+    if number_of_sub_process == None:
+        number_of_sub_process = max(2, multiprocessing.cpu_count()-1)
+
+    child_processes = launch_processes(number_of_sub_process)
+    exception_monitor_thread = threading.Thread(target=monitor_exception, args=(exception_queue, child_processes))
+    exception_monitor_thread.start()
     log_listener = threading.Thread(target=log_listener_process, args=(log_queue,))
     log_listener.start()
 
@@ -95,8 +134,12 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
             child.join()
 
     # Cleanup
+    logger.log(logging.DEBUG, "Sending exception sentinel")
+    exception_queue.put(end_queue_sentinel)
+    exception_monitor_thread.join()
+    logger.log(logging.DEBUG, "Exception monitor thread finished")
     logger.log(logging.DEBUG, "Sending logger sentinel")
-    log_queue.put(log_sentinel)
+    log_queue.put(end_queue_sentinel)
     log_queue.join()
     log_queue.close()
     logger.log(logging.DEBUG, "Log queue closed")
@@ -104,8 +147,7 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec=""):
     logger.log(logging.DEBUG, "Log thread finished")
 
 
-
-def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, acl_spec, log_queue):
+def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, acl_spec, log_queue, exception_queue):
     logger = logging.getLogger(__name__)
 
     try:
@@ -126,8 +168,13 @@ def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, a
         def func_wrapper(func, path, spec):
             try:
                 func(path=path, acl_spec=spec)
-            except:
+            except FileNotFoundError as e:
+                logger.exception("File "+str(path)+" not found")
                 pass    # Exception is being logged in the relevant acl method. Do nothing here
+            except:
+                # TODO Raise to parent process
+                pass
+
             logger.log(logging.DEBUG, "Completed running on path:" + str(path))
 
         while finish_queue_processing_flag.is_set() == False:
@@ -141,8 +188,10 @@ def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, a
                 pass
 
     except Exception as e:
-
+        import traceback
+        # TODO Raise to parent process
         logger.exception("Exception in pid "+str(os.getpid())+"Exception: " + str(e))
+        exception_queue.put(traceback.format_exc())
     finally:
-        function_thread_pool.shutdown() # Blocking call. Will wait till all threads are done executing.
+        function_thread_pool.shutdown()  # Blocking call. Will wait till all threads are done executing.
         logger.log(logging.DEBUG, "Finished processor pid: " + str(os.getpid()))
