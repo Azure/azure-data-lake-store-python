@@ -329,7 +329,7 @@ class AzureDLFileSystem(object):
 
         return to_return
 
-    def set_acl(self, path, acl_spec, recursive=False):
+    def set_acl(self, path, acl_spec, recursive=False, number_of_sub_process=None):
         """
         Sets the Access Control List (ACL) for a file or folder.
 
@@ -346,11 +346,11 @@ class AzureDLFileSystem(object):
             Specifies whether to set ACLs recursively or not
         """
         if recursive:
-            multi_processor_change_acl(adl=self, path=path, method_name="set_acl", acl_spec=acl_spec)
+            multi_processor_change_acl(adl=self, path=path, method_name="set_acl", acl_spec=acl_spec, number_of_sub_process=number_of_sub_process)
         else:
             self._acl_call('SETACL', path, acl_spec, invalidate_cache=True)
 
-    def modify_acl_entries(self, path, acl_spec, recursive=False):
+    def modify_acl_entries(self, path, acl_spec, recursive=False, number_of_sub_process=None):
         """
         Modifies existing Access Control List (ACL) entries on a file or folder.
         If the entry does not exist it is added, otherwise it is updated based on the spec passed in.
@@ -369,11 +369,11 @@ class AzureDLFileSystem(object):
             Specifies whether to modify ACLs recursively or not
         """
         if recursive:
-            multi_processor_change_acl(adl=self, path=path, method_name="mod_acl", acl_spec=acl_spec)
+            multi_processor_change_acl(adl=self, path=path, method_name="mod_acl", acl_spec=acl_spec, number_of_sub_process=number_of_sub_process)
         else:
             self._acl_call('MODIFYACLENTRIES', path, acl_spec, invalidate_cache=True)
 
-    def remove_acl_entries(self, path, acl_spec, recursive=False):
+    def remove_acl_entries(self, path, acl_spec, recursive=False, number_of_sub_process=None):
         """
         Removes existing, named, Access Control List (ACL) entries on a file or folder.
         If the entry does not exist already it is ignored.
@@ -393,7 +393,7 @@ class AzureDLFileSystem(object):
             Specifies whether to remove ACLs recursively or not
         """
         if recursive:
-            multi_processor_change_acl(adl=self, path=path, method_name="rem_acl", acl_spec=acl_spec)
+            multi_processor_change_acl(adl=self, path=path, method_name="rem_acl", acl_spec=acl_spec, number_of_sub_process=number_of_sub_process)
         else:
             self._acl_call('REMOVEACLENTRIES', path, acl_spec, invalidate_cache=True)
 
