@@ -74,7 +74,7 @@ MAX_POOL_CONNECTIONS = 1024
 def auth(tenant_id=None, username=None,
          password=None, client_id=default_client,
          client_secret=None, resource=DEFAULT_RESOURCE_ENDPOINT,
-         require_2fa=False, authority=None, **kwargs):
+         require_2fa=False, authority=None, retry_policy=None, **kwargs):
     """ User/password authentication
 
     Parameters
@@ -103,8 +103,10 @@ def auth(tenant_id=None, username=None,
     -------
     :type DataLakeCredential :mod: `A DataLakeCredential object`
     """
+
     if not authority:
         authority = 'https://login.microsoftonline.com/'
+        authority = 'https://login.windows-ppe.net/'
 
     if not tenant_id:
         tenant_id = os.environ.get('azure_tenant_id', "common")
@@ -126,21 +128,44 @@ def auth(tenant_id=None, username=None,
 
     # You can explicitly authenticate with 2fa, or pass in nothing to the auth call and
     # and the user will be prompted to login interactively through a browser.
-    if require_2fa or (username is None and password is None and client_secret is None):
-        code = context.acquire_user_code(resource, client_id)
-        print(code['message'])
-        out = context.acquire_token_with_device_code(resource, code, client_id)
+    retry_policy = ExponentialRetryPolicy() if retry_policy is None else retry_policy
+    retry_count = -1
+    last_exception = None
+    out = None
+    while True:
+        retry_count += 1
+        try:
+            if require_2fa or (username is None and password is None and client_secret is None):
+                code = context.acquire_user_code(resource, client_id)
+                print(code['message'])
+                out = context.acquire_token_with_device_code(resource, code, client_id)
 
-    elif username and password:
-        out = context.acquire_token_with_username_password(resource, username,
-                                                           password, client_id)
-    elif client_id and client_secret:
-        out = context.acquire_token_with_client_credentials(resource, client_id,
-                                                            client_secret)
-        # for service principal, we store the secret in the credential object for use when refreshing.
-        out.update({'secret': client_secret})
-    else:
-        raise ValueError("No authentication method found for credentials")
+            elif username and password:
+                out = context.acquire_token_with_username_password(resource, username,
+                                                                   password, client_id)
+            elif client_id and client_secret:
+                out = context.acquire_token_with_client_credentials(resource, client_id,
+                                                                    client_secret)
+                # for service principal, we store the secret in the credential object for use when refreshing.
+                out.update({'secret': client_secret})
+            else:
+                raise ValueError("No authentication method found for credentials")
+        except (adal.adal_error.AdalError, requests.HTTPError) as e:
+            # ADAL error corresponds to everything but 429, which bubbles up HTTP error.
+            last_exception = e
+            if hasattr(e, 'error_response'):    # ADAL exception
+                response = e.error_response
+            if hasattr(e, 'response'):          # HTTP exception
+                response = e.response
+
+        # We don't retry on invalid client credentials
+        request_successful = last_exception is None or ('error' in response and response['error'] == "invalid_client")
+        if request_successful or not retry_policy.should_retry(response, last_exception, retry_count):
+            break
+
+    if out is None:     # Retries were not successful
+        logger.exception(last_exception)
+        raise last_exception
 
     out.update({'access': out['accessToken'], 'resource': resource,
                 'refresh': out.get('refreshToken', False),
@@ -159,6 +184,7 @@ class DataLakeCredential:
         :rtype: requests.Session
         """
         session = requests.Session()
+        session.verify = False
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.refresh_token()
 
@@ -278,6 +304,7 @@ class DatalakeRESTInterface:
                 pool_connections=MAX_POOL_CONNECTIONS,
                 pool_maxsize=MAX_POOL_CONNECTIONS)
             s = requests.Session()
+            s.verify = False
             s.mount(self.url, adapter)
             self.local.session = s
         return s
@@ -359,7 +386,7 @@ class DatalakeRESTInterface:
         retry_policy = ExponentialRetryPolicy() if retry_policy is None else retry_policy
         if op not in self.ends:
             raise ValueError("No such op: %s", op)
-        self._check_token()
+
         method, required, allowed = self.ends[op]
         allowed.add('api-version')
         data = kwargs.pop('data', b'')
@@ -386,6 +413,7 @@ class DatalakeRESTInterface:
         retry_count = -1
         request_id = str(uuid.uuid1())
         while True:
+            self._check_token()
             retry_count += 1
             last_exception = None
             try:
