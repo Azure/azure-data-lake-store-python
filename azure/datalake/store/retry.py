@@ -45,6 +45,11 @@ class ExponentialRetryPolicy(RetryPolicy):
             self.__backoff()
             return True
 
+        if response is None or not hasattr(response, "status_code"):
+            # Don't know what the status code was. Might as well retry.
+            self.__backoff()
+            return True
+
         status_code = response.status_code
 
         if(status_code == 501
