@@ -99,10 +99,10 @@ def __test_retry_error(azure,
 def __test_retry_auth(error_code, error_string, is_exception_expected, total_tries=4, last_try_status=200,
                       last_try_body=r'{"token_type":"Bearer","expires_in":"1","ext_expires_in":"1","expires_on":"1","not_before":"1","resource":"https://datalake.azure.net/","access_token":"a"}'):
     import re, adal
-    end_point = re.compile("https:\/\/login\.windows\.net\/common\/discovery\/instance\?authorization_endpoint=.+")
-    mock_url = "https://login.windows-ppe.net/" + settings.TENANT_ID+ "/oauth2/token"
+    end_point = re.compile("https:\/\/login\.microsoftonline\.com\/common\/discovery\/instance\?authorization_endpoint=.+")
+    mock_url = "https://login.microsoftonline.com/" + settings.TENANT_ID+ "/oauth2/token"
 
-    body_discovery = r'{"tenant_discovery_endpoint":"https://login.windows-ppe.net/'+ settings.TENANT_ID + '/.well-known/openid-configuration"}'
+    body_discovery = r'{"tenant_discovery_endpoint":"https://login.microsoftonline.com/'+ settings.TENANT_ID + '/.well-known/openid-configuration"}'
     while total_tries > 0:
         responses.add(responses.GET, end_point,
                   body=body_discovery,
