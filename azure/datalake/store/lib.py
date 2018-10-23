@@ -184,7 +184,6 @@ class DataLakeCredential:
         :rtype: requests.Session
         """
         session = requests.Session()
-        session.verify = False
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.refresh_token()
 
@@ -304,7 +303,6 @@ class DatalakeRESTInterface:
                 pool_connections=MAX_POOL_CONNECTIONS,
                 pool_maxsize=MAX_POOL_CONNECTIONS)
             s = requests.Session()
-            s.verify = False
             s.mount(self.url, adapter)
             self.local.session = s
         return s
