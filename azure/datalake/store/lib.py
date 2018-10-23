@@ -106,7 +106,6 @@ def auth(tenant_id=None, username=None,
 
     if not authority:
         authority = 'https://login.microsoftonline.com/'
-        authority = 'https://login.windows-ppe.net/'
 
     if not tenant_id:
         tenant_id = os.environ.get('azure_tenant_id', "common")
