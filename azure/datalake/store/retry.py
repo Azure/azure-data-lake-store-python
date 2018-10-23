@@ -45,6 +45,9 @@ class ExponentialRetryPolicy(RetryPolicy):
             self.__backoff()
             return True
 
+        if response is None:
+            return False
+
         status_code = response.status_code
 
         if(status_code == 501
