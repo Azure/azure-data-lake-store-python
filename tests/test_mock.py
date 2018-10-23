@@ -125,14 +125,19 @@ def __test_retry_auth(error_code, error_string, is_exception_expected, total_tri
 
 
 def test_retry_auth_401():
-    __test_retry_auth(error_code=401, error_string=r'invalid_client', is_exception_expected=True)
+    __test_retry_auth(error_code=401, error_string=r'invalid_client', total_tries=1, is_exception_expected=True)
 
+
+def test_retry_auth_400():
+    __test_retry_auth(error_code=400, error_string=r'invalid_client', total_tries=1, is_exception_expected=True)
 
 def test_retry_auth_104():
-    __test_retry_auth(error_code=104, error_string=r'Connection Error', is_exception_expected=False, )
+    __test_retry_auth(error_code=104, error_string=r'Connection Error', total_tries=1, is_exception_expected=False )
     __test_retry_auth(error_code=104, error_string=r'Connection Error', is_exception_expected=True, total_tries=6)
 
-
 def test_retry_auth_429():
-    __test_retry_auth(error_code=429, error_string=r'Too many requests', is_exception_expected=False)
+    __test_retry_auth(error_code=429, error_string=r'Too many requests', total_tries=2, is_exception_expected=False)
     __test_retry_auth(error_code=429, error_string=r'Too many requests', is_exception_expected=True, total_tries=6)
+
+def test_retry_auth_501():
+    __test_retry_auth(error_code=501, error_string=r'invalid_client', total_tries=1, is_exception_expected=False)
