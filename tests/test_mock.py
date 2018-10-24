@@ -131,7 +131,7 @@ def test_retry_auth_401():
 
 
 def test_retry_auth_400():
-    __test_retry_auth(error_code=400, error_string=r'invalid_client', total_tries=1, is_exception_expected=True)
+    __test_retry_auth(error_code=400, error_string=r'invalid_client', total_tries=1, is_exception_expected=False)
 
 def test_retry_auth_104():
     __test_retry_auth(error_code=104, error_string=r'Connection Error', total_tries=1, is_exception_expected=False )
