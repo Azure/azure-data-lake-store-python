@@ -14,7 +14,7 @@ Provides implementation of different Retry Policies
 import logging
 import sys
 import time
-
+from functools import wraps
 # local imports
 
 logger = logging.getLogger(__name__)
@@ -76,14 +76,11 @@ class ExponentialRetryPolicy(RetryPolicy):
         self.exponential_retry_interval *= self.exponential_factor
 
 
-from functools import wraps
-
-
 def retry_decorator(retry_policy = None):
     import re, adal, requests
     from collections import namedtuple
     if retry_policy is None:
-        retry_policy = ExponentialRetryPolicy()
+        retry_policy = ExponentialRetryPolicy(max_retries=2)
 
     def deco_retry(func):
         @wraps(func)
@@ -109,6 +106,7 @@ def retry_decorator(retry_policy = None):
                                 *values)  # Construct response object with adal exception response and http code
                     if hasattr(e, 'response'):  # HTTP exception
                         response = e.response
+                    print(response)
                 request_successful = last_exception is None or response.status_code == 401
                 if request_successful or not retry_policy.should_retry(response, last_exception, retry_count):
                     break

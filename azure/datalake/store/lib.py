@@ -26,8 +26,7 @@ if sys.version_info >= (3, 4):
 else:
     import urllib
 
-from .retry import ExponentialRetryPolicy
-from .retry import retry_decorator
+from .retry import ExponentialRetryPolicy, retry_decorator
 
 # 3rd party imports
 import adal
@@ -128,7 +127,6 @@ def auth(tenant_id=None, username=None,
 
     # You can explicitly authenticate with 2fa, or pass in nothing to the auth call and
     # and the user will be prompted to login interactively through a browser.
-    from .retry import retry_decorator
 
     @retry_decorator(retry_policy=retry_policy)
     def f():
@@ -150,7 +148,6 @@ def auth(tenant_id=None, username=None,
         return out
 
     out = f()
-    print(out)
     out.update({'access': out['accessToken'], 'resource': resource,
                 'refresh': out.get('refreshToken', False),
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
