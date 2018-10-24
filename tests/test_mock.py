@@ -24,6 +24,7 @@ from azure.datalake.store.exceptions import DatalakeRESTException
 from azure.datalake.store.lib import auth
 from azure.datalake.store.lib import DataLakeCredential
 from tests.testing import azure, azure_teardown, posix, working_dir
+from tests.settings import TENANT_ID, CLIENT_ID
 test_dir = working_dir()
 
 a = posix(test_dir / 'a')
@@ -102,7 +103,7 @@ def __test_retry_auth(error_code, error_string, is_exception_expected, total_tri
     end_point = re.compile("https:\/\/login\.microsoftonline\.com\/common\/discovery\/instance\?authorization_endpoint=.+")
     mock_url = "https://login.microsoftonline.com/" + settings.TENANT_ID+ "/oauth2/token"
 
-    body_discovery = r'{"tenant_discovery_endpoint":"https://login.microsoftonline.com/'+ settings.TENANT_ID + '/.well-known/openid-configuration"}'
+    body_discovery = r'{"tenant_discovery_endpoint":"https://login.microsoftonline.com/'+ TENANT_ID + '/.well-known/openid-configuration"}'
     while total_tries > 0:
         responses.add(responses.GET, end_point,
                   body=body_discovery,
@@ -117,7 +118,8 @@ def __test_retry_auth(error_code, error_string, is_exception_expected, total_tri
                   status=200)
     responses.add(responses.POST, mock_url, body=last_try_body, status=last_try_status)
     try:
-        token = auth()
+        token = auth(tenant_id=TENANT_ID, client_secret='GARBAGE',
+                 client_id=CLIENT_ID)
         assert isinstance(token, DataLakeCredential)
         assert not is_exception_expected
     except (HTTPError, adal.adal_error.AdalError):
