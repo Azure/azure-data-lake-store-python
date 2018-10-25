@@ -125,11 +125,12 @@ def auth(tenant_id=None, username=None,
     if not client_secret:
         client_secret = os.environ.get('azure_client_secret', None)
 
-    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call and
+    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call
     # and the user will be prompted to login interactively through a browser.
 
     @retry_decorator(retry_policy=retry_policy)
-    def f():
+    def get_token_internal():
+        # Internal function used so as to use retry decorator
         if require_2fa or (username is None and password is None and client_secret is None):
             code = context.acquire_user_code(resource, client_id)
             print(code['message'])
@@ -147,7 +148,7 @@ def auth(tenant_id=None, username=None,
             raise ValueError("No authentication method found for credentials")
         return out
 
-    out = f()
+    out = get_token_internal()
     out.update({'access': out['accessToken'], 'resource': resource,
                 'refresh': out.get('refreshToken', False),
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
@@ -191,17 +192,20 @@ class DataLakeCredential:
                                              self.token['tenant'])
 
         @retry_decorator(retry_policy=retry_policy)
-        def f():
-                if self.token.get('secret') and self.token.get('client'):
-                    out = context.acquire_token_with_client_credentials(self.token['resource'], self.token['client'],
-                                                                        self.token['secret'])
-                    out.update({'secret': self.token['secret']})
-                else:
-                    out = context.acquire_token_with_refresh_token(self.token['refresh'],
-                                                                   client_id=self.token['client'],
-                                                                   resource=self.token['resource'])
-                return out
-        out = f()
+        def get_token_internal():
+            # Internal function used so as to use retry decorator
+            if self.token.get('secret') and self.token.get('client'):
+                out = context.acquire_token_with_client_credentials(self.token['resource'],
+                                                                    self.token['client'],
+                                                                    self.token['secret'])
+                out.update({'secret': self.token['secret']})
+            else:
+                out = context.acquire_token_with_refresh_token(self.token['refresh'],
+                                                               client_id=self.token['client'],
+                                                               resource=self.token['resource'])
+            return out
+
+        out = get_token_internal()
         # common items to update
         out.update({'access': out['accessToken'],
                     'time': time.time(), 'tenant': self.token['tenant'],
