@@ -121,7 +121,7 @@ def __test_retry_auth(error_code, error_string, is_exception_expected, total_tri
     body_discovery = r'{"tenant_discovery_endpoint":"https://login.microsoftonline.com/' + TENANT_ID + \
                      '/.well-known/openid-configuration"}'
     body_error = r'{"error":"' + error_string + r'","error_description":"0","error_codes":[0],"timestamp":"0",' \
-                                                r'"trace_id":"0","correlation_id":"0"}',
+                                                r'"trace_id":"0","correlation_id":"0"}'
     if last_try_body is None:
         last_try_body = r'{"token_type":"Bearer","expires_in":"1","ext_expires_in":"1","expires_on":"1",' \
                         r'"not_before":"1","resource":"https://datalake.azure.net/","access_token":"a"}'
