@@ -30,45 +30,59 @@ test_dir = working_dir()
 a = posix(test_dir / 'a')
 mock_url = 'https://%s.azuredatalakestore.net/webhdfs/v1/' % settings.STORE_NAME
 
+
 def test_retry_read_timeout(azure):
     __test_retry_error(azure, 200, 2, body=ReadTimeout())
+
 
 def test_retry_timeout(azure):
     __test_retry_error(azure, 200, 2, body=Timeout())
 
+
 def test_retry_connection_error(azure):
     __test_retry_error(azure, 200, 2, body=ConnectionError())
+
 
 def test_retry_connection_timeout(azure):
     __test_retry_error(azure, 200, 2, body=ConnectTimeout())
 
+
 def test_retry_500(azure):
     __test_retry_error(azure, 500, 2)
+
 
 def test_retry_401(azure):
     __test_retry_error(azure, 401, 3)
 
+
 def test_retry_408(azure):
     __test_retry_error(azure, 408, 4)
+
 
 def test_retry_429(azure):
     __test_retry_error(azure, 429, 2)
 
+
 def test_retry_500_5retry(azure):
     __test_retry_error(azure, 500, 5)
+
 
 def test_retry_500_6retry(azure):
     # exceeded max tries
     __test_retry_error(azure, 500, 6, is_exception_expected=True)
 
+
 def test_retry_400(azure):
     __test_retry_error(azure, 400, 2, is_exception_expected=True)
+
 
 def test_retry_501(azure):
     __test_retry_error(azure, 501, 2, is_exception_expected=True)
 
+
 def test_retry_505(azure):
     __test_retry_error(azure, 505, 2, is_exception_expected=True)
+
 
 def test_retry_200(azure):
     __test_retry_error(azure, 200, 1)
@@ -98,28 +112,29 @@ def __test_retry_error(azure,
 
 @responses.activate
 def __test_retry_auth(error_code, error_string, is_exception_expected, total_tries=4, last_try_status=200,
-                      last_try_body=r'{"token_type":"Bearer","expires_in":"1","ext_expires_in":"1","expires_on":"1","not_before":"1","resource":"https://datalake.azure.net/","access_token":"a"}'):
+                      last_try_body=None):
     import re, adal
-    end_point = re.compile("https:\/\/login\.microsoftonline\.com\/common\/discovery\/instance\?authorization_endpoint=.+")
-    mock_url = "https://login.microsoftonline.com/" + settings.TENANT_ID+ "/oauth2/token"
+    end_point_discovery = re.compile("https:\/\/login\.microsoftonline\.com\/common\/discovery\/"
+                                     "instance\?authorization_endpoint=.+")
+    mock_url_auth = "https://login.microsoftonline.com/" + settings.TENANT_ID + "/oauth2/token"
 
-    body_discovery = r'{"tenant_discovery_endpoint":"https://login.microsoftonline.com/'+ TENANT_ID + '/.well-known/openid-configuration"}'
+    body_discovery = r'{"tenant_discovery_endpoint":"https://login.microsoftonline.com/' + TENANT_ID + \
+                     '/.well-known/openid-configuration"}'
+    body_error = r'{"error":"' + error_string + r'","error_description":"0","error_codes":[0],"timestamp":"0",' \
+                                                r'"trace_id":"0","correlation_id":"0"}',
+    if last_try_body is None:
+        last_try_body = r'{"token_type":"Bearer","expires_in":"1","ext_expires_in":"1","expires_on":"1",' \
+                        r'"not_before":"1","resource":"https://datalake.azure.net/","access_token":"a"}'
+
     while total_tries > 0:
-        responses.add(responses.GET, end_point,
-                  body=body_discovery,
-                  status=200)
-
-        responses.add(responses.POST, mock_url, body=r'{"error":"' + error_string + r'","error_description":"0","error_codes":[0],"timestamp":"0","trace_id":"0","correlation_id":"0"}'
-                  , status=error_code)
+        responses.add(responses.GET, end_point_discovery, body=body_discovery, status=200)
+        responses.add(responses.POST, mock_url_auth, body=body_error, status=error_code)
         total_tries -= 1
 
-    responses.add(responses.GET, end_point,
-                  body=body_discovery,
-                  status=200)
-    responses.add(responses.POST, mock_url, body=last_try_body, status=last_try_status)
+    responses.add(responses.GET, end_point_discovery, body=body_discovery, status=200)
+    responses.add(responses.POST, mock_url_auth, body=last_try_body, status=last_try_status)
     try:
-        token = auth(tenant_id=TENANT_ID, client_secret='GARBAGE',
-                 client_id=CLIENT_ID)
+        token = auth(tenant_id=TENANT_ID, client_secret='GARBAGE', client_id=CLIENT_ID)
         assert isinstance(token, DataLakeCredential)
         assert not is_exception_expected
     except (HTTPError, adal.adal_error.AdalError):
@@ -133,13 +148,16 @@ def test_retry_auth_401():
 def test_retry_auth_400():
     __test_retry_auth(error_code=400, error_string=r'invalid_client', total_tries=1, is_exception_expected=False)
 
+
 def test_retry_auth_104():
     __test_retry_auth(error_code=104, error_string=r'Connection Error', total_tries=1, is_exception_expected=False )
     __test_retry_auth(error_code=104, error_string=r'Connection Error', is_exception_expected=True, total_tries=6)
 
+
 def test_retry_auth_429():
     __test_retry_auth(error_code=429, error_string=r'Too many requests', total_tries=2, is_exception_expected=False)
     __test_retry_auth(error_code=429, error_string=r'Too many requests', is_exception_expected=True, total_tries=6)
+
 
 def test_retry_auth_501():
     __test_retry_auth(error_code=501, error_string=r'invalid_client', total_tries=1, is_exception_expected=False)
