@@ -548,7 +548,7 @@ class AzureDLFileSystem(object):
         self.azure.call('MSCONCAT', outfile.as_posix(),
                         data=bytearray(json.dumps(sources,separators=(',', ':')), encoding="utf-8"),
                         deleteSourceDirectory=delete,
-                        headers={'Content-Type': "application/json"},)
+                        headers={'Content-Type': "application/json"})
         self.invalidate_cache(outfile)
 
     merge = concat
