@@ -76,7 +76,7 @@ class ExponentialRetryPolicy(RetryPolicy):
         self.exponential_retry_interval *= self.exponential_factor
 
 
-def retry_decorator(retry_policy = None):
+def retry_decorator_for_auth(retry_policy = None):
     import adal
     from requests import HTTPError
     if retry_policy is None:

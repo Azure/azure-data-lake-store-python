@@ -26,7 +26,7 @@ if sys.version_info >= (3, 4):
 else:
     import urllib
 
-from .retry import ExponentialRetryPolicy, retry_decorator
+from .retry import ExponentialRetryPolicy, retry_decorator_for_auth
 
 # 3rd party imports
 import adal
@@ -128,7 +128,7 @@ def auth(tenant_id=None, username=None,
     # You can explicitly authenticate with 2fa, or pass in nothing to the auth call
     # and the user will be prompted to login interactively through a browser.
 
-    @retry_decorator(retry_policy=retry_policy)
+    @retry_decorator_for_auth(retry_policy=retry_policy)
     def get_token_internal():
         # Internal function used so as to use retry decorator
         if require_2fa or (username is None and password is None and client_secret is None):
@@ -191,7 +191,7 @@ class DataLakeCredential:
         context = adal.AuthenticationContext(authority +
                                              self.token['tenant'])
 
-        @retry_decorator(retry_policy=retry_policy)
+        @retry_decorator_for_auth(retry_policy=retry_policy)
         def get_token_internal():
             # Internal function used so as to use retry decorator
             if self.token.get('secret') and self.token.get('client'):
