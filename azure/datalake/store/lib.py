@@ -26,7 +26,7 @@ if sys.version_info >= (3, 4):
 else:
     import urllib
 
-from .retry import ExponentialRetryPolicy
+from .retry import ExponentialRetryPolicy, retry_decorator_for_auth
 
 # 3rd party imports
 import adal
@@ -74,7 +74,7 @@ MAX_POOL_CONNECTIONS = 1024
 def auth(tenant_id=None, username=None,
          password=None, client_id=default_client,
          client_secret=None, resource=DEFAULT_RESOURCE_ENDPOINT,
-         require_2fa=False, authority=None, **kwargs):
+         require_2fa=False, authority=None, retry_policy=None, **kwargs):
     """ User/password authentication
 
     Parameters
@@ -103,6 +103,7 @@ def auth(tenant_id=None, username=None,
     -------
     :type DataLakeCredential :mod: `A DataLakeCredential object`
     """
+
     if not authority:
         authority = 'https://login.microsoftonline.com/'
 
@@ -124,24 +125,30 @@ def auth(tenant_id=None, username=None,
     if not client_secret:
         client_secret = os.environ.get('azure_client_secret', None)
 
-    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call and
+    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call
     # and the user will be prompted to login interactively through a browser.
-    if require_2fa or (username is None and password is None and client_secret is None):
-        code = context.acquire_user_code(resource, client_id)
-        print(code['message'])
-        out = context.acquire_token_with_device_code(resource, code, client_id)
 
-    elif username and password:
-        out = context.acquire_token_with_username_password(resource, username,
-                                                           password, client_id)
-    elif client_id and client_secret:
-        out = context.acquire_token_with_client_credentials(resource, client_id,
-                                                            client_secret)
-        # for service principal, we store the secret in the credential object for use when refreshing.
-        out.update({'secret': client_secret})
-    else:
-        raise ValueError("No authentication method found for credentials")
+    @retry_decorator_for_auth(retry_policy=retry_policy)
+    def get_token_internal():
+        # Internal function used so as to use retry decorator
+        if require_2fa or (username is None and password is None and client_secret is None):
+            code = context.acquire_user_code(resource, client_id)
+            print(code['message'])
+            out = context.acquire_token_with_device_code(resource, code, client_id)
 
+        elif username and password:
+            out = context.acquire_token_with_username_password(resource, username,
+                                                               password, client_id)
+        elif client_id and client_secret:
+            out = context.acquire_token_with_client_credentials(resource, client_id,
+                                                                client_secret)
+            # for service principal, we store the secret in the credential object for use when refreshing.
+            out.update({'secret': client_secret})
+        else:
+            raise ValueError("No authentication method found for credentials")
+        return out
+
+    out = get_token_internal()
     out.update({'access': out['accessToken'], 'resource': resource,
                 'refresh': out.get('refreshToken', False),
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
@@ -152,7 +159,7 @@ class DataLakeCredential:
     def __init__(self, token):
         self.token = token
 
-    def signed_session(self):
+    def signed_session(self, retry_policy=None):
         # type: () -> requests.Session
         """Create requests session with any required auth headers applied.
 
@@ -160,14 +167,14 @@ class DataLakeCredential:
         """
         session = requests.Session()
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
-            self.refresh_token()
+            self.refresh_token(retry_poliy=retry_policy)
 
         scheme, token = self.token['tokenType'], self.token['access']
         header = "{} {}".format(scheme, token)
         session.headers['Authorization'] = header
         return session
 
-    def refresh_token(self, authority=None):
+    def refresh_token(self, authority=None, retry_policy=None):
         """ Refresh an expired authorization token
 
         Parameters
@@ -183,15 +190,22 @@ class DataLakeCredential:
 
         context = adal.AuthenticationContext(authority +
                                              self.token['tenant'])
-        if self.token.get('secret') and self.token.get('client'):
-            out = context.acquire_token_with_client_credentials(self.token['resource'], self.token['client'],
-                                                                self.token['secret'])
-            out.update({'secret': self.token['secret']})
-        else:
-            out = context.acquire_token_with_refresh_token(self.token['refresh'],
-                                                           client_id=self.token['client'],
-                                                           resource=self.token['resource'])
-            out.update({'refresh': out['refreshToken']})
+
+        @retry_decorator_for_auth(retry_policy=retry_policy)
+        def get_token_internal():
+            # Internal function used so as to use retry decorator
+            if self.token.get('secret') and self.token.get('client'):
+                out = context.acquire_token_with_client_credentials(self.token['resource'],
+                                                                    self.token['client'],
+                                                                    self.token['secret'])
+                out.update({'secret': self.token['secret']})
+            else:
+                out = context.acquire_token_with_refresh_token(self.token['refresh'],
+                                                               client_id=self.token['client'],
+                                                               resource=self.token['resource'])
+            return out
+
+        out = get_token_internal()
         # common items to update
         out.update({'access': out['accessToken'],
                     'time': time.time(), 'tenant': self.token['tenant'],
@@ -257,7 +271,7 @@ class DatalakeRESTInterface:
         # There is a case where the user can opt to exclude an API version, in which case
         # the service itself decides on the API version to use (it's default).
         self.api_version = api_version or None
-        self.head = {'Authorization': token.signed_session().headers['Authorization']}
+        self.head = {'Authorization': token.signed_session(retry_policy=None).headers['Authorization']}
         self.url = 'https://%s.%s/' % (store_name, url_suffix)
         self.webhdfs = 'webhdfs/v1/'
         self.extended_operations = 'webhdfsext/'
@@ -282,8 +296,8 @@ class DatalakeRESTInterface:
             self.local.session = s
         return s
 
-    def _check_token(self):
-        cur_session = self.token.signed_session()
+    def _check_token(self, retry_policy=None):
+        cur_session = self.token.signed_session(retry_policy=retry_policy)
         if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
             self.head = {'Authorization': cur_session.headers['Authorization']}
             self.local.session = None
