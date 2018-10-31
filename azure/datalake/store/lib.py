@@ -167,7 +167,7 @@ class DataLakeCredential:
         """
         session = requests.Session()
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
-            self.refresh_token(retry_poliy=retry_policy)
+            self.refresh_token(retry_policy=retry_policy)
 
         scheme, token = self.token['tokenType'], self.token['access']
         header = "{} {}".format(scheme, token)
