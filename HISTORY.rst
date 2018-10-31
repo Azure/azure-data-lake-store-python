@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.36 (2018-10-31)
++++++++++++++++++++
+* Fixed typo in refresh_token call
+
 0.0.35 (2018-10-29)
 +++++++++++++++++++
 * Added retry for getting tokens
