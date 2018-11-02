@@ -293,12 +293,14 @@ class DatalakeRESTInterface:
             self.local.session = s
         return s
 
-    @retry_decorator_for_auth
-    def _check_token(self):
-        cur_session = self.token.signed_session()
-        if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
-            self.head = {'Authorization': cur_session.headers['Authorization']}
-            self.local.session = None
+    def _check_token(self, retry_policy= None):
+        @retry_decorator_for_auth(retry_policy=retry_policy)
+        def check_token_internal():
+            cur_session = self.token.signed_session()
+            if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
+                self.head = {'Authorization': cur_session.headers['Authorization']}
+                self.local.session = None
+        check_token_internal()
 
     def _log_request(self, method, url, op, path, params, headers, retry_count):
         msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
