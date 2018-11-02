@@ -155,11 +155,13 @@ def auth(tenant_id=None, username=None,
 
     return DataLakeCredential(out)
 
+
 class DataLakeCredential:
+    # Be careful modifying this. DataLakeCredential is a general class in azure, and we have to maintain parity.
     def __init__(self, token):
         self.token = token
 
-    def signed_session(self, retry_policy=None):
+    def signed_session(self):
         # type: () -> requests.Session
         """Create requests session with any required auth headers applied.
 
@@ -167,14 +169,14 @@ class DataLakeCredential:
         """
         session = requests.Session()
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
-            self.refresh_token(retry_policy=retry_policy)
+            self.refresh_token()
 
         scheme, token = self.token['tokenType'], self.token['access']
         header = "{} {}".format(scheme, token)
         session.headers['Authorization'] = header
         return session
 
-    def refresh_token(self, authority=None, retry_policy=None):
+    def refresh_token(self, authority=None):
         """ Refresh an expired authorization token
 
         Parameters
@@ -191,21 +193,15 @@ class DataLakeCredential:
         context = adal.AuthenticationContext(authority +
                                              self.token['tenant'])
 
-        @retry_decorator_for_auth(retry_policy=retry_policy)
-        def get_token_internal():
-            # Internal function used so as to use retry decorator
-            if self.token.get('secret') and self.token.get('client'):
-                out = context.acquire_token_with_client_credentials(self.token['resource'],
-                                                                    self.token['client'],
-                                                                    self.token['secret'])
-                out.update({'secret': self.token['secret']})
-            else:
-                out = context.acquire_token_with_refresh_token(self.token['refresh'],
-                                                               client_id=self.token['client'],
-                                                               resource=self.token['resource'])
-            return out
-
-        out = get_token_internal()
+        if self.token.get('secret') and self.token.get('client'):
+            out = context.acquire_token_with_client_credentials(self.token['resource'],
+                                                                self.token['client'],
+                                                                self.token['secret'])
+            out.update({'secret': self.token['secret']})
+        else:
+            out = context.acquire_token_with_refresh_token(self.token['refresh'],
+                                                           client_id=self.token['client'],
+                                                           resource=self.token['resource'])
         # common items to update
         out.update({'access': out['accessToken'],
                     'time': time.time(), 'tenant': self.token['tenant'],
@@ -271,7 +267,8 @@ class DatalakeRESTInterface:
         # There is a case where the user can opt to exclude an API version, in which case
         # the service itself decides on the API version to use (it's default).
         self.api_version = api_version or None
-        self.head = {'Authorization': token.signed_session(retry_policy=None).headers['Authorization']}
+        self._check_token()  # Retryable method. Will ensure that signed_session token is current
+        self.head = {'Authorization': token.signed_session().headers['Authorization']}
         self.url = 'https://%s.%s/' % (store_name, url_suffix)
         self.webhdfs = 'webhdfs/v1/'
         self.extended_operations = 'webhdfsext/'
@@ -296,8 +293,9 @@ class DatalakeRESTInterface:
             self.local.session = s
         return s
 
-    def _check_token(self, retry_policy=None):
-        cur_session = self.token.signed_session(retry_policy=retry_policy)
+    @retry_decorator_for_auth
+    def _check_token(self):
+        cur_session = self.token.signed_session()
         if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
             self.head = {'Authorization': cur_session.headers['Authorization']}
             self.local.session = None
