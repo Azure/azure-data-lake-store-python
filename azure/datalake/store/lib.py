@@ -135,7 +135,6 @@ def auth(tenant_id=None, username=None,
             code = context.acquire_user_code(resource, client_id)
             print(code['message'])
             out = context.acquire_token_with_device_code(resource, code, client_id)
-
         elif username and password:
             out = context.acquire_token_with_username_password(resource, username,
                                                                password, client_id)
@@ -147,8 +146,8 @@ def auth(tenant_id=None, username=None,
         else:
             raise ValueError("No authentication method found for credentials")
         return out
-
     out = get_token_internal()
+
     out.update({'access': out['accessToken'], 'resource': resource,
                 'refresh': out.get('refreshToken', False),
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
@@ -267,7 +266,8 @@ class DatalakeRESTInterface:
         # There is a case where the user can opt to exclude an API version, in which case
         # the service itself decides on the API version to use (it's default).
         self.api_version = api_version or None
-        self._check_token()  # Retryable method. Will ensure that signed_session token is current
+        self.head = None
+        self._check_token()  # Retryable method. Will ensure that signed_session token is current when we set it on next line
         self.head = {'Authorization': token.signed_session().headers['Authorization']}
         self.url = 'https://%s.%s/' % (store_name, url_suffix)
         self.webhdfs = 'webhdfs/v1/'
