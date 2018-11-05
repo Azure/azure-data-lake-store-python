@@ -29,7 +29,7 @@ from .exceptions import FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
 from .enums import ExpiryOptionType
-from .retry import ExponentialRetryPolicy
+from .retry import ExponentialRetryPolicy, NoRetryPolicy
 
 if sys.version_info >= (3, 4):
     import pathlib
@@ -548,7 +548,8 @@ class AzureDLFileSystem(object):
         self.azure.call('MSCONCAT', outfile.as_posix(),
                         data=bytearray(json.dumps(sources,separators=(',', ':')), encoding="utf-8"),
                         deleteSourceDirectory=delete,
-                        headers={'Content-Type': "application/json"})
+                        headers={'Content-Type': "application/json"}, retry_policy= NoRetryPolicy)
+                        )
         self.invalidate_cache(outfile)
 
     merge = concat
