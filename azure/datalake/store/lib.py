@@ -246,7 +246,7 @@ class DatalakeRESTInterface:
     }
 
     def __init__(self, store_name=default_store, token=None,
-                 url_suffix=default_adls_suffix, api_version='2016-11-01', **kwargs):
+                 url_suffix=default_adls_suffix, api_version='2018-05-01', **kwargs):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
         url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
@@ -381,7 +381,7 @@ class DatalakeRESTInterface:
             url = self.url + self.extended_operations
         else:
             url = self.url + self.webhdfs
-<<<<<<< HEAD
+
         url += urllib.quote(path)
 
         retry_count = -1
@@ -399,6 +399,7 @@ class DatalakeRESTInterface:
                                             retry_count,
                                             op,
                                             path,
+                                            headers,
                                             **kwargs)
             except requests.exceptions.RequestException as e:
                 last_exception = e
@@ -410,20 +411,7 @@ class DatalakeRESTInterface:
 
         if not request_successful and last_exception is not None:
             raise DatalakeRESTException('HTTP error: ' + repr(last_exception))
-        
-=======
-        url += path
-        try:
-            request_headers = self.head.copy()
-            request_headers.update(headers)
-            request_headers['x-ms-client-request-id'] = str(uuid.uuid1())
-            request_headers['User-Agent'] = self.user_agent
-            self._log_request(method, url, op, path, kwargs, request_headers)
-            r = func(url, params=params, headers=request_headers, data=data, stream=stream)
-        except requests.exceptions.RequestException as e:
-            raise DatalakeRESTException('HTTP error: ' + repr(e))
 
->>>>>>> application/json content-type required for json body in requests
         exception_log_level = logging.ERROR
         if expected_error_code and response.status_code == expected_error_code:
             logger.log(logging.DEBUG, 'Error code: {} was an expected potential error from the caller. Logging the exception to the debug stream'.format(response.status_code))
@@ -463,13 +451,14 @@ class DatalakeRESTInterface:
             return True
         return False
 
-    def __call_once(self, method, url, params, data, stream, request_id, retry_count, op, path='', **kwargs):
+    def __call_once(self, method, url, params, data, stream, request_id, retry_count, op, path='', headers=None, **kwargs):
         func = getattr(self.session, method)
-        headers = self.head.copy()
-        headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
-        headers['User-Agent'] = self.user_agent
-        self._log_request(method, url, op, urllib.quote(path), kwargs, headers, retry_count)
-        return func(url, params=params, headers=headers, data=data, stream=stream)
+        request_headers = self.head.copy()
+        request_headers.update(headers)
+        request_headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
+        request_headers['User-Agent'] = self.user_agent
+        self._log_request(method, url, op, urllib.quote(path), kwargs, request_headers, retry_count)
+        return func(url, params=params, headers=request_headers, data=data, stream=stream)
 
     def __getstate__(self):
         state = self.__dict__.copy()
