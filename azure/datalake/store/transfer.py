@@ -484,6 +484,17 @@ class ADLTransferClient(object):
         return dict(c)
 
     def run(self, nthreads=None, monitor=True, before_start=None):
+        def set_thread_count(threads):
+            import requests
+            threads = 2
+            adapter = requests.adapters.HTTPAdapter(
+                pool_connections=threads,
+                pool_maxsize=threads)
+            self._adlfs.azure.local.session.mount(self._adlfs.azure.url, adapter)
+            print(self._adlfs.azure.local.session)
+
+
+        #set_thread_count(nthreads or self._nthreads)
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
         self._nthreads = nthreads or self._nthreads
