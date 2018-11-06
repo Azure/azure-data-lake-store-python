@@ -6,7 +6,8 @@
 # license information.
 # --------------------------------------------------------------------------
 
-__version__ = "0.0.35"
+__version__ = "0.0.37"
+
 
 
 from .core import AzureDLFileSystem

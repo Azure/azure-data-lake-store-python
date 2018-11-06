@@ -86,9 +86,9 @@ def retry_decorator_for_auth(retry_policy = None):
         @wraps(func)
         def f_retry(*args, **kwargs):
             retry_count = -1
-            last_exception = None
-            out = None
+
             while True:
+                last_exception = None
                 retry_count += 1
                 try:
                     out = func(*args, **kwargs)
@@ -105,7 +105,7 @@ def retry_decorator_for_auth(retry_policy = None):
                 request_successful = last_exception is None or response.status_code == 401  # 401 = Invalid credentials
                 if request_successful or not retry_policy.should_retry(response, last_exception, retry_count):
                     break
-            if out is None:
+            if last_exception is not None:
                 raise last_exception
             return out
 

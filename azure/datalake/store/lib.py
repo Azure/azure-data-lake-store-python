@@ -155,7 +155,9 @@ def auth(tenant_id=None, username=None,
 
     return DataLakeCredential(out)
 
+
 class DataLakeCredential:
+    # Be careful modifying this. DataLakeCredential is a general class in azure, and we have to maintain parity.
     def __init__(self, token):
         self.token = token
 
@@ -191,21 +193,15 @@ class DataLakeCredential:
         context = adal.AuthenticationContext(authority +
                                              self.token['tenant'])
 
-        @retry_decorator_for_auth(retry_policy=retry_policy)
-        def get_token_internal():
-            # Internal function used so as to use retry decorator
-            if self.token.get('secret') and self.token.get('client'):
-                out = context.acquire_token_with_client_credentials(self.token['resource'],
-                                                                    self.token['client'],
-                                                                    self.token['secret'])
-                out.update({'secret': self.token['secret']})
-            else:
-                out = context.acquire_token_with_refresh_token(self.token['refresh'],
-                                                               client_id=self.token['client'],
-                                                               resource=self.token['resource'])
-            return out
-
-        out = get_token_internal()
+        if self.token.get('secret') and self.token.get('client'):
+            out = context.acquire_token_with_client_credentials(self.token['resource'],
+                                                                self.token['client'],
+                                                                self.token['secret'])
+            out.update({'secret': self.token['secret']})
+        else:
+            out = context.acquire_token_with_refresh_token(self.token['refresh'],
+                                                           client_id=self.token['client'],
+                                                           resource=self.token['resource'])
         # common items to update
         out.update({'access': out['accessToken'],
                     'time': time.time(), 'tenant': self.token['tenant'],
@@ -271,7 +267,9 @@ class DatalakeRESTInterface:
         # There is a case where the user can opt to exclude an API version, in which case
         # the service itself decides on the API version to use (it's default).
         self.api_version = api_version or None
-        self.head = {'Authorization': token.signed_session(retry_policy=None).headers['Authorization']}
+        self.head = None
+        self._check_token()  # Retryable method. Will ensure that signed_session token is current when we set it on next line
+        self.head = {'Authorization': token.signed_session().headers['Authorization']}
         self.url = 'https://%s.%s/' % (store_name, url_suffix)
         self.webhdfs = 'webhdfs/v1/'
         self.extended_operations = 'webhdfsext/'
@@ -296,11 +294,15 @@ class DatalakeRESTInterface:
             self.local.session = s
         return s
 
-    def _check_token(self, retry_policy=None):
-        cur_session = self.token.signed_session(retry_policy=retry_policy)
-        if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
-            self.head = {'Authorization': cur_session.headers['Authorization']}
-            self.local.session = None
+
+    def _check_token(self, retry_policy= None):
+        @retry_decorator_for_auth(retry_policy=retry_policy)
+        def check_token_internal():
+            cur_session = self.token.signed_session()
+            if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
+                self.head = {'Authorization': cur_session.headers['Authorization']}
+                self.local.session = None
+        check_token_internal()
 
     def _log_request(self, method, url, op, path, params, headers, retry_count):
         msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
