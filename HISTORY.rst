@@ -3,6 +3,20 @@
 Release History
 ===============
 
+0.0.37 (2018-11-02)
++++++++++++++++++++
+* Reverted some changes introduced in 0.0.35 that didn't work with other tokens
+
+0.0.36 (2018-10-31)
++++++++++++++++++++
+* Fixed typo in refresh_token call
+
+0.0.35 (2018-10-29)
++++++++++++++++++++
+* Added retry for getting tokens
+* Added requests>=2.20 because of CVE 2018-18074
+* Fixed test parameters and updated test recordings
+
 0.0.34 (2018-10-15)
 +++++++++++++++++++
 * Fixed concat issue with plus(or other symbols) in filename
