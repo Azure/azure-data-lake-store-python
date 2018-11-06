@@ -86,7 +86,6 @@ def retry_decorator_for_auth(retry_policy = None):
         @wraps(func)
         def f_retry(*args, **kwargs):
             retry_count = -1
-
             while True:
                 last_exception = None
                 retry_count += 1
@@ -108,7 +107,6 @@ def retry_decorator_for_auth(retry_policy = None):
             if last_exception is not None:
                 raise last_exception
             return out
-
         return f_retry
 
     return deco_retry

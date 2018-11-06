@@ -135,7 +135,6 @@ def auth(tenant_id=None, username=None,
             code = context.acquire_user_code(resource, client_id)
             print(code['message'])
             out = context.acquire_token_with_device_code(resource, code, client_id)
-
         elif username and password:
             out = context.acquire_token_with_username_password(resource, username,
                                                                password, client_id)
@@ -147,8 +146,8 @@ def auth(tenant_id=None, username=None,
         else:
             raise ValueError("No authentication method found for credentials")
         return out
-
     out = get_token_internal()
+
     out.update({'access': out['accessToken'], 'resource': resource,
                 'refresh': out.get('refreshToken', False),
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id})
@@ -161,7 +160,7 @@ class DataLakeCredential:
     def __init__(self, token):
         self.token = token
 
-    def signed_session(self, retry_policy=None):
+    def signed_session(self):
         # type: () -> requests.Session
         """Create requests session with any required auth headers applied.
 
@@ -169,14 +168,14 @@ class DataLakeCredential:
         """
         session = requests.Session()
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
-            self.refresh_token(retry_poliy=retry_policy)
+            self.refresh_token()
 
         scheme, token = self.token['tokenType'], self.token['access']
         header = "{} {}".format(scheme, token)
         session.headers['Authorization'] = header
         return session
 
-    def refresh_token(self, authority=None, retry_policy=None):
+    def refresh_token(self, authority=None):
         """ Refresh an expired authorization token
 
         Parameters
@@ -293,7 +292,6 @@ class DatalakeRESTInterface:
             s.mount(self.url, adapter)
             self.local.session = s
         return s
-
 
     def _check_token(self, retry_policy= None):
         @retry_decorator_for_auth(retry_policy=retry_policy)
