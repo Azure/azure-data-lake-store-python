@@ -14,6 +14,8 @@ import datetime
 from azure.datalake.store import utils
 from azure.datalake.store.exceptions import PermissionError, FileNotFoundError
 from tests.testing import azure, second_azure, azure_teardown, my_vcr, posix, tmpfile, working_dir, create_files
+from tests.settings import AZURE_ACL_TEST_APPID
+
 test_dir = working_dir()
 
 a = posix(test_dir / 'a')
@@ -1171,6 +1173,57 @@ def test_chown(azure):
 @my_vcr.use_cassette
 def test_acl_management(azure):
     pass
+
+
+@my_vcr.use_cassette
+def test_modify_acl_entries(azure):
+    with azure_teardown(azure):
+        acluser = AZURE_ACL_TEST_APPID
+        azure.touch(a)
+
+        permission = "---"
+        azure.modify_acl_entries(a, acl_spec="user:"+acluser+":"+permission)
+        current_acl = azure.get_acl_status(a)
+        aclspec = [s for s in current_acl['entries'] if acluser in s][0]
+        assert aclspec.split(':')[-1] == permission
+
+        permission = "rwx"
+        azure.modify_acl_entries(a, acl_spec="user:" + acluser + ":" + permission)
+        current_acl = azure.get_acl_status(a)
+        aclspec = [s for s in current_acl['entries'] if acluser in s][0]
+        assert aclspec.split(':')[-1] == permission
+
+
+@my_vcr.use_cassette
+def test_remove_acl_entries(azure):
+    with azure_teardown(azure):
+        acluser = AZURE_ACL_TEST_APPID
+        azure.touch(a)
+
+        permission = "rwx"
+        azure.modify_acl_entries(a, acl_spec="user:"+acluser+":"+permission)
+        current_acl = azure.get_acl_status(a)
+        aclspec = [s for s in current_acl['entries'] if acluser in s]
+        assert aclspec != []
+
+        azure.remove_acl_entries(a, acl_spec="user:" + acluser)
+        current_acl = azure.get_acl_status(a)
+        aclspec = [s for s in current_acl['entries'] if acluser in s]
+        assert aclspec == []
+
+@my_vcr.use_cassette
+def test_set_acl(azure):
+    with azure_teardown(azure):
+        acluser = AZURE_ACL_TEST_APPID
+        azure.touch(a)
+        set_acl_base ="user::rwx,group::rwx,other::---,"
+
+        permission = "rwx"
+        azure.set_acl(a, acl_spec=set_acl_base + "user:"+acluser+":"+permission)
+        current_acl = azure.get_acl_status(a)
+        aclspec = [s for s in current_acl['entries'] if acluser in s][0]
+        assert len(current_acl['entries']) == 5
+        assert aclspec.split(':')[-1] == permission
 
 @my_vcr.use_cassette
 def test_set_expiry(azure):

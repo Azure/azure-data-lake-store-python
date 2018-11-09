@@ -11,6 +11,7 @@ from hashlib import md5
 import os
 import platform
 import sys
+import threading
 
 PY2 = sys.version_info.major == 2
 
@@ -158,3 +159,38 @@ def clamp(n, smallest, largest):
     32
     """
     return max(smallest, min(n, largest))
+
+
+class CountUpDownLatch:
+    """CountUpDownLatch provides a thread safe implementation of Up Down latch
+    """
+    def __init__(self):
+        self.lock = threading.Condition()
+        self.val = 0
+        self.total = 0
+
+    def increment(self):
+        self.lock.acquire()
+        self.val += 1
+        self.total += 1
+        self.lock.release()
+
+    def decrement(self):
+        self.lock.acquire()
+        self.val -= 1
+        if self.val <= 0:
+            self.lock.notifyAll()
+        self.lock.release()
+
+    def total_processed(self):
+        self.lock.acquire()
+        temp = self.total
+        self.lock.release()
+        return temp
+
+    def is_zero(self):
+        self.lock.acquire()
+        while self.val > 0:
+            self.lock.wait()
+        self.lock.release()
+        return True
