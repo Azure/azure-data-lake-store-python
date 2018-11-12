@@ -485,7 +485,8 @@ class ADLTransferClient(object):
 
 
     def run(self, nthreads=None, monitor=True, before_start=None):
-        self.set_connection_count(nthreads or self._nthreads)
+        #self.set_connection_count(nthreads or self._nthreads)
+
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
         self._nthreads = nthreads or self._nthreads

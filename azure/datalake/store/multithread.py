@@ -298,7 +298,7 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
             fout.seek(start)
             while start < offset+size:
                 with closing(_fetch_range(adlfs.azure, src, start=start,
-                                          end=min(start+blocksize, offset+size), stream=True, retry_policy=retry_policy), filesessionid=filesessionid) as response:
+                                          end=min(start+blocksize, offset+size), stream=True, retry_policy=retry_policy, filesessionid=filesessionid)) as response:
                     chunk = response.content
                     if shutdown_event and shutdown_event.is_set():
                         return total_bytes_downloaded, None
