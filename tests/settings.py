@@ -19,6 +19,7 @@ TENANT_ID = fake_settings.TENANT_ID
 SUBSCRIPTION_ID = fake_settings.SUBSCRIPTION_ID
 RESOURCE_GROUP_NAME = fake_settings.RESOURCE_GROUP_NAME
 RECORD_MODE = os.environ.get('RECORD_MODE', 'all').lower()
+AZURE_ACL_TEST_APPID = os.environ.get('AZURE_ACL_TEST_APPID')
 CLIENT_ID = os.environ['azure_service_principal']
 '''
 RECORD_MODE = os.environ.get('RECORD_MODE', 'none').lower()
