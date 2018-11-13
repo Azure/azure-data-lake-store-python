@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.38 (2018-11-12)
++++++++++++++++++++
+* Added support for recursive acl functions
+* Fixed bug due to missing filesessionid in get_chunk
+
 0.0.37 (2018-11-02)
 +++++++++++++++++++
 * Reverted some changes introduced in 0.0.35 that didn't work with other tokens
