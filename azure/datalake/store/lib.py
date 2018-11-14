@@ -66,7 +66,7 @@ MAX_CONTENT_LENGTH = 2**16
 # This is the maximum number of active pool connections
 # that are supported during a single operation (such as upload or download of a file).
 # This ensures that no connections are prematurely evicted, which has negative performance implications.
-MAX_POOL_CONNECTIONS = 1024
+MAX_POOL_CONNECTIONS = 2
 
 # TODO: a breaking change should be made to add a new parameter specific for service_principal_app_id
 # instead of overloading client_id, which is also used by other login methods to indicate what application
@@ -284,14 +284,15 @@ class DatalakeRESTInterface:
 
     @property
     def session(self):
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=MAX_POOL_CONNECTIONS,
+            pool_maxsize=MAX_POOL_CONNECTIONS)
+
         try:
             s = self.local.session
         except AttributeError:
             s = None
         if not s:
-            adapter = requests.adapters.HTTPAdapter(
-                pool_connections=MAX_POOL_CONNECTIONS,
-                pool_maxsize=MAX_POOL_CONNECTIONS)
             s = requests.Session()
             s.mount(self.url, adapter)
             self.local.session = s

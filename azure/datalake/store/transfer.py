@@ -480,20 +480,13 @@ class ADLTransferClient(object):
     @property
     def status(self):
         c = sum([Counter([c.state for c in f.chunks]) for f in
-                 self.progress], Counter())
+                 self.progress], Counter())     
         return dict(c)
 
-    def run(self, nthreads=None, monitor=True, before_start=None):
-        def set_thread_count(threads):
-            import requests
-            threads = 2
-            adapter = requests.adapters.HTTPAdapter(
-                pool_connections=threads,
-                pool_maxsize=threads)
-            self._adlfs.azure.local.session.mount(self._adlfs.azure.url, adapter)
-            print(self._adlfs.azure.local.session)
 
-        #set_thread_count(2)        #set_thread_count(nthreads or self._nthreads)
+
+    def run(self, nthreads=None, monitor=True, before_start=None):
+        #self.set_connection_count(nthreads or self._nthreads)
         self._pool = ThreadPoolExecutor(self._nthreads)
         self._shutdown_event = threading.Event()
         self._nthreads = nthreads or self._nthreads
@@ -591,3 +584,10 @@ class ADLTransferClient(object):
     def save(self, keep=True):
         if self._parent is not None:
             self._parent.save(keep=keep)
+
+    def set_connection_count(self, threads):
+        import requests
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=threads,
+            pool_maxsize=threads)
+        self._adlfs.azure.local.session.mount(self._adlfs.azure.url, adapter)

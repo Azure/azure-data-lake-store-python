@@ -19,15 +19,16 @@ import glob
 import logging
 import os
 import pickle
-import uuid
 import time
 import errno
+import uuid
 
 from io import open
 from .core import AzureDLPath, _fetch_range
 from .exceptions import FileExistsError, FileNotFoundError
 from .transfer import ADLTransferClient
 from .utils import datadir, read_block, tokenize
+from .retry import ExponentialRetryPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -285,7 +286,6 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
     """
     err = None
     total_bytes_downloaded = 0
-    from azure.datalake.store.retry import ExponentialRetryPolicy
     retry_policy = ExponentialRetryPolicy(max_retries=retries, exponential_retry_interval=delay,
                                           exponential_factor=backoff)
     filesessionid = str(uuid.uuid4())
