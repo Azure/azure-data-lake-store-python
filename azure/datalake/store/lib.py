@@ -166,7 +166,11 @@ class DataLakeCredential:
 
         :rtype: requests.Session
         """
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=MAX_POOL_CONNECTIONS,
+            pool_maxsize=MAX_POOL_CONNECTIONS)
         session = requests.Session()
+        session.mount('https:/', adapter)
         if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
             self.refresh_token()
 
@@ -388,8 +392,8 @@ class DatalakeRESTInterface:
         params = {'OP': op}
         if self.api_version:
             params['api-version'] = self.api_version
-
         params.update(kwargs)
+        print(params)
 
         if is_extended:
             url = self.url + self.extended_operations

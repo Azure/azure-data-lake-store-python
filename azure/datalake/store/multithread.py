@@ -19,6 +19,7 @@ import glob
 import logging
 import os
 import pickle
+import uuid
 import time
 import errno
 
@@ -287,6 +288,7 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
     from azure.datalake.store.retry import ExponentialRetryPolicy
     retry_policy = ExponentialRetryPolicy(max_retries=retries, exponential_retry_interval=delay,
                                           exponential_factor=backoff)
+    filesessionid = str(uuid.uuid4())
     try:
         nbytes = 0
         start = offset
@@ -295,7 +297,7 @@ def get_chunk(adlfs, src, dst, offset, size, buffersize, blocksize,
             fout.seek(start)
             while start < offset+size:
                 with closing(_fetch_range(adlfs.azure, src, start=start,
-                                          end=min(start+blocksize, offset+size), stream=True, retry_policy=retry_policy)) as response:
+                                          end=min(start+blocksize, offset+size), stream=True, retry_policy=retry_policy, filesessionid=filesessionid)) as response:
                     chunk = response.content
                     if shutdown_event and shutdown_event.is_set():
                         return total_bytes_downloaded, None
