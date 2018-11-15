@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.39 (2018-11-14)
++++++++++++++++++++
+* Fix for Chunked Decoding exception thrown while reading response.content
+
 0.0.38 (2018-11-12)
 +++++++++++++++++++
 * Added support for recursive acl functions
