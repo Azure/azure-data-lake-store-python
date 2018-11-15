@@ -414,6 +414,8 @@ class DatalakeRESTInterface:
                                             path=path,
                                             headers=headers,
                                             **kwargs)
+                # Trigger download here so any errors can be retried. response.content is cached for future use.
+                temp_download = response.content
             except requests.exceptions.RequestException as e:
                 last_exception = e
                 response = None
