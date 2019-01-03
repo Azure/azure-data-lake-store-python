@@ -53,12 +53,12 @@ setup(name='azure-datalake-store',
       packages=find_packages(exclude=['tests',
                                       # Exclude packages that will be covered by PEP420 or nspkg
                                       'azure',
-                                      'azure.datalake.store',
                                       ]),
       install_requires=[
           'cffi',
           'adal>=0.4.2',
-          'requests>=2.20.0'
+          'requests>=2.20.0',
+          'azure-common~=1.1'
       ],
       extras_require={
           ":python_version<'3.4'": ['pathlib2'],
