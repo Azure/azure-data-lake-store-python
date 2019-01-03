@@ -865,6 +865,8 @@ class AzureDLFile(object):
             data_read = self.cache[self.loc - self.start:
                              min(self.loc - self.start + length, self.end - self.start)]
             out += data_read
+            if len(data_read) == 0: # Check to catch possible server errors. Ideally shouldn't happen.
+                break
             self.loc += len(data_read)
             length -= len(data_read)
             if self.loc >= self.size:
