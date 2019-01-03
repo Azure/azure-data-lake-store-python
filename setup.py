@@ -5,11 +5,17 @@ from setuptools import find_packages, setup
 from io import open
 import re
 try:
-    from azure_bdist_wheel import cmdclass
+    import azure
+    try:
+        ver = azure.__version__
+        raise Exception(
+            'This package is incompatible with azure=={}. '.format(ver) +
+            'Uninstall it with "pip uninstall azure".'
+        )
+    except AttributeError:
+        pass
 except ImportError:
-    from distutils import log as logger
-    logger.warn("Wheel is not available, disabling bdist_wheel hook")
-    cmdclass = {}
+    pass
 
 with open('README.rst', encoding='utf-8') as f:
     readme = f.read()
@@ -44,7 +50,11 @@ setup(name='azure-datalake-store',
           'Programming Language :: Python :: 3.6',
           'License :: OSI Approved :: MIT License',
       ],
-      packages=find_packages(exclude=['tests']),
+      packages=find_packages(exclude=['tests',
+                                      # Exclude packages that will be covered by PEP420 or nspkg
+                                      'azure',
+                                      'azure.datalake.store',
+                                      ]),
       install_requires=[
           'cffi',
           'adal>=0.4.2',
@@ -53,8 +63,8 @@ setup(name='azure-datalake-store',
       extras_require={
           ":python_version<'3.4'": ['pathlib2'],
           ":python_version<='2.7'": ['futures'],
+          ":python_version<'3.0'": ['azure-mgmt-nspkg'],
       },
       long_description=readme + '\n\n' + history,
       zip_safe=False,
-      cmdclass=cmdclass
 )
