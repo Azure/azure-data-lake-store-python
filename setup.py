@@ -1,21 +1,8 @@
 #!/usr/bin/env python
 
-import os
 from setuptools import find_packages, setup
 from io import open
 import re
-try:
-    import azure
-    try:
-        ver = azure.__version__
-        raise Exception(
-            'This package is incompatible with azure=={}. '.format(ver) +
-            'Uninstall it with "pip uninstall azure".'
-        )
-    except AttributeError:
-        pass
-except ImportError:
-    pass
 
 with open('README.rst', encoding='utf-8') as f:
     readme = f.read()
