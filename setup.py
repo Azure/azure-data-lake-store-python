@@ -45,12 +45,11 @@ setup(name='azure-datalake-store',
           'cffi',
           'adal>=0.4.2',
           'requests>=2.20.0',
-          'azure-common~=1.1'
       ],
       extras_require={
           ":python_version<'3.4'": ['pathlib2'],
           ":python_version<='2.7'": ['futures'],
-          ":python_version<'3.0'": ['azure-mgmt-nspkg'],
+          ":python_version<'3.0'": ['azure-nspkg'],
       },
       long_description=readme + '\n\n' + history,
       zip_safe=False,
