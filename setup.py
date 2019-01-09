@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 
-import os
 from setuptools import find_packages, setup
 from io import open
 import re
-try:
-    from azure_bdist_wheel import cmdclass
-except ImportError:
-    from distutils import log as logger
-    logger.warn("Wheel is not available, disabling bdist_wheel hook")
-    cmdclass = {}
 
 with open('README.rst', encoding='utf-8') as f:
     readme = f.read()
@@ -44,17 +37,20 @@ setup(name='azure-datalake-store',
           'Programming Language :: Python :: 3.6',
           'License :: OSI Approved :: MIT License',
       ],
-      packages=find_packages(exclude=['tests']),
+      packages=find_packages(exclude=['tests',
+                                      # Exclude packages that will be covered by PEP420 or nspkg
+                                      'azure',
+                                      ]),
       install_requires=[
           'cffi',
           'adal>=0.4.2',
-          'requests>=2.20.0'
+          'requests>=2.20.0',
       ],
       extras_require={
           ":python_version<'3.4'": ['pathlib2'],
           ":python_version<='2.7'": ['futures'],
+          ":python_version<'3.0'": ['azure-nspkg'],
       },
       long_description=readme + '\n\n' + history,
       zip_safe=False,
-      cmdclass=cmdclass
 )

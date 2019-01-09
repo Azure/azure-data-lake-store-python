@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.40 (2019-01-08)
++++++++++++++++++++
+* Fix zero length read
+* Remove dependence on custom wheel and conform to PEP 420
+
 0.0.39 (2018-11-14)
 +++++++++++++++++++
 * Fix for Chunked Decoding exception thrown while reading response.content
