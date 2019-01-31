@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.41 (2019-01-31)
++++++++++++++++++++
+* Remove GetContentSummary api call
+* Move check_token() under retry block
+
 0.0.40 (2019-01-08)
 +++++++++++++++++++
 * Fix zero length read
