@@ -107,6 +107,7 @@ def auth(tenant_id=None, username=None,
     if not authority:
         authority = 'https://login.microsoftonline.com/'
 
+
     if not tenant_id:
         tenant_id = os.environ.get('azure_tenant_id', "common")
 
@@ -255,7 +256,7 @@ class DatalakeRESTInterface:
     }
 
     def __init__(self, store_name=default_store, token=None,
-                 url_suffix=default_adls_suffix, api_version='2018-05-01', **kwargs):
+                 url_suffix=default_adls_suffix, api_version='2018-09-01', **kwargs):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
         url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
@@ -373,7 +374,6 @@ class DatalakeRESTInterface:
         retry_policy = ExponentialRetryPolicy() if retry_policy is None else retry_policy
         if op not in self.ends:
             raise ValueError("No such op: %s", op)
-        self._check_token()
         method, required, allowed = self.ends[op]
         allowed.add('api-version')
         data = kwargs.pop('data', b'')
@@ -402,6 +402,7 @@ class DatalakeRESTInterface:
         while True:
             retry_count += 1
             last_exception = None
+            self._check_token()
             try:
                 response = self.__call_once(method=method,
                                             url=url,
