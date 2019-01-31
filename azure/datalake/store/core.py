@@ -195,7 +195,7 @@ class AzureDLFileSystem(object):
 
         raise FileNotFoundError(path)
 
-    def _walk(self, path, invalidate_cache=True):
+    def _walk(self, path, invalidate_cache=True, include_dirs=False):
         fi = list(self._ls(path, invalidate_cache))
         self._emptyDirs = []
         for apath in fi:
@@ -205,7 +205,11 @@ class AzureDLFileSystem(object):
                     self._emptyDirs.append(apath)
                 else:
                     fi.extend(sub_elements)
-        return [f for f in fi if f['type'] == 'FILE']
+        if include_dirs:
+            return fi
+        else:
+            return [f for f in fi if f['type'] == 'FILE']
+
 
     def _empty_dirs_to_add(self):
         """ Returns directories found empty during walk. Only for internal use"""
@@ -240,9 +244,31 @@ class AzureDLFileSystem(object):
             return {p['name']: p['length'] for p in files}
 
     def df(self, path):
-        """ Resource summary of path """
+        """ Resource summary of path
+         Parameters
+        ----------
+        path: str
+            Location
+        """
         path = AzureDLPath(path).trim()
-        return self.azure.call('GETCONTENTSUMMARY', path.as_posix())['ContentSummary']
+        current_path_info = self.info(path, invalidate_cache=False)
+        if current_path_info['type'] == 'FILE':
+            return {'directoryCount': 0, 'fileCount': 1, 'length': current_path_info['length'], 'quota': -1,
+                    'spaceConsumed': current_path_info['length'], 'spaceQuota': -1}
+        else:
+            all_files_and_dirs = self._walk(path, include_dirs=True)
+            dir_count = 1                   # 1 as walk doesn't return current directory
+            length = file_count = 0
+            for item in all_files_and_dirs:
+                length += item['length']
+                if item['type'] == 'FILE':
+                    file_count += 1
+                else:
+                    dir_count += 1
+
+            return {'directoryCount': dir_count, 'fileCount': file_count, 'length': length, 'quota': -1,
+                    'spaceConsumed': length, 'spaceQuota': -1}
+
 
     def chmod(self, path, mod):
         """  Change access mode of path
