@@ -164,6 +164,9 @@ class ADLTransferClient(object):
         Callback for progress with signature function(current, total) where
         current is the number of bytes transferred so far, and total is the
         size of the blob, or None if the total size is unknown.
+    timeout: int (0)
+        Default value 0 means infinite timeout. Otherwise time in seconds before the
+        process will stop and raise an exception if  transfer is still in progress
 
     Temporary Files
     ---------------
@@ -233,7 +236,7 @@ class ADLTransferClient(object):
                  chunksize=2**28, blocksize=2**25, chunked=True,
                  unique_temporary=True, delimiter=None,
                  parent=None, verbose=False, buffersize=2**25,
-                 progress_callback=None):
+                 progress_callback=None, timeout=0):
         self._adlfs = adlfs
         self._parent = parent
         self._transfer = transfer
@@ -247,6 +250,7 @@ class ADLTransferClient(object):
         self._unique_str = uuid.uuid4().hex
         self._progress_callback=progress_callback
         self._progress_lock = threading.Lock()
+        self._timeout = timeout
         self.verbose = verbose
 
         # Internal state tracking files/chunks/futures
@@ -496,7 +500,7 @@ class ADLTransferClient(object):
             self._start(src, dst)
 
         if monitor:
-            self.monitor()
+            self.monitor(timeout=self._timeout)
             has_errors = False
             error_list = []
             for f in self.progress:
