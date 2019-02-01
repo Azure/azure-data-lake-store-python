@@ -7,6 +7,8 @@ Release History
 +++++++++++++++++++
 * Remove GetContentSummary api call
 * Move check_token() under retry block
+* Expose timeout parameter for AdlDownloader and AdlUploader
+* Raise an exception instead of silently break for zero length reads
 
 0.0.40 (2019-01-08)
 +++++++++++++++++++
