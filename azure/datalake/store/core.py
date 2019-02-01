@@ -196,19 +196,29 @@ class AzureDLFileSystem(object):
         raise FileNotFoundError(path)
 
     def _walk(self, path, invalidate_cache=True, include_dirs=False):
-        fi = list(self._ls(path, invalidate_cache))
+        ret = list(self._ls(path, invalidate_cache))
         self._emptyDirs = []
-        for apath in fi:
-            if apath['type'] == 'DIRECTORY':
-                sub_elements = self._ls(apath['name'], invalidate_cache)
+        current_subdirs = [f for f in ret if f['type'] != 'FILE']
+        while current_subdirs:
+            dirs_below_current_level = []
+            for apath in current_subdirs:
+                try:
+                    sub_elements = self._ls(apath['name'], invalidate_cache)
+                except FileNotFoundError:
+                    # Folder may have been deleted while walk is going on. Infrequent so we can take the linear hit
+                    ret.remove(apath)
+                    continue
                 if not sub_elements:
                     self._emptyDirs.append(apath)
                 else:
-                    fi.extend(sub_elements)
+                    ret.extend(sub_elements)
+                    dirs_below_current_level.extend([f for f in sub_elements if f['type'] != 'FILE'])
+            current_subdirs = dirs_below_current_level
+
         if include_dirs:
-            return fi
+            return ret
         else:
-            return [f for f in fi if f['type'] == 'FILE']
+            return [f for f in ret if f['type'] == 'FILE']
 
 
     def _empty_dirs_to_add(self):
