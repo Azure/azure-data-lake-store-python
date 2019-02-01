@@ -9,6 +9,7 @@ Release History
 * Move check_token() under retry block
 * Expose timeout parameter for AdlDownloader and AdlUploader
 * Raise an exception instead of silently break for zero length reads
+* Updated api-version to 2018-09-01
 
 0.0.40 (2019-01-08)
 +++++++++++++++++++

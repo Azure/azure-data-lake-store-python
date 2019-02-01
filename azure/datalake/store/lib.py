@@ -221,7 +221,7 @@ class DatalakeRESTInterface:
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
-    api_version: str (2018-05-01)
+    api_version: str (2018-09-01)
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
