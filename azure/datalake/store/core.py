@@ -23,7 +23,7 @@ import json
 
 
 # local imports
-from .exceptions import DatalakeBadOffsetException
+from .exceptions import DatalakeBadOffsetException, DatalakeIncompleteTransferException
 from .exceptions import FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
@@ -884,14 +884,18 @@ class AzureDLFile(object):
             length = self.size
         if self.closed:
             raise ValueError('I/O operation on closed file.')
-
+        flag = 0
         out = b""
         while length > 0:
             self._read_blocksize()
             data_read = self.cache[self.loc - self.start:
                              min(self.loc - self.start + length, self.end - self.start)]
             if not data_read:  # Check to catch possible server errors. Ideally shouldn't happen.
-                break
+                flag += 1
+            if flag >= 5:
+                raise DatalakeIncompleteTransferException('Could not read data: {}. '
+                                                          'Repeated zero reads. '
+                                                          'Possible file corruption'.format(self.path))
             out += data_read
             self.loc += len(data_read)
             length -= len(data_read)
