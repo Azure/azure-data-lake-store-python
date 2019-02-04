@@ -23,7 +23,7 @@ import json
 
 
 # local imports
-from .exceptions import DatalakeBadOffsetException
+from .exceptions import DatalakeBadOffsetException, DatalakeIncompleteTransferException
 from .exceptions import FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
@@ -195,17 +195,31 @@ class AzureDLFileSystem(object):
 
         raise FileNotFoundError(path)
 
-    def _walk(self, path, invalidate_cache=True):
-        fi = list(self._ls(path, invalidate_cache))
+    def _walk(self, path, invalidate_cache=True, include_dirs=False):
+        ret = list(self._ls(path, invalidate_cache))
         self._emptyDirs = []
-        for apath in fi:
-            if apath['type'] == 'DIRECTORY':
-                sub_elements = self._ls(apath['name'], invalidate_cache)
+        current_subdirs = [f for f in ret if f['type'] != 'FILE']
+        while current_subdirs:
+            dirs_below_current_level = []
+            for apath in current_subdirs:
+                try:
+                    sub_elements = self._ls(apath['name'], invalidate_cache)
+                except FileNotFoundError:
+                    # Folder may have been deleted while walk is going on. Infrequent so we can take the linear hit
+                    ret.remove(apath)
+                    continue
                 if not sub_elements:
                     self._emptyDirs.append(apath)
                 else:
-                    fi.extend(sub_elements)
-        return [f for f in fi if f['type'] == 'FILE']
+                    ret.extend(sub_elements)
+                    dirs_below_current_level.extend([f for f in sub_elements if f['type'] != 'FILE'])
+            current_subdirs = dirs_below_current_level
+
+        if include_dirs:
+            return ret
+        else:
+            return [f for f in ret if f['type'] == 'FILE']
+
 
     def _empty_dirs_to_add(self):
         """ Returns directories found empty during walk. Only for internal use"""
@@ -240,9 +254,31 @@ class AzureDLFileSystem(object):
             return {p['name']: p['length'] for p in files}
 
     def df(self, path):
-        """ Resource summary of path """
+        """ Resource summary of path
+         Parameters
+        ----------
+        path: str
+            Location
+        """
         path = AzureDLPath(path).trim()
-        return self.azure.call('GETCONTENTSUMMARY', path.as_posix())['ContentSummary']
+        current_path_info = self.info(path, invalidate_cache=False)
+        if current_path_info['type'] == 'FILE':
+            return {'directoryCount': 0, 'fileCount': 1, 'length': current_path_info['length'], 'quota': -1,
+                    'spaceConsumed': current_path_info['length'], 'spaceQuota': -1}
+        else:
+            all_files_and_dirs = self._walk(path, include_dirs=True)
+            dir_count = 1                   # 1 as walk doesn't return current directory
+            length = file_count = 0
+            for item in all_files_and_dirs:
+                length += item['length']
+                if item['type'] == 'FILE':
+                    file_count += 1
+                else:
+                    dir_count += 1
+
+            return {'directoryCount': dir_count, 'fileCount': file_count, 'length': length, 'quota': -1,
+                    'spaceConsumed': length, 'spaceQuota': -1}
+
 
     def chmod(self, path, mod):
         """  Change access mode of path
@@ -858,14 +894,18 @@ class AzureDLFile(object):
             length = self.size
         if self.closed:
             raise ValueError('I/O operation on closed file.')
-
+        flag = 0
         out = b""
         while length > 0:
             self._read_blocksize()
             data_read = self.cache[self.loc - self.start:
                              min(self.loc - self.start + length, self.end - self.start)]
             if not data_read:  # Check to catch possible server errors. Ideally shouldn't happen.
-                break
+                flag += 1
+                if flag >= 5:
+                    raise DatalakeIncompleteTransferException('Could not read data: {}. '
+                                                              'Repeated zero byte reads. '
+                                                              'Possible file corruption'.format(self.path))
             out += data_read
             self.loc += len(data_read)
             length -= len(data_read)

@@ -107,6 +107,7 @@ def auth(tenant_id=None, username=None,
     if not authority:
         authority = 'https://login.microsoftonline.com/'
 
+
     if not tenant_id:
         tenant_id = os.environ.get('azure_tenant_id', "common")
 
@@ -373,7 +374,6 @@ class DatalakeRESTInterface:
         retry_policy = ExponentialRetryPolicy() if retry_policy is None else retry_policy
         if op not in self.ends:
             raise ValueError("No such op: %s", op)
-        self._check_token()
         method, required, allowed = self.ends[op]
         allowed.add('api-version')
         data = kwargs.pop('data', b'')
@@ -402,6 +402,7 @@ class DatalakeRESTInterface:
         while True:
             retry_count += 1
             last_exception = None
+            self._check_token()
             try:
                 response = self.__call_once(method=method,
                                             url=url,

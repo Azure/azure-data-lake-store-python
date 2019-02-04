@@ -79,10 +79,11 @@ def test_chown(capsys, azure, client):
 
 @my_vcr.use_cassette
 def test_df(capsys, azure, client):
-    client.onecmd('df')
-    out = read_stdout(capsys)
-    assert len(out.strip().split('\n')) == 6
-    assert 'quota' in out
+    with setup_file(azure) as _:
+        client.onecmd('df')
+        out = read_stdout(capsys)
+        assert len(out.strip().split('\n')) == 6
+        assert 'quota' in out
 
 
 @my_vcr.use_cassette
