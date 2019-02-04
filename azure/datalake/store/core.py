@@ -902,10 +902,10 @@ class AzureDLFile(object):
                              min(self.loc - self.start + length, self.end - self.start)]
             if not data_read:  # Check to catch possible server errors. Ideally shouldn't happen.
                 flag += 1
-            if flag >= 5:
-                raise DatalakeIncompleteTransferException('Could not read data: {}. '
-                                                          'Repeated zero reads. '
-                                                          'Possible file corruption'.format(self.path))
+                if flag >= 5:
+                    raise DatalakeIncompleteTransferException('Could not read data: {}. '
+                                                              'Repeated zero byte reads. '
+                                                              'Possible file corruption'.format(self.path))
             out += data_read
             self.loc += len(data_read)
             length -= len(data_read)
