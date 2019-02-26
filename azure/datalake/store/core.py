@@ -148,7 +148,7 @@ class AzureDLFileSystem(object):
         List all elements under directory specified with path
         Parameters
         ----------
-        path : string
+        path : str or AzureDLPath
             Path to query
         detail : bool
             Detailed info or not.
@@ -178,7 +178,7 @@ class AzureDLFileSystem(object):
         File information for path
         Parameters
         ----------
-        path : string
+        path : str or AzureDLPath
             Path to query
         invalidate_cache : bool
             Whether to invalidate cache or not
@@ -225,8 +225,10 @@ class AzureDLFileSystem(object):
         Walk a path recursively and returns list of files and dirs(if parameter set)
         Parameters
         ----------
-        path : Path to query
+        path : str or AzureDLPath
+            Path to query
         invalidate_cache : bool
+            Whether to invalidate cache
         include_dirs : bool
             Whether to include dirs in return value
 
@@ -267,7 +269,7 @@ class AzureDLFileSystem(object):
         Get all files below given path
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Path to query
         details : bool
             Whether to include file details
@@ -285,7 +287,7 @@ class AzureDLFileSystem(object):
         Find files (not directories) by glob-matching.
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Path to query
         details : bool
             Whether to include file details
@@ -310,7 +312,7 @@ class AzureDLFileSystem(object):
         Bytes in keys at path
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Path to query
         total : bool
             Return the sum on list
@@ -583,7 +585,7 @@ class AzureDLFileSystem(object):
         Does such a file/directory exist?
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Path to query
         invalidate_cache : bool
             Whether to invalidate cache
@@ -602,7 +604,7 @@ class AzureDLFileSystem(object):
         Return contents of file
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Path to query
         Returns
         -------
@@ -616,7 +618,7 @@ class AzureDLFileSystem(object):
         Return last bytes of file
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Path to query
         size : int
             How many bytes to return
@@ -637,7 +639,7 @@ class AzureDLFileSystem(object):
         Return first bytes of file
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Path to query
         size : int
             How many bytes to return
@@ -654,7 +656,7 @@ class AzureDLFileSystem(object):
         Stream data from file at path to local filename
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             ADL Path to read
         filename : str or Path
             Local file path to write to
@@ -677,7 +679,7 @@ class AzureDLFileSystem(object):
         ----------
         filename : str or Path
             Local file path to read from
-        path : str
+        path : str or AzureDLPath
             ADL Path to write to
         delimiter :
             Optional delimeter for delimiter-ended blocks
@@ -698,7 +700,7 @@ class AzureDLFileSystem(object):
         Make new directory
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Path to create directory
         Returns
         -------
@@ -714,7 +716,7 @@ class AzureDLFileSystem(object):
         Remove empty directory
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Directory  path to remove
         Returns
         -------
@@ -791,7 +793,7 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : string
+        path : str or AzureDLPath
             The location to remove.
         recursive : bool (True)
             Whether to remove also all entries below, i.e., which are returned
@@ -816,7 +818,7 @@ class AzureDLFileSystem(object):
         Remove entry from object file-cache
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Remove the path from object file-cache
         Returns
         -------
@@ -836,7 +838,7 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str
+        path : str or AzureDLPath
             Path of file to create
         Returns
         -------
