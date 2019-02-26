@@ -21,7 +21,6 @@ GLOBAL_EXCEPTION_LOCK = threading.Lock()
 def monitor_exception(exception_queue, process_ids):
     global GLOBAL_EXCEPTION
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
 
     while True:
         try:
@@ -65,7 +64,6 @@ def log_listener_process(queue):
 
 def multi_processor_change_acl(adl, path=None, method_name="", acl_spec="", number_of_sub_process=None):
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
 
     def launch_processes(number_of_processes):
         if number_of_processes is None:
@@ -157,7 +155,6 @@ def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, a
     except AttributeError:
         # Python 2 doesn't have Queue Handler. Default to best effort logging.
         pass
-    logger.setLevel(logging.DEBUG)
 
     try:
         func_table = {"mod_acl": adl.modify_acl_entries, "set_acl": adl.set_acl, "rem_acl": adl.remove_acl_entries}
