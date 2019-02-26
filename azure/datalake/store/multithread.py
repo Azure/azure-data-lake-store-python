@@ -81,6 +81,7 @@ class ADLDownloader(object):
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
     buffersize: int [2**22]
+        Ignored in curret implementation.
         Number of bytes for internal buffer. This block cannot be bigger than
         a chunk and cannot be smaller than a block.
     blocksize: int [2**22]
