@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.42 (2019-02-26)
++++++++++++++++++++
+* Update docstrings
+* Remove logging setlevel to DEBUG for recursive acl operations
+
 0.0.41 (2019-01-31)
 +++++++++++++++++++
 * Remove GetContentSummary api call
