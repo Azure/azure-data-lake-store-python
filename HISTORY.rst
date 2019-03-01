@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.43 (2019-03-01)
++++++++++++++++++++
+* Fix bug in downloader when glob returns a single file
+
 0.0.42 (2019-02-26)
 +++++++++++++++++++
 * Update docstrings
