@@ -214,6 +214,29 @@ def test_download_glob(tempdir, azure):
             os.path.join('a', 'z.txt.inprogress'),
             os.path.join('b', 'z.txt.inprogress')])
 
+@my_vcr.use_cassette
+def test_download_glob_single_file(tempdir, azure):
+    with setup_tree(azure):
+        print("")
+        remote_path = test_dir / 'data/single/single' / '*.txt'
+        down = ADLDownloader(azure, remote_path, tempdir, run=False,
+                             overwrite=True)
+        file_pair_dict = dict(down._file_pairs)
+
+        assert len(file_pair_dict) == 1
+
+        lfiles = [os.path.relpath(f, tempdir) for f in file_pair_dict.keys()]
+        assert sorted(lfiles) == sorted([os.path.join('single.txt.inprogress')])
+
+        remote_path = test_dir / 'data/*/single' / 'single.txt'
+        down = ADLDownloader(azure, remote_path, tempdir, run=False,
+                             overwrite=True)
+        file_pair_dict = dict(down._file_pairs)
+        assert len(file_pair_dict) == 1
+
+        lfiles = [os.path.relpath(f, tempdir) for f in file_pair_dict.keys()]
+        assert sorted(lfiles) == sorted([os.path.join('single','single' ,'single.txt.inprogress')])
+
 
 @my_vcr.use_cassette
 def test_download_overwrite(tempdir, azure):
