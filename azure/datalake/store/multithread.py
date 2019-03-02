@@ -205,14 +205,14 @@ class ADLDownloader(object):
             path = AzureDLPath(path).trim()
             prefix = path.globless_prefix
             return not path == prefix
+        is_rpath_glob = is_glob_path(self.rpath)
 
-        if is_glob_path(self.rpath):
+        if is_rpath_glob:
             rfiles = self.client._adlfs.glob(self.rpath, details=True, invalidate_cache=True)
         else:
             rfiles = self.client._adlfs.walk(self.rpath, details=True, invalidate_cache=True)
 
-
-        if len(rfiles) == 0:
+        if not rfiles:
             raise ValueError('No files to download')
 
         # If only one file is returned we are not sure whether user specified a dir or a file to download,
@@ -220,7 +220,7 @@ class ADLDownloader(object):
         # If user specified a file in rpath,
         # then we want to download the file into lpath directly and not create another subdir for that.
         # If user specified a dir that happens to contain only one file, we want to create the dir as well under lpath.
-        if len(rfiles) == 1 and not is_glob_path(self.rpath) and self.client._adlfs.info(self.rpath)['type'] == 'FILE':
+        if len(rfiles) == 1 and not is_rpath_glob and self.client._adlfs.info(self.rpath)['type'] == 'FILE':
             if os.path.exists(self.lpath) and os.path.isdir(self.lpath):
                 file_pairs = [(os.path.join(self.lpath, os.path.basename(rfiles[0]['name'] + '.inprogress')),
                                rfiles[0])]
