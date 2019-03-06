@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.44 (2019-03-05)
++++++++++++++++++++
+* Add continuation token to LISTSTATUS api call
+* Update api-version to 2018-09-01
+
 0.0.43 (2019-03-01)
 +++++++++++++++++++
 * Fix bug in downloader when glob returns a single file
