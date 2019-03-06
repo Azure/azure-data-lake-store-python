@@ -221,7 +221,7 @@ class DatalakeRESTInterface:
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
-    api_version: str (2018-05-01)
+    api_version: str (2018-09-01)
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
@@ -256,7 +256,7 @@ class DatalakeRESTInterface:
     }
 
     def __init__(self, store_name=default_store, token=None,
-                 url_suffix=default_adls_suffix, api_version='2018-05-01', **kwargs):
+                 url_suffix=default_adls_suffix, api_version='2018-09-01', **kwargs):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
         url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
