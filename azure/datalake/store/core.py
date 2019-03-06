@@ -53,7 +53,7 @@ class AzureDLFileSystem(object):
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
-    api_version: str (2018-05-01)
+    api_version: str (2018-09-01)
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
@@ -118,14 +118,16 @@ class AzureDLFileSystem(object):
             raise ValueError("Batch size must be strictly greater than 1")
         parms = {'listSize': batch_size}
         ret = []
-        data = [None]
+        continuation_token = "NonEmptyStringSentinel"
 
-        while data:
-            data = self.azure.call('LISTSTATUS', path, **parms)['FileStatuses']['FileStatus']
+        while continuation_token != "":
+            ls_call_result = self.azure.call('LISTSTATUS', path, **parms)
+
+            data = ls_call_result['FileStatuses']['FileStatus']
             ret.extend(data)
-            if len(data) < batch_size:
-                break
-            parms['listAfter'] = ret[-1]['pathSuffix']  # Last path to be used as ListAfter
+
+            continuation_token = ls_call_result['FileStatuses']['continuationToken']
+            parms['listAfter'] = continuation_token  # continuationToken to be used as ListAfter
 
         return ret
 
