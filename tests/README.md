@@ -26,12 +26,11 @@ To record responses for all tests even if previous recordings exist:
 When recording new responses, you will need valid Azure credentials. The following
 environment variables should be defined:
 
-* `azure_username`
-* `azure_password`
-* `azure_data_lake_store_name`
-* `azure_subscription_id`
-* `azure_resource_group_name`
-* `azure_service_principal`
-* `azure_service_principal_secret`
+* `azure_data_lake_store_name` : The data store account name, without any suffix like azuredatalakestore.net
+* `azure_subscription_id`   : Subscription ID for ADLS account
+* `azure_resource_group_name` : Resource group for adls account.
+* `azure_service_principal` : Service principal of app with owner access to account.
+* `azure_service_principal_secret`: Service principal secret with owner access to account.
+* `AZURE_ACL_TEST_APPID ` : Service principal of app with access to account.
 
-Optionally, you may need to define `azure_tenant_id` or `azure_data_lake_store_url_suffix`.
+Optionally, you may need to define `azure_username`, `azure_password`, `azure_tenant_id` or `azure_data_lake_store_url_suffix`.
