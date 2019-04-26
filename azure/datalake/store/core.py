@@ -210,7 +210,6 @@ class AzureDLFileSystem(object):
                     for f in self.dirs[root_as_posix]:
                         if f['name'] == path_as_posix:
                             found = True
-                            f = to_return
                             break
                     if not found:
                         self.dirs[root_as_posix].append(to_return)
@@ -949,7 +948,6 @@ class AzureDLFile(object):
         self.trim = True
         self.buffer = io.BytesIO()
         self.blocksize = blocksize
-        self.first_write = True
         uniqueid = str(uuid.uuid4())
         self.filesessionid = uniqueid
         self.leaseid = uniqueid
@@ -961,19 +959,32 @@ class AzureDLFile(object):
             exists = True
         except FileNotFoundError:
             exists = False
-        
 
         # cannot create a new file object out of a directory
         if exists and file_data['type'] == 'DIRECTORY':
             raise IOError('path: {} is a directory, not a file, and cannot be opened for reading or writing'.format(path))
 
+        if mode == 'ab' or mode == 'wb':
+            self.blocksize = min(2**22, blocksize)
+
         if mode == 'ab' and exists:
             self.loc = file_data['length']
-            self.first_write = False
-        elif mode == 'rb':
-            self.size = self.info()['length']
-        else:
-            self.blocksize = min(2**22, blocksize)
+        elif (mode == 'ab' and not exists) or (mode == 'wb'):
+            # Create the file
+            _put_data_with_retry(
+                rest=self.azure.azure,
+                op='CREATE',
+                path=self.path.as_posix(),
+                data=None,
+                overwrite='true',
+                write='true',
+                syncFlag='DATA',
+                leaseid=self.leaseid,
+                filesessionid=self.filesessionid)
+        else: # mode == 'rb':
+            if not exists:
+                raise FileNotFoundError(path.as_posix())
+            self.size = file_data['length']
 
     def info(self):
         """ File information about this path """
@@ -1159,7 +1170,6 @@ class AzureDLFile(object):
         self.flush(syncFlag='DATA')
         return out
 
-
     def flush(self, syncFlag='METADATA', force=False):
         """
         Write buffered data to ADL.
@@ -1179,89 +1189,37 @@ class AzureDLFile(object):
         if not (syncFlag == 'METADATA' or syncFlag == 'DATA' or syncFlag == 'CLOSE'):
             raise ValueError('syncFlag must be one of these: METADATA, DATA or CLOSE')
 
-        if self.buffer.tell() == 0:
-            if force and self.first_write:
-                _put_data_with_retry(
-                    self.azure.azure,
-                    'CREATE',
-                    path=self.path.as_posix(),
-                    data=None,
-                    overwrite='true',
-                    write='true',
-                    syncFlag=syncFlag,
-                    leaseid=self.leaseid,
-                    filesessionid=self.filesessionid)
-                self.first_write = False
-
-        self.buffer.seek(0)
+        common_args_append = {
+            'rest': self.azure.azure,
+            'op': 'APPEND',
+            'path': self.path.as_posix(),
+            'append': 'true',
+            'leaseid': self.leaseid,
+            'filesessionid': self.filesessionid
+        }
+        self.buffer.seek(0) # Go to start of buffer
         data = self.buffer.read()
 
-        syncFlagLocal = 'DATA'
         while len(data) > self.blocksize:
+            data_to_write_limit = self.blocksize
             if self.delimiter:
-                place = data[:self.blocksize].rfind(self.delimiter)
-            else:
-                place = -1
-            if place < 0:
-                # not found - write whole block
-                limit = self.blocksize
-            else:
-                limit = place + len(self.delimiter)
-            if self.first_write:
-                _put_data_with_retry(
-                    self.azure.azure,
-                    'CREATE',
-                    path=self.path.as_posix(),
-                    data=data[:limit],
-                    overwrite='true',
-                    write='true',
-                    syncFlag=syncFlagLocal,
-                    leaseid=self.leaseid,
-                    filesessionid=self.filesessionid)
-                self.first_write = False
-            else:
-                _put_data_with_retry(
-                    self.azure.azure,
-                    'APPEND',
-                    path=self.path.as_posix(),
-                    data=data[:limit],
-                    append='true',
-                    syncFlag=syncFlagLocal,
-                    leaseid=self.leaseid,
-                    filesessionid=self.filesessionid)
-            logger.debug('Wrote %d bytes to %s' % (limit, self))
-            data = data[limit:]
+                delimiter_index = data.rfind(self.delimiter, 0, self.blocksize)
+                if delimiter_index != -1:  # delimiter found
+                    data_to_write_limit = delimiter_index + len(self.delimiter)
 
-        self.buffer = io.BytesIO(data)
-        self.buffer.seek(0, 2)  # seek to end
+            offset = self.tell() - len(data)
+            _put_data_with_retry(**common_args_append, syncFlag='DATA', data=data[:data_to_write_limit], offset=offset)
+            logger.debug('Wrote %d bytes to %s' % (data_to_write_limit, self))
+            data = data[data_to_write_limit:]
 
         if force:
-            zero_offset = self.tell() - len(data)
-            if self.first_write:
-                _put_data_with_retry(
-                    self.azure.azure,
-                    'CREATE',
-                    path=self.path.as_posix(),
-                    data=data,
-                    overwrite='true',
-                    write='true',
-                    syncFlag=syncFlag,
-                    leaseid=self.leaseid,
-                    filesessionid=self.filesessionid)
-                self.first_write = False
-            else:
-                _put_data_with_retry(
-                    self.azure.azure,
-                    'APPEND',
-                    path=self.path.as_posix(),
-                    data=data,
-                    offset=zero_offset,
-                    append='true',
-                    syncFlag=syncFlag,
-                    leaseid=self.leaseid,
-                    filesessionid=self.filesessionid)
+            offset = self.tell() - len(data)
+            _put_data_with_retry(**common_args_append, syncFlag=syncFlag, data=data, offset=offset)
             logger.debug('Wrote %d bytes to %s' % (len(data), self))
-            self.buffer = io.BytesIO()
+            data = b''
+
+        self.buffer = io.BytesIO(data)
+        self.buffer.seek(0, 2)  # seek to end for other writes to buffer
 
     def close(self):
         """ Close file
