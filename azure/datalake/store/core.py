@@ -1208,13 +1208,13 @@ class AzureDLFile(object):
                     data_to_write_limit = delimiter_index + len(self.delimiter)
 
             offset = self.tell() - len(data)
-            _put_data_with_retry(**common_args_append, syncFlag='DATA', data=data[:data_to_write_limit], offset=offset)
+            _put_data_with_retry(syncFlag='DATA', data=data[:data_to_write_limit], offset=offset, **common_args_append)
             logger.debug('Wrote %d bytes to %s' % (data_to_write_limit, self))
             data = data[data_to_write_limit:]
 
         if force:
             offset = self.tell() - len(data)
-            _put_data_with_retry(**common_args_append, syncFlag=syncFlag, data=data, offset=offset)
+            _put_data_with_retry(syncFlag=syncFlag, data=data, offset=offset, **common_args_append)
             logger.debug('Wrote %d bytes to %s' % (len(data), self))
             data = b''
 
