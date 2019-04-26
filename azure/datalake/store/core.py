@@ -956,14 +956,19 @@ class AzureDLFile(object):
 
         # always invalidate the cache when checking for existence of a file
         # that may be created or written to (for the first time).
-        exists = self.azure.exists(path, invalidate_cache=True)
+        try:
+            file_data = self.azure.info(path, invalidate_cache=True, expected_error_code=404)
+            exists = True
+        except FileNotFoundError:
+            exists = False
+        
 
         # cannot create a new file object out of a directory
-        if exists and self.info()['type'] == 'DIRECTORY':
+        if exists and file_data['type'] == 'DIRECTORY':
             raise IOError('path: {} is a directory, not a file, and cannot be opened for reading or writing'.format(path))
 
         if mode == 'ab' and exists:
-            self.loc = self.info()['length']
+            self.loc = file_data['length']
             self.first_write = False
         elif mode == 'rb':
             self.size = self.info()['length']
@@ -1172,8 +1177,7 @@ class AzureDLFile(object):
             return
 
         if not (syncFlag == 'METADATA' or syncFlag == 'DATA' or syncFlag == 'CLOSE'):
-            raise ValueError('syncFlag must be one of these: METADAT, DATA or CLOSE')
-
+            raise ValueError('syncFlag must be one of these: METADATA, DATA or CLOSE')
 
         if self.buffer.tell() == 0:
             if force and self.first_write:
@@ -1188,7 +1192,6 @@ class AzureDLFile(object):
                     leaseid=self.leaseid,
                     filesessionid=self.filesessionid)
                 self.first_write = False
-            return
 
         self.buffer.seek(0)
         data = self.buffer.read()
@@ -1229,9 +1232,8 @@ class AzureDLFile(object):
             logger.debug('Wrote %d bytes to %s' % (limit, self))
             data = data[limit:]
 
-
         self.buffer = io.BytesIO(data)
-        self.buffer.seek(0, 2)
+        self.buffer.seek(0, 2)  # seek to end
 
         if force:
             zero_offset = self.tell() - len(data)
