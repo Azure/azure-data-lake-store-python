@@ -1107,11 +1107,6 @@ def test_closed(azure):
         f.close()
         assert f.closed
 
-        with azure.open(a, "wb", blocksize=4) as f:
-            f.write(b'1234')
-            f.write(b'5678')
-        assert azure.cat(a) == '1234567'
-
 
 @my_vcr.use_cassette
 def test_TextIOWrapper(azure):
