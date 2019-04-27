@@ -1107,6 +1107,11 @@ def test_closed(azure):
         f.close()
         assert f.closed
 
+        with azure.open(a, "wb", blocksize=4) as f:
+            f.write(b'1234')
+            f.write(b'5678')
+        assert azure.cat(a) == '1234567'
+
 
 @my_vcr.use_cassette
 def test_TextIOWrapper(azure):
@@ -1315,3 +1320,15 @@ def test_DatalakeBadOffsetExceptionRecovery(azure):
     assert azure.cat(a) == data*2
     _put_data_with_retry(azure.azure, 'APPEND', a, data=data)
     assert azure.cat(a) == data*3
+
+
+def test_file_creation_open(azure):
+    with azure_teardown(azure):
+        if azure.exists(a):
+            azure.rm(a)
+        assert not azure.exists(a)
+        f = azure.open(a, "wb")
+        assert azure.exists(a)
+        f.close()
+        assert azure.info(a)['length'] == 0
+
