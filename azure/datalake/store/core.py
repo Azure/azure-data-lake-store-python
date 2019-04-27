@@ -915,7 +915,7 @@ class AzureDLFile(object):
         location of file
     mode : str {'wb', 'rb', 'ab'}
     blocksize : int
-        Size of the write or read-ahead buffer. For writing, will be
+        Size of the write or read-ahead buffer. For writing(and appending, will be
         truncated to 4MB (2**22).
     delimiter : bytes or None
         If specified and in write mode, each flush will send data terminating
@@ -981,6 +981,7 @@ class AzureDLFile(object):
                 syncFlag='DATA',
                 leaseid=self.leaseid,
                 filesessionid=self.filesessionid)
+            logger.debug('Created file %s ' % self.path)
         else: # mode == 'rb':
             if not exists:
                 raise FileNotFoundError(path.as_posix())
