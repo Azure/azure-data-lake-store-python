@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.45 (2019-05-10)
++++++++++++++++++++
+* Update open and close ADLFile semantics
+* Refactor code and improve performance for opening a file
+
 0.0.44 (2019-03-05)
 +++++++++++++++++++
 * Add continuation token to LISTSTATUS api call
