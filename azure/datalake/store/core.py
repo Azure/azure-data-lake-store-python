@@ -63,13 +63,14 @@ class AzureDLFileSystem(object):
     """
     _singleton = [None]
 
-    def __init__(self, token=None, **kwargs):
+    def __init__(self, token=None, per_call_timeout_seconds=60, **kwargs):
         # store instance vars
         self.token = token
         self.kwargs = kwargs
         self.connect()
         self.dirs = {}
         self._emptyDirs = []
+        self.per_call_timeout_seconds=per_call_timeout_seconds
         AzureDLFileSystem._singleton[0] = self
 
     @classmethod
@@ -85,7 +86,7 @@ class AzureDLFileSystem(object):
         """
         Establish connection object.
         """
-        self.azure = DatalakeRESTInterface(token=self.token, **self.kwargs)
+        self.azure = DatalakeRESTInterface(token=self.token, req_timeout_s= self.per_call_timeout_seconds, **self.kwargs)
         self.token = self.azure.token
 
     def __setstate__(self, state):

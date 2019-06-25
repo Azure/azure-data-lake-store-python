@@ -256,7 +256,7 @@ class DatalakeRESTInterface:
     }
 
     def __init__(self, store_name=default_store, token=None,
-                 url_suffix=default_adls_suffix, api_version='2018-09-01', **kwargs):
+                 url_suffix=default_adls_suffix, api_version='2018-09-01', req_timeout_s=60, **kwargs):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
         url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
@@ -278,6 +278,7 @@ class DatalakeRESTInterface:
             platform.platform(),
             __name__,
             __version__)
+        self.req_timeout_s = req_timeout_s
 
     @property
     def session(self):
@@ -474,7 +475,7 @@ class DatalakeRESTInterface:
         req_headers['User-Agent'] = self.user_agent
         req_headers.update(headers)
         self._log_request(method, url, op, urllib.quote(path), kwargs, req_headers, retry_count)
-        return func(url, params=params, headers=req_headers, data=data, stream=stream)
+        return func(url, params=params, headers=req_headers, data=data, stream=stream, timeout=self.req_timeout_s)
 
     def __getstate__(self):
         state = self.__dict__.copy()
