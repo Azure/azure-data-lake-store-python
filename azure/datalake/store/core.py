@@ -776,10 +776,13 @@ class AzureDLFileSystem(object):
         sourceList = [AzureDLPath(f).as_posix() for f in filelist]
         sources = {}
         sources["sources"] = sourceList
+        from .retry import NoRetryPolicy
+
         self.azure.call('MSCONCAT', outfile.as_posix(),
                         data=bytearray(json.dumps(sources,separators=(',', ':')), encoding="utf-8"),
                         deleteSourceDirectory=delete,
-                        headers={'Content-Type': "application/json"})
+                        headers={'Content-Type': "application/json"},
+                        retry_policy=NoRetryPolicy())
         self.invalidate_cache(outfile)
 
     merge = concat
