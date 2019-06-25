@@ -28,7 +28,7 @@ from .exceptions import FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
 from .enums import ExpiryOptionType
-from .retry import ExponentialRetryPolicy
+from .retry import ExponentialRetryPolicy, NoRetryPolicy
 from .multiprocessor import multi_processor_change_acl
 
 if sys.version_info >= (3, 4):
@@ -38,6 +38,7 @@ else:
 
 logger = logging.getLogger(__name__)
 valid_expire_types = [x.value for x in ExpiryOptionType]
+
 
 class AzureDLFileSystem(object):
     """
@@ -57,6 +58,8 @@ class AzureDLFileSystem(object):
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
+    per_call_timeout_seconds : int(60)
+        This is the timeout for each requests library call.
     kwargs: optional key/values
         See ``lib.auth()``; full list: tenant_id, username, password, client_id,
         client_secret, resource
@@ -64,13 +67,12 @@ class AzureDLFileSystem(object):
     _singleton = [None]
 
     def __init__(self, token=None, per_call_timeout_seconds=60, **kwargs):
-        # store instance vars
         self.token = token
         self.kwargs = kwargs
+        self.per_call_timeout_seconds = per_call_timeout_seconds
         self.connect()
         self.dirs = {}
         self._emptyDirs = []
-        self.per_call_timeout_seconds=per_call_timeout_seconds
         AzureDLFileSystem._singleton[0] = self
 
     @classmethod
@@ -776,7 +778,6 @@ class AzureDLFileSystem(object):
         sourceList = [AzureDLPath(f).as_posix() for f in filelist]
         sources = {}
         sources["sources"] = sourceList
-        from .retry import NoRetryPolicy
 
         self.azure.call('MSCONCAT', outfile.as_posix(),
                         data=bytearray(json.dumps(sources,separators=(',', ':')), encoding="utf-8"),
