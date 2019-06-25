@@ -3,6 +3,12 @@
 Release History
 ===============
 
+0.0.46 (2019-06-25)
++++++++++++++++++++
+* Expose per request timeout. Default to 60.
+* Concat will not retry by default.
+* Bug fixes.
+
 0.0.45 (2019-05-10)
 +++++++++++++++++++
 * Update open and close ADLFile semantics

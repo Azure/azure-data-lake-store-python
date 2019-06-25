@@ -58,7 +58,7 @@ class AzureDLFileSystem(object):
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
-    per_call_timeout_seconds : int(60)
+    per_call_timeout_seconds : float(60)
         This is the timeout for each requests library call.
     kwargs: optional key/values
         See ``lib.auth()``; full list: tenant_id, username, password, client_id,
