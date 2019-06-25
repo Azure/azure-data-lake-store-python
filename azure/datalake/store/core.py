@@ -784,7 +784,7 @@ class AzureDLFileSystem(object):
     merge = concat
 
     def cp(self, path1, path2):
-        """ Copy file between locations on ADL """
+        """ Not implemented. Copy file between locations on ADL """
         # TODO: any implementation for this without download?
         raise NotImplementedError
 
