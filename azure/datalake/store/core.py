@@ -28,7 +28,7 @@ from .exceptions import FileNotFoundError, PermissionError
 from .lib import DatalakeRESTInterface
 from .utils import ensure_writable, read_block
 from .enums import ExpiryOptionType
-from .retry import ExponentialRetryPolicy
+from .retry import ExponentialRetryPolicy, NoRetryPolicy
 from .multiprocessor import multi_processor_change_acl
 
 if sys.version_info >= (3, 4):
@@ -38,6 +38,7 @@ else:
 
 logger = logging.getLogger(__name__)
 valid_expire_types = [x.value for x in ExpiryOptionType]
+
 
 class AzureDLFileSystem(object):
     """
@@ -57,16 +58,18 @@ class AzureDLFileSystem(object):
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
+    per_call_timeout_seconds : float(60)
+        This is the timeout for each requests library call.
     kwargs: optional key/values
         See ``lib.auth()``; full list: tenant_id, username, password, client_id,
         client_secret, resource
     """
     _singleton = [None]
 
-    def __init__(self, token=None, **kwargs):
-        # store instance vars
+    def __init__(self, token=None, per_call_timeout_seconds=60, **kwargs):
         self.token = token
         self.kwargs = kwargs
+        self.per_call_timeout_seconds = per_call_timeout_seconds
         self.connect()
         self.dirs = {}
         self._emptyDirs = []
@@ -85,7 +88,7 @@ class AzureDLFileSystem(object):
         """
         Establish connection object.
         """
-        self.azure = DatalakeRESTInterface(token=self.token, **self.kwargs)
+        self.azure = DatalakeRESTInterface(token=self.token, req_timeout_s= self.per_call_timeout_seconds, **self.kwargs)
         self.token = self.azure.token
 
     def __setstate__(self, state):
@@ -775,16 +778,18 @@ class AzureDLFileSystem(object):
         sourceList = [AzureDLPath(f).as_posix() for f in filelist]
         sources = {}
         sources["sources"] = sourceList
+
         self.azure.call('MSCONCAT', outfile.as_posix(),
                         data=bytearray(json.dumps(sources,separators=(',', ':')), encoding="utf-8"),
                         deleteSourceDirectory=delete,
-                        headers={'Content-Type': "application/json"})
+                        headers={'Content-Type': "application/json"},
+                        retry_policy=NoRetryPolicy())
         self.invalidate_cache(outfile)
 
     merge = concat
 
     def cp(self, path1, path2):
-        """ Copy file between locations on ADL """
+        """ Not implemented. Copy file between locations on ADL """
         # TODO: any implementation for this without download?
         raise NotImplementedError
 

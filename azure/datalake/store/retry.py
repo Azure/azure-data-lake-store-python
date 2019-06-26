@@ -100,8 +100,8 @@ def retry_decorator_for_auth(retry_policy = None):
                         response = response_from_adal_exception(last_exception)
                     if hasattr(last_exception, 'response'):  # HTTP exception i.e 429
                         response = last_exception.response
-
-                request_successful = last_exception is None or response.status_code == 401  # 401 = Invalid credentials
+                        
+                request_successful = last_exception is None or (response is not None and response.status_code == 401)  # 401 = Invalid credentials
                 if request_successful or not retry_policy.should_retry(response, last_exception, retry_count):
                     break
             if last_exception is not None:
