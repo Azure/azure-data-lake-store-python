@@ -225,6 +225,8 @@ class DatalakeRESTInterface:
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
+    req_timeout_s : float(60)
+        This is the timeout for each requests library call.
     kwargs: optional arguments to auth
         See ``auth()``. Includes, e.g., username, password, tenant; will pull
         values from environment variables if not provided.
