@@ -18,7 +18,7 @@ Manually (bleeding edge):
 
 * Download the repo from https://github.com/Azure/azure-data-lake-store-python
 * checkout the ``dev`` branch
-* install the requirememnts (``pip install -r dev_requirements.txt``)
+* install the requirements (``pip install -r dev_requirements.txt``)
 * install in develop mode (``python setup.py develop``)
 * optionally: build the documentation (including this page) by running ``make html`` in the docs directory.
 
