@@ -313,7 +313,7 @@ class DatalakeRESTInterface:
             " ".join(["{}={}".format(key, params[key]) for key in params]))
         msg += "\n".join(["{}: {}".format(header, headers[header])
                           for header in headers if header != 'Authorization'])
-        msg += "Authorization " + len(headers['Authorization'])
+        msg += "\nAuthorization header length:" + str(len(headers['Authorization']))
         if retry_count > 0:
             msg += "retry-count:{}".format(retry_count)
         logger.debug(msg)
