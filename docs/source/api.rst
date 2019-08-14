@@ -27,6 +27,7 @@ API
    AzureDLFileSystem.mv
    AzureDLFileSystem.open
    AzureDLFileSystem.put
+   AzureDLFileSystem.read_block
    AzureDLFileSystem.remove
    AzureDLFileSystem.remove_acl
    AzureDLFileSystem.remove_acl_entries
