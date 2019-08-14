@@ -21,7 +21,6 @@ import sys
 import uuid
 import json
 
-
 # local imports
 from .exceptions import DatalakeBadOffsetException, DatalakeIncompleteTransferException
 from .exceptions import FileNotFoundError, PermissionError
@@ -46,9 +45,9 @@ class AzureDLFileSystem(object):
 
     Parameters
     ----------
-    store_name : str ("")
-        Store name to connect to
-    token : credentials object
+    store_name: str ("")
+        Store name to connect to.
+    token: credentials object
         When setting up a new connection, this contains the authorization
         credentials (see `lib.auth()`).
     url_suffix: str (None)
@@ -58,7 +57,7 @@ class AzureDLFileSystem(object):
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
-    per_call_timeout_seconds : float(60)
+    per_call_timeout_seconds: float(60)
         This is the timeout for each requests library call.
     kwargs: optional key/values
         See ``lib.auth()``; full list: tenant_id, username, password, client_id,
@@ -88,14 +87,14 @@ class AzureDLFileSystem(object):
         """
         Establish connection object.
         """
-        self.azure = DatalakeRESTInterface(token=self.token, req_timeout_s= self.per_call_timeout_seconds, **self.kwargs)
+        self.azure = DatalakeRESTInterface(token=self.token, req_timeout_s=self.per_call_timeout_seconds, **self.kwargs)
         self.token = self.azure.token
 
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.connect()
 
-    def open(self, path, mode='rb', blocksize=2**25, delimiter=None):
+    def open(self, path, mode='rb', blocksize=2 ** 25, delimiter=None):
         """ Open a file for reading or writing
 
         Parameters
@@ -154,12 +153,13 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to query
-        detail : bool
+        detail: bool
             Detailed info or not.
-        invalidate_cache : bool
+        invalidate_cache: bool
             Whether to invalidate cache or not
+
         Returns
         -------
         List of elements under directory specified with path
@@ -185,11 +185,11 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to query
-        invalidate_cache : bool
+        invalidate_cache: bool
             Whether to invalidate cache or not
-        expected_error_code :  int
+        expected_error_code:  int
             Optionally indicates a specific, expected error code, if any.
 
         Returns
@@ -204,7 +204,8 @@ class AzureDLFileSystem(object):
         # in the case of getting info about the root itself or if the cache won't be hit
         # simply return the result of a GETFILESTATUS from the service
         if invalidate_cache or path_as_posix in {'/', '.'}:
-            to_return = self.azure.call('GETFILESTATUS', path_as_posix, expected_error_code=expected_error_code)['FileStatus']
+            to_return = self.azure.call('GETFILESTATUS', path_as_posix, expected_error_code=expected_error_code)[
+                'FileStatus']
             to_return['name'] = path_as_posix
 
             # add the key/value pair back to the cache so long as it isn't the root
@@ -233,11 +234,11 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to query
-        invalidate_cache : bool
+        invalidate_cache: bool
             Whether to invalidate cache
-        include_dirs : bool
+        include_dirs: bool
             Whether to include dirs in return value
 
         Returns
@@ -278,11 +279,11 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to query
-        details : bool
+        details: bool
             Whether to include file details
-        invalidate_cache : bool
+        invalidate_cache: bool
             Whether to invalidate cache
 
         Returns
@@ -297,11 +298,11 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to query
-        details : bool
+        details: bool
             Whether to include file details
-        invalidate_cache : bool
+        invalidate_cache: bool
             Whether to invalidate cache
 
         Returns
@@ -323,13 +324,13 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to query
-        total : bool
+        total: bool
             Return the sum on list
-        deep : bool
+        deep: bool
             Recursively enumerate or just use files under current dir
-        invalidate_cache : bool
+        invalidate_cache: bool
             Whether to invalidate cache
 
         Returns
@@ -361,7 +362,7 @@ class AzureDLFileSystem(object):
                     'spaceConsumed': current_path_info['length'], 'spaceQuota': -1}
         else:
             all_files_and_dirs = self._walk(path, include_dirs=True)
-            dir_count = 1                   # 1 as walk doesn't return current directory
+            dir_count = 1  # 1 as walk doesn't return current directory
             length = file_count = 0
             for item in all_files_and_dirs:
                 length += item['length']
@@ -413,10 +414,13 @@ class AzureDLFileSystem(object):
         parms = {}
         value_to_use = [x for x in valid_expire_types if x.lower() == expiry_option.lower()]
         if len(value_to_use) != 1:
-            raise ValueError('expiry_option must be one of: {}. Value given: {}'.format(valid_expire_types, expiry_option))
+            raise ValueError(
+                'expiry_option must be one of: {}. Value given: {}'.format(valid_expire_types, expiry_option))
 
         if value_to_use[0] != ExpiryOptionType.never_expire.value and not expire_time:
-            raise ValueError('expire_time must be specified if the expiry_option is not NeverExpire. Value of expiry_option: {}'.format(expiry_option))
+            raise ValueError(
+                'expire_time must be specified if the expiry_option is not NeverExpire. Value of expiry_option: {}'.format(
+                    expiry_option))
 
         path = AzureDLPath(path).trim()
         parms['expiryOption'] = value_to_use[0]
@@ -475,7 +479,8 @@ class AzureDLFileSystem(object):
             Specifies whether to set ACLs recursively or not
         """
         if recursive:
-            multi_processor_change_acl(adl=self, path=path, method_name="set_acl", acl_spec=acl_spec, number_of_sub_process=number_of_sub_process)
+            multi_processor_change_acl(adl=self, path=path, method_name="set_acl", acl_spec=acl_spec,
+                                       number_of_sub_process=number_of_sub_process)
         else:
             self._acl_call('SETACL', path, acl_spec, invalidate_cache=True)
 
@@ -498,7 +503,8 @@ class AzureDLFileSystem(object):
             Specifies whether to modify ACLs recursively or not
         """
         if recursive:
-            multi_processor_change_acl(adl=self, path=path, method_name="mod_acl", acl_spec=acl_spec, number_of_sub_process=number_of_sub_process)
+            multi_processor_change_acl(adl=self, path=path, method_name="mod_acl", acl_spec=acl_spec,
+                                       number_of_sub_process=number_of_sub_process)
         else:
             self._acl_call('MODIFYACLENTRIES', path, acl_spec, invalidate_cache=True)
 
@@ -522,7 +528,8 @@ class AzureDLFileSystem(object):
             Specifies whether to remove ACLs recursively or not
         """
         if recursive:
-            multi_processor_change_acl(adl=self, path=path, method_name="rem_acl", acl_spec=acl_spec, number_of_sub_process=number_of_sub_process)
+            multi_processor_change_acl(adl=self, path=path, method_name="rem_acl", acl_spec=acl_spec,
+                                       number_of_sub_process=number_of_sub_process)
         else:
             self._acl_call('REMOVEACLENTRIES', path, acl_spec, invalidate_cache=True)
 
@@ -598,9 +605,9 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to query
-        invalidate_cache : bool
+        invalidate_cache: bool
             Whether to invalidate cache
 
         Returns
@@ -619,7 +626,7 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to query
 
         Returns
@@ -632,11 +639,12 @@ class AzureDLFileSystem(object):
     def tail(self, path, size=1024):
         """
         Return last bytes of file
+
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to query
-        size : int
+        size: int
             How many bytes to return
 
         Returns
@@ -653,11 +661,12 @@ class AzureDLFileSystem(object):
     def head(self, path, size=1024):
         """
         Return first bytes of file
+
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to query
-        size : int
+        size: int
             How many bytes to return
 
         Returns
@@ -670,12 +679,14 @@ class AzureDLFileSystem(object):
     def get(self, path, filename):
         """
         Stream data from file at path to local filename
+
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             ADL Path to read
-        filename : str or Path
+        filename: str or Path
             Local file path to write to
+
         Returns
         -------
         None
@@ -691,14 +702,16 @@ class AzureDLFileSystem(object):
     def put(self, filename, path, delimiter=None):
         """
         Stream data from local filename to file at path
+
         Parameters
         ----------
-        filename : str or Path
+        filename: str or Path
             Local file path to read from
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             ADL Path to write to
-        delimiter :
+        delimiter:
             Optional delimeter for delimiter-ended blocks
+
         Returns
         -------
         None
@@ -714,10 +727,12 @@ class AzureDLFileSystem(object):
     def mkdir(self, path):
         """
         Make new directory
+
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path to create directory
+
         Returns
         -------
         None
@@ -730,10 +745,12 @@ class AzureDLFileSystem(object):
     def rmdir(self, path):
         """
         Remove empty directory
+
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Directory  path to remove
+
         Returns
         -------
         None
@@ -748,11 +765,12 @@ class AzureDLFileSystem(object):
     def mv(self, path1, path2):
         """
         Move file between locations on ADL
+
         Parameters
         ----------
-        path1 :
+        path1:
             Source Path
-        path2 :
+        path2:
             Destination path
 
         Returns
@@ -772,12 +790,12 @@ class AzureDLFileSystem(object):
         Parameters
         ----------
 
-        outfile : path
+        outfile: path
             The file which will be concatenated to. If it already exists,
             the extra pieces will be appended.
-        filelist : list of paths
+        filelist: list of paths
             Existing adl files to concatenate, in order
-        delete_source : bool (False)
+        delete_source: bool (False)
             If True, assume that the paths to concatenate exist alone in a
             directory, and delete that whole directory when done.
 
@@ -792,7 +810,7 @@ class AzureDLFileSystem(object):
         sources["sources"] = sourceList
 
         self.azure.call('MSCONCAT', outfile.as_posix(),
-                        data=bytearray(json.dumps(sources,separators=(',', ':')), encoding="utf-8"),
+                        data=bytearray(json.dumps(sources, separators=(',', ':')), encoding="utf-8"),
                         deleteSourceDirectory=delete,
                         headers={'Content-Type': "application/json"},
                         retry_policy=NoRetryPolicy())
@@ -811,9 +829,9 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             The location to remove.
-        recursive : bool (True)
+        recursive: bool (True)
             Whether to remove also all entries below, i.e., which are returned
             by `walk()`.
 
@@ -834,10 +852,12 @@ class AzureDLFileSystem(object):
     def invalidate_cache(self, path=None):
         """
         Remove entry from object file-cache
+
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Remove the path from object file-cache
+
         Returns
         -------
         None
@@ -856,8 +876,9 @@ class AzureDLFileSystem(object):
 
         Parameters
         ----------
-        path : str or AzureDLPath
+        path: str or AzureDLPath
             Path of file to create
+
         Returns
         -------
         None
@@ -927,14 +948,14 @@ class AzureDLFile(object):
 
     Parameters
     ----------
-    azure : azure connection
-    path : AzureDLPath
+    azure: azure connection
+    path: AzureDLPath
         location of file
-    mode : str {'wb', 'rb', 'ab'}
-    blocksize : int
+    mode: str {'wb', 'rb', 'ab'}
+    blocksize: int
         Size of the write or read-ahead buffer. For writing(and appending, will be
         truncated to 4MB (2**22).
-    delimiter : bytes or None
+    delimiter: bytes or None
         If specified and in write mode, each flush will send data terminating
         on this bytestring, potentially leaving some data in the buffer.
 
@@ -949,7 +970,7 @@ class AzureDLFile(object):
     AzureDLFileSystem.open: used to create AzureDLFile objects
     """
 
-    def __init__(self, azure, path, mode='rb', blocksize=2**25,
+    def __init__(self, azure, path, mode='rb', blocksize=2 ** 25,
                  delimiter=None):
         self.mode = mode
         if mode not in {'rb', 'wb', 'ab'}:
@@ -979,10 +1000,11 @@ class AzureDLFile(object):
 
         # cannot create a new file object out of a directory
         if exists and file_data['type'] == 'DIRECTORY':
-            raise IOError('path: {} is a directory, not a file, and cannot be opened for reading or writing'.format(path))
+            raise IOError(
+                'path: {} is a directory, not a file, and cannot be opened for reading or writing'.format(path))
 
         if mode == 'ab' or mode == 'wb':
-            self.blocksize = min(2**22, blocksize)
+            self.blocksize = min(2 ** 22, blocksize)
 
         if mode == 'ab' and exists:
             self.loc = file_data['length']
@@ -999,7 +1021,7 @@ class AzureDLFile(object):
                 leaseid=self.leaseid,
                 filesessionid=self.filesessionid)
             logger.debug('Created file %s ' % self.path)
-        else: # mode == 'rb':
+        else:  # mode == 'rb':
             if not exists:
                 raise FileNotFoundError(path.as_posix())
             self.size = file_data['length']
@@ -1017,9 +1039,9 @@ class AzureDLFile(object):
 
         Parameters
         ----------
-        loc : int
+        loc: int
             byte location
-        whence : {0, 1, 2}
+        whence: {0, 1, 2}
             from start of file, current location or end of file, resp.
         """
         if not self.mode == 'rb':
@@ -1060,9 +1082,10 @@ class AzureDLFile(object):
 
             found = self.cache[self.loc - self.start:].find(b'\n') + 1
             if found:
-                partialLine = self.cache[self.loc-self.start: min(self.loc-self.start+found, self.loc-self.start+length)]
+                partialLine = self.cache[
+                              self.loc - self.start: min(self.loc - self.start + found, self.loc - self.start + length)]
             else:
-                partialLine = self.cache[self.loc-self.start:]
+                partialLine = self.cache[self.loc - self.start:]
 
             self.loc += len(partialLine)
             line += partialLine
@@ -1098,9 +1121,12 @@ class AzureDLFile(object):
 
         Parameters
         ----------
-        offset : int (-1)
+        offset: int (-1)
             offset from where to read; if <0, last read location or beginning of file.
-        :return:
+
+        Returns
+        -------
+        None
         """
         if offset < 0:
             offset = self.loc
@@ -1121,7 +1147,7 @@ class AzureDLFile(object):
 
         Parameters
         ----------
-        length : int (-1)
+        length: int (-1)
             Number of bytes to read; if <0, all remaining bytes.
         """
         if self.mode != 'rb':
@@ -1135,7 +1161,7 @@ class AzureDLFile(object):
         while length > 0:
             self._read_blocksize()
             data_read = self.cache[self.loc - self.start:
-                             min(self.loc - self.start + length, self.end - self.start)]
+                                   min(self.loc - self.start + length, self.end - self.start)]
             if not data_read:  # Check to catch possible server errors. Ideally shouldn't happen.
                 flag += 1
                 if flag >= 5:
@@ -1155,12 +1181,16 @@ class AzureDLFile(object):
     def readinto(self, b):
         """
         Reads data into buffer b
-        Returns number of bytes read.
+
 
         Parameters
         ----------
-        b : bytearray
+        b: bytearray
             Buffer to which bytes are read into
+
+        Returns
+        -------
+        Returns number of bytes read.
         """
         temp = self.read(len(b))
         b[:len(temp)] = temp
@@ -1175,7 +1205,7 @@ class AzureDLFile(object):
 
         Parameters
         ----------
-        data : bytes
+        data: bytes
             Set of bytes to be written.
         """
         if self.mode not in {'wb', 'ab'}:
@@ -1215,7 +1245,7 @@ class AzureDLFile(object):
             'leaseid': self.leaseid,
             'filesessionid': self.filesessionid
         }
-        self.buffer.seek(0) # Go to start of buffer
+        self.buffer.seek(0)  # Go to start of buffer
         data = self.buffer.read()
 
         while len(data) > self.blocksize:
@@ -1281,13 +1311,14 @@ def _fetch_range(rest, path, start, end, stream=False, retry_policy=ExponentialR
     # if the caller gives a bad start/end combination, OPEN will throw and
     # this call will bubble it up
     return rest.call(
-        'OPEN', path, offset=start, length=end-start, read='true', stream=stream, retry_policy=retry_policy, **kwargs)
+        'OPEN', path, offset=start, length=end - start, read='true', stream=stream, retry_policy=retry_policy, **kwargs)
 
 
 def _fetch_range_with_retry(rest, path, start, end, stream=False, retries=10,
                             delay=0.01, backoff=3, **kwargs):
     err = None
-    retry_policy = ExponentialRetryPolicy(max_retries=retries, exponential_retry_interval=delay, exponential_factor=backoff)
+    retry_policy = ExponentialRetryPolicy(max_retries=retries, exponential_retry_interval=delay,
+                                          exponential_factor=backoff)
     try:
         return _fetch_range(rest, path, start, end, stream=False, retry_policy=retry_policy, **kwargs)
     except Exception as e:
@@ -1330,8 +1361,6 @@ def _put_data_with_retry(rest, op, path, data, retries=10, delay=0.01, backoff=3
         rest.log_response_and_raise(None, exception)
 
 
-
-
 class AzureDLPath(type(pathlib.PurePath())):
     """
     Subclass of native object-oriented filesystem path.
@@ -1345,7 +1374,7 @@ class AzureDLPath(type(pathlib.PurePath())):
 
     Parameters
     ----------
-    path : AzureDLPath or string
+    path: AzureDLPath or string
         location of file or directory
 
     Examples

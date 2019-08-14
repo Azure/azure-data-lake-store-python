@@ -80,23 +80,23 @@ def auth(tenant_id=None, username=None,
     Parameters
     ----------
 
-    tenant_id : str
+    tenant_id: str
         associated with the user's subscription, or "common"
-    username : str
+    username: str
         active directory user
-    password : str
+    password: str
         sign-in password
-    client_id : str
+    client_id: str
         the service principal client
-    client_secret : str
+    client_secret: str
         the secret associated with the client_id
-    resource : str
+    resource: str
         resource for auth (e.g., https://datalake.azure.net/)
-    require_2fa : bool
+    require_2fa: bool
         indicates this authentication attempt requires two-factor authentication
     authority: string
         The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
-    kwargs : key/values
+    kwargs: key/values
         Other parameters, for future use
 
     Returns
@@ -225,7 +225,7 @@ class DatalakeRESTInterface:
         The API version to target with requests. Changing this value will
         change the behavior of the requests, and can cause unexpected behavior or
         breaking changes. Changes to this value should be undergone with caution.
-    req_timeout_s : float(60)
+    req_timeout_s: float(60)
         This is the timeout for each requests library call.
     kwargs: optional arguments to auth
         See ``auth()``. Includes, e.g., username, password, tenant; will pull

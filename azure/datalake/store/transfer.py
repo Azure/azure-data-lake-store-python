@@ -42,7 +42,7 @@ class StateManager(object):
 
     Parameters
     ----------
-    states : list of valid states
+    states: list of valid states
         Managed objects can only use these defined states.
 
     Examples
