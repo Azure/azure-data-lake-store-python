@@ -151,6 +151,7 @@ class AzureDLFileSystem(object):
     def ls(self, path="", detail=False, invalidate_cache=True):
         """
         List all elements under directory specified with path
+
         Parameters
         ----------
         path : str or AzureDLPath
@@ -181,6 +182,7 @@ class AzureDLFileSystem(object):
     def info(self, path, invalidate_cache=True, expected_error_code=None):
         """
         File information for path
+
         Parameters
         ----------
         path : str or AzureDLPath
@@ -189,6 +191,7 @@ class AzureDLFileSystem(object):
             Whether to invalidate cache or not
         expected_error_code :  int
             Optionally indicates a specific, expected error code, if any.
+
         Returns
         -------
         File information
@@ -227,6 +230,7 @@ class AzureDLFileSystem(object):
     def _walk(self, path, invalidate_cache=True, include_dirs=False):
         """
         Walk a path recursively and returns list of files and dirs(if parameter set)
+
         Parameters
         ----------
         path : str or AzureDLPath
@@ -271,6 +275,7 @@ class AzureDLFileSystem(object):
     def walk(self, path='', details=False, invalidate_cache=True):
         """
         Get all files below given path
+
         Parameters
         ----------
         path : str or AzureDLPath
@@ -289,6 +294,7 @@ class AzureDLFileSystem(object):
     def glob(self, path, details=False, invalidate_cache=True):
         """
         Find files (not directories) by glob-matching.
+
         Parameters
         ----------
         path : str or AzureDLPath
@@ -314,6 +320,7 @@ class AzureDLFileSystem(object):
     def du(self, path, total=False, deep=False, invalidate_cache=True):
         """
         Bytes in keys at path
+
         Parameters
         ----------
         path : str or AzureDLPath
@@ -341,7 +348,8 @@ class AzureDLFileSystem(object):
 
     def df(self, path):
         """ Resource summary of path
-         Parameters
+
+        Parameters
         ----------
         path: str
             Path to query
@@ -587,12 +595,14 @@ class AzureDLFileSystem(object):
     def exists(self, path, invalidate_cache=True):
         """
         Does such a file/directory exist?
+
         Parameters
         ----------
         path : str or AzureDLPath
             Path to query
         invalidate_cache : bool
             Whether to invalidate cache
+
         Returns
         -------
         True or false depending on whether the path exists.
@@ -606,10 +616,12 @@ class AzureDLFileSystem(object):
     def cat(self, path):
         """
         Return contents of file
+
         Parameters
         ----------
         path : str or AzureDLPath
             Path to query
+
         Returns
         -------
         Contents of file
