@@ -171,6 +171,7 @@ ADLDownloader(adl, '', 'my_temp_dir', 5, 2**24)
 |
 |
 |
+|
 
 #### class azure.datalake.store.core.AzureDLFileSystem(token=None, per_call_timeout_seconds=60, \*\*kwargs)
 Access Azure DataLake Store as if it were a file-system
@@ -1477,7 +1478,7 @@ It will raise AssertionError if the downloader is active.
 
 <!-- !! processed by numpydoc !! -->
 
-#### azure.datalake.store.lib.auth(tenant_id=None, username=None, password=None, client_id='e120a8c5-92e7-4be7-a439-bd3f5a6e1d74', client_secret=None, resource='https://datalake.azure.net/', require_2fa=False, authority=None, retry_policy=None, \*\*kwargs)
+#### azure.datalake.store.lib.auth(tenant_id=None, username=None, password=None, client_id='', client_secret=None, resource='https://datalake.azure.net/', require_2fa=False, authority=None, retry_policy=None, \*\*kwargs)
 User/password authentication
 
 
