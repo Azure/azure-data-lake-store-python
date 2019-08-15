@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.47 (2019-08-14)
++++++++++++++++++++
+* Remove logging of bearer token
+* Documentation related changes(Add readme.md and correct some formatting)
+
 0.0.46 (2019-06-25)
 +++++++++++++++++++
 * Expose per request timeout. Default to 60.

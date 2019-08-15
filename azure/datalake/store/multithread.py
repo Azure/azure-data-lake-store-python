@@ -468,7 +468,7 @@ class ADLUploader(object):
 
         Returns
         -------
-            A dictionary of upload instances. The hashes are auto-
+            A dictionary of upload instances. The hashes are auto
             generated unique. The state of the chunks completed, errored, etc.,
             can be seen in the status attribute. Instances can be resumed with
             ``run()``.
