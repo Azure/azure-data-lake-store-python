@@ -1213,10 +1213,15 @@ class AzureDLFile(object):
         if self.closed:
             raise ValueError('I/O operation on closed file.')
 
-        out = self.buffer.write(ensure_writable(data))
-        self.loc += out
-        self.flush(syncFlag='DATA')
-        return out
+        # TODO Flush may be simplified
+        # Buffered writes so a very large buffer is not copied leading to very large memory consumption
+        bytes_written = 0
+        for i in range(0, len(data), self.blocksize):
+            out = self.buffer.write(ensure_writable(data[i:i + self.blocksize]))
+            self.loc += out
+            bytes_written += out
+            self.flush(syncFlag='DATA')
+        return bytes_written
 
     def flush(self, syncFlag='METADATA', force=False):
         """
