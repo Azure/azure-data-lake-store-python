@@ -124,6 +124,58 @@ ADLDownloader(adl, '', 'my_temp_dir', 5, 2**24)
 ```
 # API
 
+<<<<<<< HEAD
+=======
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+
+>>>>>>> master
 #### class azure.datalake.store.core.AzureDLFileSystem(token=None, per_call_timeout_seconds=60, \*\*kwargs)
 Access Azure DataLake Store as if it were a file-system
 
@@ -162,6 +214,7 @@ Access Azure DataLake Store as if it were a file-system
 
 ### Methods
 
+<<<<<<< HEAD
 
 
 
@@ -182,6 +235,48 @@ Access Azure DataLake Store as if it were a file-system
 
 
 
+=======
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+|
+>>>>>>> master
 <!-- !! processed by numpydoc !! -->
 
 #### access(self, path, invalidate_cache=True)
@@ -1166,8 +1261,17 @@ of files or a glob pattern.
 
 ### Methods
 
+<<<<<<< HEAD
 
 
+=======
+|
+|
+|
+|
+|
+|
+>>>>>>> master
 <!-- !! processed by numpydoc !! -->
 
 #### active(self)
@@ -1324,9 +1428,18 @@ of files or a glob pattern.
 
 ### Methods
 
+<<<<<<< HEAD
 
 
 
+=======
+|
+|
+|
+|
+|
+|
+>>>>>>> master
 <!-- !! processed by numpydoc !! -->
 
 #### active(self)
