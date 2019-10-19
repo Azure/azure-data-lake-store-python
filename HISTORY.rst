@@ -3,6 +3,11 @@
 Release History
 ===============
 
+0.0.48 (2019-10-18)
++++++++++++++++++++
+* Buffer writes to prevent out of memory problems
+* Add Python 3.7 in travis configuration
+
 0.0.47 (2019-08-14)
 +++++++++++++++++++
 * Remove logging of bearer token
