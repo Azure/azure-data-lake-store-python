@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class RetryPolicy:
-    def should_retry(self):
+    def should_retry(self, *args):
         pass
 
 
