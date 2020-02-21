@@ -1,11 +1,15 @@
 # azure-datalake-store
 
-A pure-python interface to the Azure Data-lake Storage system, providing
+A pure-python interface to the Azure Data-lake Storage Gen 1 system, providing
 pythonic file-system and file objects, seamless transition between Windows and
 POSIX remote paths, high-performance up- and down-loader.
 
 This software is under active development and not yet recommended for general
 use.
+
+*Note:* This library supports ADLS Gen 1. For Gen 2, please see
+`azure-storage-file-datalake`, documented
+[here](https://docs.microsoft.com/en-us/samples/azure/azure-sdk-for-python/storage-datalake-samples/)
 
 ## Installation
 
