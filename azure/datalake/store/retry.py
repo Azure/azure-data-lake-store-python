@@ -26,7 +26,7 @@ class RetryPolicy:
 
 
 class NoRetryPolicy(RetryPolicy):
-    def should_retry(self):
+    def should_retry(self, *args):
         return False
 
 
