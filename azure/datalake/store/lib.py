@@ -315,7 +315,7 @@ class DatalakeRESTInterface:
                           for header in headers if header != 'Authorization'])
         msg += u"\nAuthorization header length:" + str(len(headers['Authorization']))
         if retry_count > 0:
-            msg += u"retry-count:{}".format(retry_count.encode('utf-8'))
+            msg += u"retry-count:{}".format(retry_count)
         logger.debug(msg)
 
     def _content_truncated(self, response):
