@@ -27,6 +27,7 @@ else:
     import urllib
 
 from .retry import ExponentialRetryPolicy, retry_decorator_for_auth
+from .utils import  convert_to_utf
 
 # 3rd party imports
 import adal
@@ -307,15 +308,15 @@ class DatalakeRESTInterface:
         check_token_internal()
 
     def _log_request(self, method, url, op, path, params, headers, retry_count):
-        msg = "HTTP Request\n{} {}\n".format(method.upper(), url)
-        msg += "{} '{}' {}\n\n".format(
-            op, path,
-            " ".join(["{}={}".format(key, params[key]) for key in params]))
-        msg += "\n".join(["{}: {}".format(header, headers[header])
+        msg = u"HTTP Request\n{} {}\n".format(method.upper(), url)
+        param_str = u" ".join([u"{}={}".format(key, params[key]) for key in params])
+        msg += u"{} '{}' {}\n\n".format(
+            op, path, param_str)
+        msg += u"\n".join([u"{}: {}".format(header, headers[header])
                           for header in headers if header != 'Authorization'])
-        msg += "\nAuthorization header length:" + str(len(headers['Authorization']))
+        msg += u"\nAuthorization header length:" + str(len(headers['Authorization']))
         if retry_count > 0:
-            msg += "retry-count:{}".format(retry_count)
+            msg += u"retry-count:{}".format(retry_count.encode('utf-8'))
         logger.debug(msg)
 
     def _content_truncated(self, response):
@@ -324,27 +325,27 @@ class DatalakeRESTInterface:
         return int(response.headers['content-length']) > MAX_CONTENT_LENGTH
 
     def _log_response(self, response, payload=False):
-        msg = "HTTP Response\n{}\n{}".format(
+        msg = u"HTTP Response\n{}\n{}".format(
             response.status_code,
-            "\n".join(["{}: {}".format(header, response.headers[header])
+            u"\n".join([u"{}: {}".format(header, response.headers[header])
                        for header in response.headers]))
         if payload:
-            msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
+            msg += u"\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
             if self._content_truncated(response):
-                msg += "\n(Response body was truncated)"
+                msg += u"\n(Response body was truncated)"
         logger.debug(msg)
 
     def log_response_and_raise(self, response, exception, level=logging.ERROR):
-        msg = "Exception " + repr(exception)
+        msg = u"Exception " + repr(exception)
         if response is not None:
-            msg += "\n{}\n{}".format(
+            msg += u"\n{}\n{}".format(
                 response.status_code,
-                "\n".join([
-                    "{}: {}".format(header, response.headers[header])
+                u"\n".join([
+                    u"{}: {}".format(header, response.headers[header])
                     for header in response.headers]))
-            msg += "\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
+            msg += u"\n\n{}".format(response.content[:MAX_CONTENT_LENGTH])
             if self._content_truncated(response):
-                msg += "\n(Response body was truncated)"
+                msg += u"\n(Response body was truncated)"
         logger.log(level, msg)
         raise exception
 
