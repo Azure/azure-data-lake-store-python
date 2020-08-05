@@ -27,7 +27,6 @@ else:
     import urllib
 
 from .retry import ExponentialRetryPolicy, retry_decorator_for_auth
-from .utils import  convert_to_utf
 
 # 3rd party imports
 import adal
