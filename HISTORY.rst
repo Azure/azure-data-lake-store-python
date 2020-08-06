@@ -6,7 +6,8 @@ Release History
 0.0.49 (2020-08-05)
 +++++++++++++++++++
 * Fix bug with NoRetryPolicy
-* Remove Add Python 3.4,5 in travis configuration and add python 3.8
+* Remove Python 3.4,5 in travis configuration.
+* Fix logging for unicode
 
 0.0.48 (2019-10-18)
 +++++++++++++++++++
