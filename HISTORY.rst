@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.50 (2020-09-10)
++++++++++++++++++++
+* Fix bug with retrying for ADAL exception parsing.
+
 0.0.49 (2020-08-05)
 +++++++++++++++++++
 * Fix bug with NoRetryPolicy
