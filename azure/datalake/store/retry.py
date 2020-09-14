@@ -95,12 +95,14 @@ def retry_decorator_for_auth(retry_policy = None):
                     # ADAL error corresponds to everything but 429, which bubbles up HTTP error.
                     last_exception = e
                     logger.exception("Retry count " + str(retry_count) + "Exception :" + str(last_exception))
-
-                    if hasattr(last_exception, 'error_response'):  # ADAL exception
-                        response = response_from_adal_exception(last_exception)
-                    if hasattr(last_exception, 'response'):  # HTTP exception i.e 429
-                        response = last_exception.response
-                        
+                    # We don't want to stop retry for any error in parsing the exception. This is a GET operation.
+                    try:
+                        if hasattr(last_exception, 'error_response'):  # ADAL exception
+                            response = response_from_adal_exception(last_exception)
+                        if hasattr(last_exception, 'response'):  # HTTP exception i.e 429
+                            response = last_exception.response
+                    except:
+                        pass
                 request_successful = last_exception is None or (response is not None and response.status_code == 401)  # 401 = Invalid credentials
                 if request_successful or not retry_policy.should_retry(response, last_exception, retry_count):
                     break
@@ -116,15 +118,11 @@ def response_from_adal_exception(e):
     import re
     from collections import namedtuple
 
-    response = e.error_response
-    http_code = re.search("http error: (\d+)", str(e))
+    http_code = re.search(r"http error: (\d+)", str(e))
     if http_code is not None:  # Add status_code to response object for use in should_retry
-        keys = list(response.keys()) + ['status_code']
-        status_code = int(http_code.group(1))
-        values = list(response.values()) + [status_code]
-
-        Response = namedtuple("Response", keys)
+        status_code = [int(http_code.group(1))]
+        Response = namedtuple("Response", ['status_code'])
         response = Response(
-            *values)  # Construct response object with adal exception response and http code
+            *status_code)  # Construct response object with adal exception response and http code
     return response
 
