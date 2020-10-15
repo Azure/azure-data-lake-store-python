@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.51 (2020-10-15)
++++++++++++++++++++
+* Add more logging for zero byte reads to investigate root cause.
+
 0.0.50 (2020-09-10)
 +++++++++++++++++++
 * Fix bug with retrying for ADAL exception parsing.
