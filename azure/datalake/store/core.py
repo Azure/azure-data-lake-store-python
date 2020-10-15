@@ -1135,7 +1135,9 @@ class AzureDLFile(object):
             self.end = self.size
             self.cache = b""
             return
-        if offset >= self.start and offset < self.end:
+        if self.start <= offset < self.end:
+            logger.info("Read offset {offset} is within cache {start}-{end}. "
+                        "Not going to server.".format(offset=offset, start=self.start, end=self.end))
             return
         if offset > self.size:
             raise ValueError('Read offset is outside the File')
@@ -1165,9 +1167,13 @@ class AzureDLFile(object):
             if not data_read:  # Check to catch possible server errors. Ideally shouldn't happen.
                 flag += 1
                 if flag >= 5:
-                    raise DatalakeIncompleteTransferException('Could not read data: {}. '
-                                                              'Repeated zero byte reads. '
-                                                              'Possible file corruption'.format(self.path))
+                    exception_string = "Current Location:{loc}, " \
+                                       "File Size:{size}, Cache Start:{start}, " \
+                                       "Cache End:{end}".format(loc=self.loc, size=self.size,
+                                                                start=self.start, end=self.end)
+                    raise DatalakeIncompleteTransferException('Could not read data: {path}. '
+                                                              'Repeated zero byte reads. Possible file corruption. File Details'
+                                                              '{details}'.format(path=self.path, details=exception_string))
             out += data_read
             self.loc += len(data_read)
             length -= len(data_read)
