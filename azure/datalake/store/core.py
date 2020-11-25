@@ -1136,7 +1136,7 @@ class AzureDLFile(object):
             self.cache = b""
             return
         if self.start <= offset < self.end:
-            logger.info("Read offset {offset} is within cache {start}-{end}. "
+            logger.debug("Read offset {offset} is within cache {start}-{end}. "
                         "Not going to server.".format(offset=offset, start=self.start, end=self.end))
             return
         if offset > self.size:
@@ -1285,7 +1285,7 @@ class AzureDLFile(object):
 
         If in write mode, causes flush of any unwritten data.
         """
-        logger.info("closing stream")
+        logger.debug("closing stream")
         if self.closed:
             return
         if self.writable():
