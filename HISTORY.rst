@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.52 (2020-11-25)
++++++++++++++++++++
+* Changed logging verbosity when closing a stream
+
 0.0.51 (2020-10-15)
 +++++++++++++++++++
 * Add more logging for zero byte reads to investigate root cause.
