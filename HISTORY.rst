@@ -6,6 +6,7 @@ Release History
 0.0.52 (2020-11-25)
 +++++++++++++++++++
 * Changed logging verbosity when closing a stream
+* Filter out default acl for files when using recursive acl operations
 
 0.0.51 (2020-10-15)
 +++++++++++++++++++
