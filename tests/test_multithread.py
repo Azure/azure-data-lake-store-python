@@ -470,6 +470,7 @@ def test_modify_acl_entries_recursive(azure):
         def check_acl_perms(path, permission, isdir=False):
             current_acl = azure.get_acl_status(path)
             acl_user_entry = [s for s in current_acl['entries'] if acluser in s]
+            print(path, current_acl)
             if isdir:
                 assert len(acl_user_entry) == 2
             else:
@@ -480,7 +481,7 @@ def test_modify_acl_entries_recursive(azure):
         directories = list(set([x[0] for x in map(os.path.split, files)]))
 
         permission = "---"
-        azure.modify_acl_entries(test_dir, acl_spec="default:user:"+acluser+":"+permission+",user:"+acluser+":"+permission, recursive=True)
+        azure.modify_acl_entries(test_dir, acl_spec="default:user:"+acluser+":"+permission+",user:"+acluser+":"+permission, recursive=True, number_of_sub_process=2)
         for path in files:
             check_acl_perms(path, permission, False)
 
@@ -488,7 +489,7 @@ def test_modify_acl_entries_recursive(azure):
             check_acl_perms(path, permission, True)
 
         permission = "rwx"
-        azure.modify_acl_entries(test_dir, acl_spec="default:user:"+acluser+":"+permission+",user:"+acluser+":"+permission, recursive=True)
+        azure.modify_acl_entries(test_dir, acl_spec="default:user:"+acluser+":"+permission+",user:"+acluser+":"+permission, recursive=True, number_of_sub_process=2)
         for path in files:
             check_acl_perms(path, permission, False)
 
@@ -512,7 +513,7 @@ def test_set_acl_recusrive(azure):
         directories = list(set([x[0] for x in map(os.path.split, files)]))
 
         permission = "rwx"
-        azure.set_acl(test_dir, acl_spec=set_acl_base + "user:"+acluser+":"+permission, recursive=True)
+        azure.set_acl(test_dir, acl_spec=set_acl_base + "user:"+acluser+":"+permission, recursive=True, number_of_sub_process=2)
 
         for path in files+directories:
             check_acl_perms(path, permission)
@@ -524,7 +525,7 @@ def test_remove_acl_entries_recursive(azure):
         acluser = AZURE_ACL_TEST_APPID
 
         permission = "rwx"
-        azure.modify_acl_entries(test_dir, acl_spec="user:"+acluser+":"+permission, recursive=True)
+        azure.modify_acl_entries(test_dir, acl_spec="user:"+acluser+":"+permission+",default:user:"+acluser+":"+permission, recursive=True, number_of_sub_process=2)
 
         files = list(azure.walk(test_dir))
         directories = list(set([x[0] for x in map(os.path.split, files)]))
@@ -534,7 +535,7 @@ def test_remove_acl_entries_recursive(azure):
             acl_user_entry= [s for s in current_acl['entries'] if acluser in s]
             assert acl_user_entry != []
 
-        azure.remove_acl_entries(test_dir, acl_spec="user:" + acluser, recursive=True)
+        azure.remove_acl_entries(test_dir, acl_spec="user:"+acluser+",default:user:"+acluser, recursive=True, number_of_sub_process=2)
 
         for path in files+directories:
             current_acl = azure.get_acl_status(path)

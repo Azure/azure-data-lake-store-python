@@ -478,7 +478,7 @@ class AzureDLFileSystem(object):
         recursive: bool
             Specifies whether to set ACLs recursively or not
         """
-        if recursive and self.info(path)['type'] == 'DIR':
+        if recursive:
             multi_processor_change_acl(adl=self, path=path, method_name="set_acl", acl_spec=acl_spec,
                                        number_of_sub_process=number_of_sub_process)
         else:
@@ -502,7 +502,7 @@ class AzureDLFileSystem(object):
         recursive: bool
             Specifies whether to modify ACLs recursively or not
         """
-        if recursive and self.info(path)['type'] == 'DIR':
+        if recursive:
             multi_processor_change_acl(adl=self, path=path, method_name="mod_acl", acl_spec=acl_spec,
                                        number_of_sub_process=number_of_sub_process)
         else:
@@ -527,7 +527,7 @@ class AzureDLFileSystem(object):
         recursive: bool
             Specifies whether to remove ACLs recursively or not
         """
-        if recursive and self.info(path)['type'] == 'DIR':
+        if recursive:
             multi_processor_change_acl(adl=self, path=path, method_name="rem_acl", acl_spec=acl_spec,
                                        number_of_sub_process=number_of_sub_process)
         else:
