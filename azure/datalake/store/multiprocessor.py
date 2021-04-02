@@ -8,8 +8,10 @@ import logging.handlers
 from .exceptions import  FileNotFoundError
 try:
     from queue import Empty     # Python 3
+    import _thread
 except ImportError:
     from Queue import Empty     # Python 2
+    import thread
 
 WORKER_THREAD_PER_PROCESS = 50
 QUEUE_BUCKET_SIZE = 10
@@ -37,7 +39,7 @@ def monitor_exception(exception_queue, process_ids):
             logger.log(logging.DEBUG, "Joining processes")
             for p in process_ids:
                 p.join()
-            import thread
+
             logger.log(logging.DEBUG, "Interrupting main")
             raise Exception(local_exception)
         except Empty:
@@ -85,10 +87,13 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec="", numb
                 if files['type'] == 'DIRECTORY':
                     dir_processed_counter.increment()               # A new directory to process
                     walk_thread_pool.submit(walk, files['name'])
-                paths.append(files['name'])
+
+                paths.append((files['name'], files['type'] == 'FILE'))
+
                 if len(paths) == QUEUE_BUCKET_SIZE:
                     file_path_queue.put(list(paths))
                     paths = []
+
             if paths != []:
                 file_path_queue.put(list(paths))  # For leftover paths < bucket_size
         except FileNotFoundError:
@@ -116,7 +121,7 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec="", numb
     walk_thread_pool = ThreadPoolExecutor(max_workers=WORKER_THREAD_PER_PROCESS)
 
     # Root directory needs to be explicitly passed
-    file_path_queue.put([path])
+    file_path_queue.put([(path, False)])
     dir_processed_counter.increment()
 
     # Processing starts here
@@ -149,6 +154,8 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec="", numb
 def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, acl_spec, log_queue, exception_queue):
     logger = logging.getLogger(__name__)
 
+    removed_default_acl_spec = ",".join([x for x in acl_spec.split(',') if not x.lower().startswith("default")])
+
     try:
         logger.addHandler(logging.handlers.QueueHandler(log_queue))
         logger.propagate = False                                                        # Prevents double logging
@@ -178,8 +185,14 @@ def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, a
                 file_paths = file_path_queue.get(timeout=0.1)
                 file_path_queue.task_done()                 # Will not be called if empty
                 for file_path in file_paths:
+                    is_file = file_path[1]
+                    if is_file:
+                        spec = removed_default_acl_spec
+                    else:
+                        spec = acl_spec
+
                     logger.log(logging.DEBUG, "Starting on path:" + str(file_path))
-                    function_thread_pool.submit(func_wrapper, adl_function, file_path, acl_spec)
+                    function_thread_pool.submit(func_wrapper, adl_function, file_path[0], spec)
             except Empty:
                 pass
 
