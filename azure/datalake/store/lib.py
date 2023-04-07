@@ -28,12 +28,12 @@ else:
     import urllib
 
 from .retry import ExponentialRetryPolicy, retry_decorator_for_auth
+from .auth import DataLakeCredentialChooser, AuthChooser
 
 # 3rd party imports
-import adal
 import requests
 import requests.exceptions
-
+    
 
 # this is required due to github issue, to ensure we don't lose perf from openPySSL: https://github.com/pyca/pyopenssl/issues/625
 def enforce_no_py_open_ssl():
@@ -118,13 +118,8 @@ def auth(tenant_id=None, username=None,
     if not authority:
         authority = 'https://login.microsoftonline.com/'
 
-
     if not tenant_id:
         tenant_id = os.environ.get('azure_tenant_id', "common")
-
-    context = adal.AuthenticationContext(authority +
-                                         tenant_id)
-
     if tenant_id is None or client_id is None:
         raise ValueError("tenant_id and client_id must be supplied for authentication")
 
@@ -137,88 +132,32 @@ def auth(tenant_id=None, username=None,
     if not client_secret:
         client_secret = os.environ.get('azure_client_secret', None)
 
-    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call
-    # and the user will be prompted to login interactively through a browser.
-
-    @retry_decorator_for_auth(retry_policy=retry_policy)
-    def get_token_internal():
-        # Internal function used so as to use retry decorator
-        if require_2fa or (username is None and password is None and client_secret is None):
-            code = context.acquire_user_code(resource, client_id)
-            print(code['message'])
-            out = context.acquire_token_with_device_code(resource, code, client_id)
-        elif username and password:
-            out = context.acquire_token_with_username_password(resource, username,
-                                                               password, client_id)
-        elif client_id and client_secret:
-            out = context.acquire_token_with_client_credentials(resource, client_id,
-                                                                client_secret)
-            # for service principal, we store the secret in the credential object for use when refreshing.
-            out.update({'secret': client_secret})
-        else:
-            raise ValueError("No authentication method found for credentials")
-        return out
-    out = get_token_internal()
-
-    out.update({'access': out['accessToken'], 'resource': resource,
-                'refresh': out.get('refreshToken', False),
-                'time': time.time(), 'tenant': tenant_id, 'client': client_id})
-
-    return DataLakeCredential(out)
+    return AuthChooser(tenant_id, username,
+         password, client_id,
+         client_secret, resource,
+         require_2fa, authority, retry_policy, **kwargs)
 
 
 class DataLakeCredential:
-    # Be careful modifying this. DataLakeCredential is a general class in azure, and we have to maintain parity.
     def __init__(self, token):
-        self.token = token
+        self.token = DataLakeCredentialChooser(token)
 
     def signed_session(self):
         # type: () -> requests.Session
         """Create requests session with any required auth headers applied.
-
         :rtype: requests.Session
         """
-        session = requests.Session()
-        if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
-            self.refresh_token()
-
-        scheme, token = self.token['tokenType'], self.token['access']
-        header = "{} {}".format(scheme, token)
-        session.headers['Authorization'] = header
-        return session
-
+        return self.token.signed_session()
+    
     def refresh_token(self, authority=None):
-        """ Refresh an expired authorization token
+            """ Refresh an expired authorization token
+            Parameters
+            ----------
+            authority: string
+                The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
+            """
+            return self.token.refresh_token(authority)
 
-        Parameters
-        ----------
-        authority: string
-            The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
-        """
-        if self.token.get('refresh', False) is False and (not self.token.get('secret') or not self.token.get('client')):
-            raise ValueError("Token cannot be auto-refreshed.")
-
-        if not authority:
-            authority = 'https://login.microsoftonline.com/'
-
-        context = adal.AuthenticationContext(authority +
-                                             self.token['tenant'])
-
-        if self.token.get('secret') and self.token.get('client'):
-            out = context.acquire_token_with_client_credentials(self.token['resource'],
-                                                                self.token['client'],
-                                                                self.token['secret'])
-            out.update({'secret': self.token['secret']})
-        else:
-            out = context.acquire_token_with_refresh_token(self.token['refresh'],
-                                                           client_id=self.token['client'],
-                                                           resource=self.token['resource'])
-        # common items to update
-        out.update({'access': out['accessToken'],
-                    'time': time.time(), 'tenant': self.token['tenant'],
-                    'resource': self.token['resource'], 'client': self.token['client']})
-
-        self.token = out
 
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
@@ -498,7 +437,7 @@ class DatalakeRESTInterface:
 
 """
 Not yet implemented (or not applicable)
-http://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/WebHDFS.html
+https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/WebHDFS.html
 
 GETFILECHECKSUM
 GETHOMEDIRECTORY

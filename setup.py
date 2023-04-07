@@ -36,6 +36,7 @@ setup(name='azure-datalake-store',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',
+          'Programming Language :: Python :: 3.11',
           'License :: OSI Approved :: MIT License',
       ],
       packages=find_packages(exclude=['tests',
@@ -44,7 +45,8 @@ setup(name='azure-datalake-store',
                                       ]),
       install_requires=[
           'cffi',
-          'adal>=0.4.2',
+          'adal>=0.4.2' # Keeping this for backword compat. And there doesn't seem to be a way to specify we need one auth library only
+          'msal',
           'requests>=2.20.0',
       ],
       extras_require={
