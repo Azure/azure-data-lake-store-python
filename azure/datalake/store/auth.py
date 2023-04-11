@@ -24,18 +24,17 @@ def AuthChooser(tenant_id, username,
          password, client_id,
          client_secret, resource,
          require_2fa, authority, retry_policy, **kwargs):
+
     if _adls_sdk_is_using_msal:
         return auth_msal(tenant_id, username,
          password, client_id,
          client_secret, resource,
          require_2fa, authority, retry_policy, **kwargs)
     elif _adls_sdk_is_using_adal:
-        return auth_adal(tenant_id, username,
-         password, client_id,
-         client_secret, resource,
-         require_2fa, authority, retry_policy, **kwargs)
+        return auth_adal(tenant_id, username, password, client_id, client_secret, resource, require_2fa, authority, retry_policy, **kwargs)
     else:
         raise NotImplementedError
+
 class DataLakeCredentialMSAL:
     # Be careful modifying this. DataLakeCredential with DataLakeCredential is a general class in azure(used in azure cli), and we have to maintain parity.
     def __init__(self, token):
@@ -67,25 +66,22 @@ class DataLakeCredentialMSAL:
         if not authority:
             authority = 'https://login.microsoftonline.com/'
 
-        
-        scope = ["https://datalake.azure.net/.default"]
-        contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id)
-
+        tenant_id  = self.token['tenant']
+        scopes =  self.token['scopes']
         if self.token.get('secret') and self.token.get('client'):
             client_id = self.token['client']
-            tenant_id  = self.token['tenant']
             client_secret = self.token['secret']
             contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret)
-            out = contextClient.acquire_token_for_client(scopes=["https://datalake.azure.net/.default"])
+            out = contextClient.acquire_token_for_client(scopes=scopes)
             out.update({'secret': self.token['secret']})
         else:
-           
-            out = contextPub.client.obtain_token_by_refresh_token(self.token['refresh'], scopes=scope, )
+            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id)
+            out = contextPub.client.obtain_token_by_refresh_token(self.token['refresh'], scopes=scopes)
 
         # common items to update
-        out.update({'access': out['accessToken'],
+        out.update({'access': out['access_token'],
                     'time': time.time(), 'tenant': self.token['tenant'],
-                    'resource': self.token['resource'], 'client': self.token['client']})
+                    'resource': self.token['resource'], 'client': self.token['client'], 'scopes':self.token['scopes']})
 
         self.token = out
 
@@ -177,31 +173,24 @@ def auth_msal(tenant_id, username,
     :type DataLakeCredential :mod: `A DataLakeCredential object`
     """
 
-    if not authority:
-        authority = 'https://login.microsoftonline.com/'
-
-
-
     contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id)
     if tenant_id is None or client_id is None:
         raise ValueError("tenant_id and client_id must be supplied for authentication")
 
-
     contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret)
-    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call
-    # and the user will be prompted to login interactively through a browser.
-    scope = ["https://datalake.azure.net/.default"]
+
+    scopes = kwargs.get('scopes', ["https://datalake.azure.net/.default"])
     @retry_decorator_for_auth(retry_policy=retry_policy)
     def get_token_internal():
         # Internal function used so as to use retry decorator
         if require_2fa or (username is None and password is None and client_secret is None):
-            flow = contextPub.initiate_device_flow(scopes=scope)
+            flow = contextPub.initiate_device_flow(scopes=scopes)
             print(flow['message'])
             out = contextPub.acquire_token_by_device_flow(flow)
         elif username and password:
-            out = contextPub.acquire_token_by_username_password(username=username, password=password, scopes=scope)
+            out = contextPub.acquire_token_by_username_password(username=username, password=password, scopes=scopes)
         elif client_id and client_secret:
-            out = contextClient.acquire_token_for_client(scopes=["https://datalake.azure.net/.default"])
+            out = contextClient.acquire_token_for_client(scopes=scopes)
             # for service principal, we store the secret in the credential object for use when refreshing.
             out.update({'secret': client_secret})
         else:
@@ -211,14 +200,10 @@ def auth_msal(tenant_id, username,
 
     out.update({'access': out['access_token'], 'resource': resource,
                 'refresh': out.get('refresh_token', False),
-                'time': time.time(), 'tenant': tenant_id, 'client': client_id})
+                'time': time.time(), 'tenant': tenant_id, 'client': client_id, 'scopes':scopes})
 
     return DataLakeCredentialMSAL(out)
 
-
-# TODO: a breaking change should be made to add a new parameter specific for service_principal_app_id
-# instead of overloading client_id, which is also used by other login methods to indicate what application
-# is requesting the authentication (for example, in an interactive prompt).
 def auth_adal(tenant_id, username,
          password, client_id,
          client_secret, resource,
@@ -253,9 +238,6 @@ def auth_adal(tenant_id, username,
 
     if tenant_id is None or client_id is None:
         raise ValueError("tenant_id and client_id must be supplied for authentication")
-
-    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call
-    # and the user will be prompted to login interactively through a browser.
 
     @retry_decorator_for_auth(retry_policy=retry_policy)
     def get_token_internal():

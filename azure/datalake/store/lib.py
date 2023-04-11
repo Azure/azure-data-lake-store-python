@@ -140,23 +140,24 @@ def auth(tenant_id=None, username=None,
 
 class DataLakeCredential:
     def __init__(self, token):
-        self.token = DataLakeCredentialChooser(token)
+        self.credential_object = DataLakeCredentialChooser(token)
+        self.token = self.credential_object.token
 
     def signed_session(self):
         # type: () -> requests.Session
         """Create requests session with any required auth headers applied.
         :rtype: requests.Session
         """
-        return self.token.signed_session()
+        return self.credential_object.signed_session()
     
     def refresh_token(self, authority=None):
-            """ Refresh an expired authorization token
-            Parameters
-            ----------
-            authority: string
-                The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
-            """
-            return self.token.refresh_token(authority)
+        """ Refresh an expired authorization token
+        Parameters
+        ----------
+        authority: string
+            The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
+        """
+        return self.credential_object.refresh_token(authority)
 
 
 class DatalakeRESTInterface:

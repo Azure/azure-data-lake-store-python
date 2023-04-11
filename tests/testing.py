@@ -113,14 +113,16 @@ def create_files(azure, number_of_files, root_path = working_dir(), prefix=''):
 @contextmanager
 def azure_teardown(fs):
     try:
+        fs.mkdir(working_dir())
         yield
     finally:
         # this is a best effort. If there is an error attempting to delete during cleanup,
         # print it, but it should not cause the test to fail.
         try:
+            fs.rm(working_dir(), recursive=True)
             for path in fs.ls(working_dir(), invalidate_cache=False):
                 if fs.exists(path, invalidate_cache=False):
-                    fs.rm(path, recursive=True)
+                    fs.rm(path, recursive=True)      
         except Exception as e:
             print('warning: cleanup failed with exception:')
             print(e)

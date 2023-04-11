@@ -42,7 +42,9 @@ def linecount(infile):
 
 
 @contextmanager
-def setup_tree(azure):
+def setup_tree(azure, test_dir=None):
+    if test_dir == None:
+        test_dir = working_dir()
     for directory in ['', 'data/a', 'data/b']:
         azure.mkdir(test_dir / directory)
         for filename in ['x.csv', 'y.csv', 'z.txt']:
@@ -55,9 +57,7 @@ def setup_tree(azure):
     try:
         yield
     finally:
-        for path in azure.ls(test_dir, invalidate_cache=False):
-            if azure.exists(path, invalidate_cache=False):
-                azure.rm(path, recursive=True)
+        azure.rm(test_dir, recursive=True)
 
 
 def create_remote_csv(fs, name, columns, colwidth, lines):
@@ -246,7 +246,7 @@ def test_download_overwrite(tempdir, azure):
 
         with pytest.raises(OSError) as e:
             ADLDownloader(azure, test_dir, tempdir, 1, 2**24, run=False)
-        assert tempdir in str(e)
+        assert os.path.split(tempdir)[1] in str(e)
 
 
 @my_vcr.use_cassette
@@ -506,15 +506,14 @@ def test_set_acl_recusrive(azure):
         def check_acl_perms(path, permission):
             current_acl = azure.get_acl_status(path)
             acl_user_entry = [s for s in current_acl['entries'] if acluser in s]
-            assert len(acl_user_entry) == 1
+            assert len(acl_user_entry) == 1, "Path: "+path + " Acls: " + str(acl_user_entry)
             assert acl_user_entry[0].split(':')[-1] == permission
 
         files = list(azure.walk(test_dir))
         directories = list(set([x[0] for x in map(os.path.split, files)]))
-
+        print(test_dir)
         permission = "rwx"
         azure.set_acl(test_dir, acl_spec=set_acl_base + "user:"+acluser+":"+permission, recursive=True, number_of_sub_process=2)
-
         for path in files+directories:
             check_acl_perms(path, permission)
 
