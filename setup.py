@@ -48,7 +48,6 @@ setup(name='azure-datalake-store',
                                       ]),
       install_requires=[
           'cffi',
-          'adal>=0.4.2' # Keeping this for backword compat. And there doesn't seem to be a way to specify we need one auth library only
           'msal',
           'requests>=2.20.0',
       ],

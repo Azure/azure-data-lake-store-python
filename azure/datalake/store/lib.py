@@ -27,8 +27,8 @@ if sys.version_info >= (3, 4):
 else:
     import urllib
 
-from .retry import ExponentialRetryPolicy, retry_decorator_for_auth
-from .auth import DataLakeCredentialChooser, AuthChooser
+from .retry import ExponentialRetryPolicy
+import msal
 
 # 3rd party imports
 import requests
@@ -132,23 +132,57 @@ def auth(tenant_id=None, username=None,
     if not client_secret:
         client_secret = os.environ.get('azure_client_secret', None)
 
-    return AuthChooser(tenant_id, username,
-         password, client_id,
-         client_secret, resource,
-         require_2fa, authority, retry_policy, **kwargs)
+        contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id)
+    if tenant_id is None or client_id is None:
+        raise ValueError("tenant_id and client_id must be supplied for authentication")
 
+    contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret)
+
+    scopes = kwargs.get('scopes', ["https://datalake.azure.net/.default"])
+    def get_token_internal():
+        # Internal function used so as to use retry decorator
+        if require_2fa or (username is None and password is None and client_secret is None):
+            flow = contextPub.initiate_device_flow(scopes=scopes)
+            print(flow['message'])
+            out = contextPub.acquire_token_by_device_flow(flow)
+        elif username and password:
+            out = contextPub.acquire_token_by_username_password(username=username, password=password, scopes=scopes)
+        elif client_id and client_secret:
+            out = contextClient.acquire_token_for_client(scopes=scopes)
+            # for service principal, we store the secret in the credential object for use when refreshing.
+            out.update({'secret': client_secret})
+        else:
+            raise ValueError("No authentication method found for credentials")
+        return out
+    
+    out = get_token_internal()
+
+    if 'error' in out:
+        msg = "MSAL Error: "+out.get('error_description', "")
+        err = DatalakeRESTException(msg)
+        logger.log(logging.ERROR, msg)
+        raise err
+    
+    out.update({'access_token': out['access_token'], 'access': out['access_token'], 'resource': resource,
+                'refresh': out.get('refresh_token', False),
+                'time': time.time(), 'tenant': tenant_id, 'client': client_id, 'scopes':scopes})
+
+    return DataLakeCredential(out)
 
 class DataLakeCredential:
     def __init__(self, token):
-        self.credential_object = DataLakeCredentialChooser(token)
-        self.token = self.credential_object.token
+        self.token = token
 
     def signed_session(self):
         # type: () -> requests.Session
         """Create requests session with any required auth headers applied.
         :rtype: requests.Session
         """
-        return self.credential_object.signed_session()
+        session = requests.Session()
+        scheme, token = self.token['token_type'], self.token['access_token']
+        header = "{} {}".format(scheme, token)
+        session.headers['Authorization'] = header
+        return session
     
     def refresh_token(self, authority=None):
         """ Refresh an expired authorization token
@@ -157,7 +191,35 @@ class DataLakeCredential:
         authority: string
             The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
         """
-        return self.credential_object.refresh_token(authority)
+        if self.token.get('refresh', False) is False and (not self.token.get('secret') or not self.token.get('client')):
+            raise ValueError("Token cannot be auto-refreshed.")
+
+        if not authority:
+            authority = 'https://login.microsoftonline.com/'
+
+        tenant_id  = self.token['tenant']
+        scopes =  self.token['scopes']
+        if self.token.get('secret') and self.token.get('client'):
+            client_id = self.token['client']
+            client_secret = self.token['secret']
+            contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret)
+            out = contextClient.acquire_token_for_client(scopes=scopes)
+            out.update({'secret': client_secret})
+        else:
+            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id)
+            out = contextPub.client.obtain_token_by_refresh_token(self.token['refresh'], scopes=scopes)
+        
+        if 'error' in out:
+            msg = "MSAL Error: "+out.get('error_description', "")
+            err = DatalakeRESTException(msg)
+            logger.log(logging.ERROR, msg)
+            raise err
+        # common items to update
+        out.update({'access_token': out['access_token'], 'access': out['access_token'],
+                    'time': time.time(), 'tenant': self.token['tenant'],
+                    'resource': self.token['resource'], 'client': self.token['client'], 'scopes':self.token['scopes']})
+
+        self.token = out
 
 
 class DatalakeRESTInterface:
@@ -168,7 +230,7 @@ class DatalakeRESTInterface:
     store_name: str
         The name of the Data Lake Store account to execute operations against.
     token: dict
-        from `auth()` or `refresh_token()` or other ADAL source
+        from `auth()` or `refresh_token()` or other MSAL source
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
@@ -249,13 +311,10 @@ class DatalakeRESTInterface:
         return s
 
     def _check_token(self, retry_policy= None):
-        @retry_decorator_for_auth(retry_policy=retry_policy)
-        def check_token_internal():
-            cur_session = self.token.signed_session()
-            if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
-                self.head = {'Authorization': cur_session.headers['Authorization']}
-                self.local.session = None
-        check_token_internal()
+        cur_session = self.token.signed_session()
+        if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
+            self.head = {'Authorization': cur_session.headers['Authorization']}
+            self.local.session = None
 
     def _log_request(self, method, url, op, path, params, headers, retry_count):
         msg = u"HTTP Request\n{} {}\n".format(method.upper(), url)
