@@ -28,12 +28,12 @@ else:
     import urllib
 
 from .retry import ExponentialRetryPolicy
-import msal
 
 # 3rd party imports
+import msal
 import requests
 import requests.exceptions
-    
+
 
 # this is required due to github issue, to ensure we don't lose perf from openPySSL: https://github.com/pyca/pyopenssl/issues/625
 def enforce_no_py_open_ssl():
@@ -131,8 +131,8 @@ def auth(tenant_id=None, username=None,
 
     if not client_secret:
         client_secret = os.environ.get('azure_client_secret', None)
-
         contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id)
+
     if tenant_id is None or client_id is None:
         raise ValueError("tenant_id and client_id must be supplied for authentication")
 
@@ -162,7 +162,7 @@ def auth(tenant_id=None, username=None,
         err = DatalakeRESTException(msg)
         logger.log(logging.ERROR, msg)
         raise err
-    
+    print(out)
     out.update({'access_token': out['access_token'], 'access': out['access_token'], 'resource': resource,
                 'refresh': out.get('refresh_token', False),
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id, 'scopes':scopes})
@@ -178,6 +178,8 @@ class DataLakeCredential:
         """Create requests session with any required auth headers applied.
         :rtype: requests.Session
         """
+        if time.time() - self.token['time'] > self.token['expires_in'] - 100:
+            self.refresh_token()
         session = requests.Session()
         scheme, token = self.token['token_type'], self.token['access_token']
         header = "{} {}".format(scheme, token)

@@ -511,7 +511,6 @@ def test_set_acl_recusrive(azure):
 
         files = list(azure.walk(test_dir))
         directories = list(set([x[0] for x in map(os.path.split, files)]))
-        print(test_dir)
         permission = "rwx"
         azure.set_acl(test_dir, acl_spec=set_acl_base + "user:"+acluser+":"+permission, recursive=True, number_of_sub_process=2)
         for path in files+directories:
