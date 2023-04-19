@@ -3,6 +3,10 @@
 Release History
 ===============
 
+0.0.53 (2022-10-26)
++++++++++++++++++++
+* Suppress deprecation warning when detecting pyopenssl existence.
+
 0.0.52 (2020-11-25)
 +++++++++++++++++++
 * Changed logging verbosity when closing a stream

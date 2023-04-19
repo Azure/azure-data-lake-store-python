@@ -20,6 +20,7 @@ import time
 import uuid
 import platform
 import sys
+import warnings
 
 if sys.version_info >= (3, 4):
     import urllib.parse as urllib
@@ -33,19 +34,29 @@ import adal
 import requests
 import requests.exceptions
 
-# this is required due to github issue, to ensure we don't lose perf from openPySSL: https://github.com/pyca/pyopenssl/issues/625
-enforce_no_py_open_ssl = None
-try:
-    from requests.packages.urllib3.contrib.pyopenssl import extract_from_urllib3 as enforce_no_py_open_ssl
-except ImportError:
-    # in the case of debian/ubuntu system packages, the import is slightly different
-    try:
-        from urllib3.contrib.pyopenssl import extract_from_urllib3 as enforce_no_py_open_ssl
-    except ImportError:
-        # if OpenSSL is unavailable in both cases then there is no need to "undo" it.
-        pass
 
-if enforce_no_py_open_ssl:
+# this is required due to github issue, to ensure we don't lose perf from openPySSL: https://github.com/pyca/pyopenssl/issues/625
+def enforce_no_py_open_ssl():
+    try:
+        from requests.packages.urllib3.contrib.pyopenssl import extract_from_urllib3
+    except ImportError:
+        # in the case of debian/ubuntu system packages, the import is slightly different
+        try:
+            from urllib3.contrib.pyopenssl import extract_from_urllib3
+        except ImportError:
+            # if OpenSSL is unavailable in both cases then there is no need to "undo" it.
+            return
+    extract_from_urllib3()
+
+
+# Suppress urllib3 warning when accessing pyopenssl. This module is being removed
+# soon, but we already handle its absence.
+with warnings.catch_warnings():
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        message=r"'urllib3.contrib.pyopenssl' module is deprecated and will be removed.+",
+    )
     enforce_no_py_open_ssl()
 
 from .exceptions import DatalakeBadOffsetException, DatalakeRESTException
