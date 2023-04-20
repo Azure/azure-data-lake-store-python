@@ -48,7 +48,7 @@ setup(name='azure-datalake-store',
                                       ]),
       install_requires=[
           'cffi',
-          'msal',
+          'msal>=1.16.0,<2',  # http_cache was introduced in MSAL 1.16.0
           'requests>=2.20.0',
       ],
       extras_require={

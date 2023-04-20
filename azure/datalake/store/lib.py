@@ -34,6 +34,7 @@ import msal
 import requests
 import requests.exceptions
 
+_http_cache = {}  # Useful for MSAL. https://msal-python.readthedocs.io/en/latest/#msal.PublicClientApplication.params.http_cache
 
 # this is required due to github issue, to ensure we don't lose perf from openPySSL: https://github.com/pyca/pyopenssl/issues/625
 def enforce_no_py_open_ssl():
@@ -131,7 +132,7 @@ def auth(tenant_id=None, username=None,
 
     if not client_secret:
         client_secret = os.environ.get('azure_client_secret', None)
-        contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id)
+        contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
 
     if tenant_id is None or client_id is None:
         raise ValueError("tenant_id and client_id must be supplied for authentication")
