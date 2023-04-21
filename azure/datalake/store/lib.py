@@ -132,16 +132,14 @@ def auth(tenant_id=None, username=None,
 
     if not client_secret:
         client_secret = os.environ.get('azure_client_secret', None)
+
+    if client_secret:
+        contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret, http_cache=_http_cache)
+    else:
         contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
-
-    if tenant_id is None or client_id is None:
-        raise ValueError("tenant_id and client_id must be supplied for authentication")
-
-    contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret)
-
+    
     scopes = kwargs.get('scopes', ["https://datalake.azure.net/.default"])
     def get_token_internal():
-        # Internal function used so as to use retry decorator
         if require_2fa or (username is None and password is None and client_secret is None):
             flow = contextPub.initiate_device_flow(scopes=scopes)
             print(flow['message'])
@@ -163,7 +161,7 @@ def auth(tenant_id=None, username=None,
         err = DatalakeRESTException(msg)
         logger.log(logging.ERROR, msg)
         raise err
-    print(out)
+
     out.update({'access_token': out['access_token'], 'access': out['access_token'], 'resource': resource,
                 'refresh': out.get('refresh_token', False),
                 'time': time.time(), 'tenant': tenant_id, 'client': client_id, 'scopes':scopes})
@@ -205,11 +203,11 @@ class DataLakeCredential:
         if self.token.get('secret') and self.token.get('client'):
             client_id = self.token['client']
             client_secret = self.token['secret']
-            contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret)
+            contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret, http_cache=_http_cache)
             out = contextClient.acquire_token_for_client(scopes=scopes)
             out.update({'secret': client_secret})
         else:
-            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id)
+            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
             out = contextPub.client.obtain_token_by_refresh_token(self.token['refresh'], scopes=scopes)
         
         if 'error' in out:
