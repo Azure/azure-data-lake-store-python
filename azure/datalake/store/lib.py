@@ -132,21 +132,19 @@ def auth(tenant_id=None, username=None,
 
     if not client_secret:
         client_secret = os.environ.get('azure_client_secret', None)
-
-    if client_secret:
-        contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret, http_cache=_http_cache)
-    else:
-        contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
     
     scopes = kwargs.get('scopes', ["https://datalake.azure.net/.default"])
     def get_token_internal():
         if require_2fa or (username is None and password is None and client_secret is None):
+            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
             flow = contextPub.initiate_device_flow(scopes=scopes)
             print(flow['message'])
             out = contextPub.acquire_token_by_device_flow(flow)
         elif username and password:
+            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
             out = contextPub.acquire_token_by_username_password(username=username, password=password, scopes=scopes)
         elif client_id and client_secret:
+            contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret, http_cache=_http_cache)
             out = contextClient.acquire_token_for_client(scopes=scopes)
             # for service principal, we store the secret in the credential object for use when refreshing.
             out.update({'secret': client_secret})
