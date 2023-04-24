@@ -179,7 +179,7 @@ class CountUpDownLatch:
         self.lock.acquire()
         self.val -= 1
         if self.val <= 0:
-            self.lock.notifyAll()
+            self.lock.notify_all()
         self.lock.release()
 
     def total_processed(self):

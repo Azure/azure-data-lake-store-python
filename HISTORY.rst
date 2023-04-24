@@ -3,8 +3,9 @@
 Release History
 ===============
 
-0.0.53 (2022-10-26)
+0.0.53 (2023-04-11)
 +++++++++++++++++++
+* Add MSAL support. Remove ADAL support
 * Suppress deprecation warning when detecting pyopenssl existence.
 
 0.0.52 (2020-11-25)

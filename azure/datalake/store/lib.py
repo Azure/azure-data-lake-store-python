@@ -27,13 +27,14 @@ if sys.version_info >= (3, 4):
 else:
     import urllib
 
-from .retry import ExponentialRetryPolicy, retry_decorator_for_auth
+from .retry import ExponentialRetryPolicy
 
 # 3rd party imports
-import adal
+import msal
 import requests
 import requests.exceptions
 
+_http_cache = {}  # Useful for MSAL. https://msal-python.readthedocs.io/en/latest/#msal.PublicClientApplication.params.http_cache
 
 # this is required due to github issue, to ensure we don't lose perf from openPySSL: https://github.com/pyca/pyopenssl/issues/625
 def enforce_no_py_open_ssl():
@@ -118,13 +119,8 @@ def auth(tenant_id=None, username=None,
     if not authority:
         authority = 'https://login.microsoftonline.com/'
 
-
     if not tenant_id:
         tenant_id = os.environ.get('azure_tenant_id', "common")
-
-    context = adal.AuthenticationContext(authority +
-                                         tenant_id)
-
     if tenant_id is None or client_id is None:
         raise ValueError("tenant_id and client_id must be supplied for authentication")
 
@@ -136,60 +132,59 @@ def auth(tenant_id=None, username=None,
 
     if not client_secret:
         client_secret = os.environ.get('azure_client_secret', None)
-
-    # You can explicitly authenticate with 2fa, or pass in nothing to the auth call
-    # and the user will be prompted to login interactively through a browser.
-
-    @retry_decorator_for_auth(retry_policy=retry_policy)
+    
+    scopes = kwargs.get('scopes', ["https://datalake.azure.net/.default"])
     def get_token_internal():
-        # Internal function used so as to use retry decorator
         if require_2fa or (username is None and password is None and client_secret is None):
-            code = context.acquire_user_code(resource, client_id)
-            print(code['message'])
-            out = context.acquire_token_with_device_code(resource, code, client_id)
+            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
+            flow = contextPub.initiate_device_flow(scopes=scopes)
+            print(flow['message'])
+            out = contextPub.acquire_token_by_device_flow(flow)
         elif username and password:
-            out = context.acquire_token_with_username_password(resource, username,
-                                                               password, client_id)
+            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
+            out = contextPub.acquire_token_by_username_password(username=username, password=password, scopes=scopes)
         elif client_id and client_secret:
-            out = context.acquire_token_with_client_credentials(resource, client_id,
-                                                                client_secret)
+            contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret, http_cache=_http_cache)
+            out = contextClient.acquire_token_for_client(scopes=scopes)
             # for service principal, we store the secret in the credential object for use when refreshing.
             out.update({'secret': client_secret})
         else:
             raise ValueError("No authentication method found for credentials")
         return out
+    
     out = get_token_internal()
 
-    out.update({'access': out['accessToken'], 'resource': resource,
-                'refresh': out.get('refreshToken', False),
-                'time': time.time(), 'tenant': tenant_id, 'client': client_id})
+    if 'error' in out:
+        msg = "MSAL Error: "+out.get('error_description', "")
+        err = DatalakeRESTException(msg)
+        logger.log(logging.ERROR, msg)
+        raise err
+
+    out.update({'access_token': out['access_token'], 'access': out['access_token'], 'resource': resource,
+                'refresh': out.get('refresh_token', False),
+                'time': time.time(), 'tenant': tenant_id, 'client': client_id, 'scopes':scopes})
 
     return DataLakeCredential(out)
 
-
 class DataLakeCredential:
-    # Be careful modifying this. DataLakeCredential is a general class in azure, and we have to maintain parity.
     def __init__(self, token):
         self.token = token
 
     def signed_session(self):
         # type: () -> requests.Session
         """Create requests session with any required auth headers applied.
-
         :rtype: requests.Session
         """
-        session = requests.Session()
-        if time.time() - self.token['time'] > self.token['expiresIn'] - 100:
+        if time.time() - self.token['time'] > self.token['expires_in'] - 100:
             self.refresh_token()
-
-        scheme, token = self.token['tokenType'], self.token['access']
+        session = requests.Session()
+        scheme, token = self.token['token_type'], self.token['access_token']
         header = "{} {}".format(scheme, token)
         session.headers['Authorization'] = header
         return session
-
+    
     def refresh_token(self, authority=None):
         """ Refresh an expired authorization token
-
         Parameters
         ----------
         authority: string
@@ -201,24 +196,30 @@ class DataLakeCredential:
         if not authority:
             authority = 'https://login.microsoftonline.com/'
 
-        context = adal.AuthenticationContext(authority +
-                                             self.token['tenant'])
-
+        tenant_id  = self.token['tenant']
+        scopes =  self.token['scopes']
         if self.token.get('secret') and self.token.get('client'):
-            out = context.acquire_token_with_client_credentials(self.token['resource'],
-                                                                self.token['client'],
-                                                                self.token['secret'])
-            out.update({'secret': self.token['secret']})
+            client_id = self.token['client']
+            client_secret = self.token['secret']
+            contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret, http_cache=_http_cache)
+            out = contextClient.acquire_token_for_client(scopes=scopes)
+            out.update({'secret': client_secret})
         else:
-            out = context.acquire_token_with_refresh_token(self.token['refresh'],
-                                                           client_id=self.token['client'],
-                                                           resource=self.token['resource'])
+            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
+            out = contextPub.client.obtain_token_by_refresh_token(self.token['refresh'], scopes=scopes)
+        
+        if 'error' in out:
+            msg = "MSAL Error: "+out.get('error_description', "")
+            err = DatalakeRESTException(msg)
+            logger.log(logging.ERROR, msg)
+            raise err
         # common items to update
-        out.update({'access': out['accessToken'],
+        out.update({'access_token': out['access_token'], 'access': out['access_token'],
                     'time': time.time(), 'tenant': self.token['tenant'],
-                    'resource': self.token['resource'], 'client': self.token['client']})
+                    'resource': self.token['resource'], 'client': self.token['client'], 'scopes':self.token['scopes']})
 
         self.token = out
+
 
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
@@ -228,7 +229,7 @@ class DatalakeRESTInterface:
     store_name: str
         The name of the Data Lake Store account to execute operations against.
     token: dict
-        from `auth()` or `refresh_token()` or other ADAL source
+        from `auth()` or `refresh_token()` or other MSAL source
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
@@ -309,13 +310,10 @@ class DatalakeRESTInterface:
         return s
 
     def _check_token(self, retry_policy= None):
-        @retry_decorator_for_auth(retry_policy=retry_policy)
-        def check_token_internal():
-            cur_session = self.token.signed_session()
-            if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
-                self.head = {'Authorization': cur_session.headers['Authorization']}
-                self.local.session = None
-        check_token_internal()
+        cur_session = self.token.signed_session()
+        if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
+            self.head = {'Authorization': cur_session.headers['Authorization']}
+            self.local.session = None
 
     def _log_request(self, method, url, op, path, params, headers, retry_count):
         msg = u"HTTP Request\n{} {}\n".format(method.upper(), url)
@@ -498,7 +496,7 @@ class DatalakeRESTInterface:
 
 """
 Not yet implemented (or not applicable)
-http://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/WebHDFS.html
+https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/WebHDFS.html
 
 GETFILECHECKSUM
 GETHOMEDIRECTORY

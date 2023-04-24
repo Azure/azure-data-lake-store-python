@@ -22,7 +22,7 @@ GLOBAL_EXCEPTION_LOCK = threading.Lock()
 
 def monitor_exception(exception_queue, process_ids):
     global GLOBAL_EXCEPTION
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("azure.datalake.store")
 
     while True:
         try:
@@ -53,8 +53,8 @@ def log_listener_process(queue):
             queue.task_done()
             if record == END_QUEUE_SENTINEL:  # We send this as a sentinel to tell the listener to quit.
                 break
-            logger = logging.getLogger(record.name)
-            logger.handlers.clear()
+            logger = logging.getLogger("azure.datalake.store")
+            #logger.handlers.clear()
             logger.handle(record)   # No level or filter logic applied - just do it!
         except Empty:               # Try again
             pass
@@ -65,7 +65,7 @@ def log_listener_process(queue):
 
 
 def multi_processor_change_acl(adl, path=None, method_name="", acl_spec="", number_of_sub_process=None):
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("azure.datalake.store")
 
     def launch_processes(number_of_processes):
         if number_of_processes is None:
@@ -152,8 +152,8 @@ def multi_processor_change_acl(adl, path=None, method_name="", acl_spec="", numb
 
 
 def processor(adl, file_path_queue, finish_queue_processing_flag, method_name, acl_spec, log_queue, exception_queue):
-    logger = logging.getLogger(__name__)
-
+    logger = logging.getLogger("azure.datalake.store")
+    logger.setLevel(logging.DEBUG)
     removed_default_acl_spec = ",".join([x for x in acl_spec.split(',') if not x.lower().startswith("default")])
 
     try:
