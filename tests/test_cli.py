@@ -17,8 +17,7 @@ from samples.cli import AzureDataLakeFSCommand
 from azure.datalake.store.exceptions import PermissionError
 from tests.testing import azure, my_vcr, working_dir
 
-
-@pytest.yield_fixture()
+@pytest.fixture()
 def client(azure):
     yield AzureDataLakeFSCommand(azure)
 
@@ -72,15 +71,10 @@ def test_chmod(capsys, azure, client):
         client.onecmd('info ' + azurefile)
         assert 'permission       = 550' in read_stdout(capsys)
 
-
-@my_vcr.use_cassette
-def test_chown(capsys, azure, client):
-    pass 
-
 @my_vcr.use_cassette
 def test_df(capsys, azure, client):
     with setup_file(azure) as _:
-        client.onecmd('df')
+        client.onecmd('df ' + str(working_dir()))
         out = read_stdout(capsys)
         assert len(out.strip().split('\n')) == 6
         assert 'quota' in out

@@ -19,14 +19,9 @@ import threading
 import time
 import uuid
 import platform
-import sys
 import warnings
-
-if sys.version_info >= (3, 4):
-    import urllib.parse as urllib
-else:
-    import urllib
-
+import time
+import urllib.parse as urllib
 from .retry import ExponentialRetryPolicy
 
 # 3rd party imports
@@ -49,7 +44,6 @@ def enforce_no_py_open_ssl():
             return
     extract_from_urllib3()
 
-
 # Suppress urllib3 warning when accessing pyopenssl. This module is being removed
 # soon, but we already handle its absence.
 with warnings.catch_warnings():
@@ -66,8 +60,6 @@ from . import __version__
 
 logger = logging.getLogger(__name__)
 
-# TODO: This client id should be removed and it should be a required parameter for authentication.
-default_client = os.environ.get('azure_client_id', "04b07795-8ddb-461a-bbee-02f9e1bf7b46")
 default_store = os.environ.get('azure_data_lake_store_name', None)
 default_adls_suffix = os.environ.get('azure_data_lake_store_url_suffix', 'azuredatalakestore.net')
 
@@ -79,147 +71,6 @@ MAX_CONTENT_LENGTH = 2**16
 # that are supported during a single operation (such as upload or download of a file).
 # This ensures that no connections are prematurely evicted, which has negative performance implications.
 MAX_POOL_CONNECTIONS = 1024
-
-# TODO: a breaking change should be made to add a new parameter specific for service_principal_app_id
-# instead of overloading client_id, which is also used by other login methods to indicate what application
-# is requesting the authentication (for example, in an interactive prompt).
-def auth(tenant_id=None, username=None,
-         password=None, client_id=default_client,
-         client_secret=None, resource=DEFAULT_RESOURCE_ENDPOINT,
-         require_2fa=False, authority=None, retry_policy=None, **kwargs):
-    """ User/password authentication
-
-    Parameters
-    ----------
-
-    tenant_id: str
-        associated with the user's subscription, or "common"
-    username: str
-        active directory user
-    password: str
-        sign-in password
-    client_id: str
-        the service principal client
-    client_secret: str
-        the secret associated with the client_id
-    resource: str
-        resource for auth (e.g., https://datalake.azure.net/)
-    require_2fa: bool
-        indicates this authentication attempt requires two-factor authentication
-    authority: string
-        The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
-    kwargs: key/values
-        Other parameters, for future use
-
-    Returns
-    -------
-    :type DataLakeCredential :mod: `A DataLakeCredential object`
-    """
-
-    if not authority:
-        authority = 'https://login.microsoftonline.com/'
-
-    if not tenant_id:
-        tenant_id = os.environ.get('azure_tenant_id', "common")
-    if tenant_id is None or client_id is None:
-        raise ValueError("tenant_id and client_id must be supplied for authentication")
-
-    if not username:
-        username = os.environ.get('azure_username', None)
-
-    if not password:
-        password = os.environ.get('azure_password', None)
-
-    if not client_secret:
-        client_secret = os.environ.get('azure_client_secret', None)
-    
-    scopes = kwargs.get('scopes', ["https://datalake.azure.net/.default"])
-    def get_token_internal():
-        if require_2fa or (username is None and password is None and client_secret is None):
-            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
-            flow = contextPub.initiate_device_flow(scopes=scopes)
-            print(flow['message'])
-            out = contextPub.acquire_token_by_device_flow(flow)
-        elif username and password:
-            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
-            out = contextPub.acquire_token_by_username_password(username=username, password=password, scopes=scopes)
-        elif client_id and client_secret:
-            contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret, http_cache=_http_cache)
-            out = contextClient.acquire_token_for_client(scopes=scopes)
-            # for service principal, we store the secret in the credential object for use when refreshing.
-            out.update({'secret': client_secret})
-        else:
-            raise ValueError("No authentication method found for credentials")
-        return out
-    
-    out = get_token_internal()
-
-    if 'error' in out:
-        msg = "MSAL Error: "+out.get('error_description', "")
-        err = DatalakeRESTException(msg)
-        logger.log(logging.ERROR, msg)
-        raise err
-
-    out.update({'access_token': out['access_token'], 'access': out['access_token'], 'resource': resource,
-                'refresh': out.get('refresh_token', False),
-                'time': time.time(), 'tenant': tenant_id, 'client': client_id, 'scopes':scopes})
-
-    return DataLakeCredential(out)
-
-class DataLakeCredential:
-    def __init__(self, token):
-        self.token = token
-
-    def signed_session(self):
-        # type: () -> requests.Session
-        """Create requests session with any required auth headers applied.
-        :rtype: requests.Session
-        """
-        if time.time() - self.token['time'] > self.token['expires_in'] - 100:
-            self.refresh_token()
-        session = requests.Session()
-        scheme, token = self.token['token_type'], self.token['access_token']
-        header = "{} {}".format(scheme, token)
-        session.headers['Authorization'] = header
-        return session
-    
-    def refresh_token(self, authority=None):
-        """ Refresh an expired authorization token
-        Parameters
-        ----------
-        authority: string
-            The full URI of the authentication authority to authenticate against (such as https://login.microsoftonline.com/)
-        """
-        if self.token.get('refresh', False) is False and (not self.token.get('secret') or not self.token.get('client')):
-            raise ValueError("Token cannot be auto-refreshed.")
-
-        if not authority:
-            authority = 'https://login.microsoftonline.com/'
-
-        tenant_id  = self.token['tenant']
-        scopes =  self.token['scopes']
-        if self.token.get('secret') and self.token.get('client'):
-            client_id = self.token['client']
-            client_secret = self.token['secret']
-            contextClient = msal.ConfidentialClientApplication(client_id=client_id, authority=authority+tenant_id, client_credential=client_secret, http_cache=_http_cache)
-            out = contextClient.acquire_token_for_client(scopes=scopes)
-            out.update({'secret': client_secret})
-        else:
-            contextPub = msal.PublicClientApplication(client_id=client_id, authority=authority+tenant_id, http_cache=_http_cache)
-            out = contextPub.client.obtain_token_by_refresh_token(self.token['refresh'], scopes=scopes)
-        
-        if 'error' in out:
-            msg = "MSAL Error: "+out.get('error_description', "")
-            err = DatalakeRESTException(msg)
-            logger.log(logging.ERROR, msg)
-            raise err
-        # common items to update
-        out.update({'access_token': out['access_token'], 'access': out['access_token'],
-                    'time': time.time(), 'tenant': self.token['tenant'],
-                    'resource': self.token['resource'], 'client': self.token['client'], 'scopes':self.token['scopes']})
-
-        self.token = out
-
 
 class DatalakeRESTInterface:
     """ Call factory for webHDFS endpoints on ADLS
@@ -239,9 +90,8 @@ class DatalakeRESTInterface:
         breaking changes. Changes to this value should be undergone with caution.
     req_timeout_s: float(60)
         This is the timeout for each requests library call.
-    kwargs: optional arguments to auth
-        See ``auth()``. Includes, e.g., username, password, tenant; will pull
-        values from environment variables if not provided.
+    scopes: str (None)
+        The scopes to use for the token. If not provided, the default https://datalake.azure.net//.default is used.
     """
 
     ends = {
@@ -269,22 +119,21 @@ class DatalakeRESTInterface:
         'REMOVEDEFAULTACL': ('put', set(), set())
     }
 
-    def __init__(self, store_name=default_store, token=None,
-                 url_suffix=default_adls_suffix, api_version='2018-09-01', req_timeout_s=60, **kwargs):
+    def __init__(self, store_name=default_store, token_credential=None,
+                 url_suffix=default_adls_suffix, api_version='2018-09-01', req_timeout_s=60, scopes=None):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
         url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
-        if token is None:
-            token = auth(**kwargs)
-        self.token = token
+        self.token_credential = token_credential
+        self.scopes = scopes or "https://datalake.azure.net//.default"
+        self.AccessToken = None
 
         # There is a case where the user can opt to exclude an API version, in which case
         # the service itself decides on the API version to use (it's default).
         self.api_version = api_version or None
-        self.head = None
-        self._check_token()  # Retryable method. Will ensure that signed_session token is current when we set it on next line
-        self.head = {'Authorization': token.signed_session().headers['Authorization']}
         self.url = 'https://%s.%s/' % (store_name, url_suffix)
+        self.head = None
+
         self.webhdfs = 'webhdfs/v1/'
         self.extended_operations = 'webhdfsext/'
         self.user_agent = "python/{} ({}) {}/{} Azure-Data-Lake-Store-SDK-For-Python".format(
@@ -294,10 +143,18 @@ class DatalakeRESTInterface:
             __version__)
         self.req_timeout_s = req_timeout_s
 
+    def get_refreshed_bearer_token(self):
+        # Check if the token is about to expire in 300 seconds and refresh it if necessary
+        if self.AccessToken is None or time.time() > self.AccessToken.expires_on - 300:
+            self.AccessToken = self.token_credential.get_token(self.scopes)
+        return self.AccessToken.token
+
     @property
     def session(self):
+        bearer_token = self.get_refreshed_bearer_token()
         try:
             s = self.local.session
+            s.headers['Authorization'] = "Bearer " + bearer_token
         except AttributeError:
             s = None
         if not s:
@@ -306,14 +163,9 @@ class DatalakeRESTInterface:
                 pool_maxsize=MAX_POOL_CONNECTIONS)
             s = requests.Session()
             s.mount(self.url, adapter)
+            s.headers['Authorization'] = "Bearer " + bearer_token
             self.local.session = s
         return s
-
-    def _check_token(self, retry_policy= None):
-        cur_session = self.token.signed_session()
-        if not self.head or self.head.get('Authorization') != cur_session.headers['Authorization']:
-            self.head = {'Authorization': cur_session.headers['Authorization']}
-            self.local.session = None
 
     def _log_request(self, method, url, op, path, params, headers, retry_count):
         msg = u"HTTP Request\n{} {}\n".format(method.upper(), url)
@@ -409,13 +261,11 @@ class DatalakeRESTInterface:
         else:
             url = self.url + self.webhdfs
         url += urllib.quote(path)
-
         retry_count = -1
         request_id = str(uuid.uuid1())
         while True:
             retry_count += 1
             last_exception = None
-            self._check_token()
             try:
                 response = self.__call_once(method=method,
                                             url=url,
@@ -482,7 +332,7 @@ class DatalakeRESTInterface:
 
     def __call_once(self, method, url, params, data, stream, request_id, retry_count, op, path='', headers={}, **kwargs):
         func = getattr(self.session, method)
-        req_headers = self.head.copy()
+        req_headers = {'Authorization': self.session.headers['Authorization']}
         req_headers['x-ms-client-request-id'] = request_id + "." + str(retry_count)
         req_headers['User-Agent'] = self.user_agent
         req_headers.update(headers)

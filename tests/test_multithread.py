@@ -21,7 +21,7 @@ from tests.settings import AZURE_ACL_TEST_APPID
 test_dir = working_dir()
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def tempdir():
     tmpdir = tempfile.mkdtemp()
     try:
@@ -264,7 +264,7 @@ def test_save_down(tempdir, azure):
         assert down.hash not in alldownloads
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def local_files(tempdir):
     filenames = [os.path.join(tempdir, f) for f in ['bigfile', 'littlefile', 'emptyfile']]
     with open(filenames[0], 'wb') as f:

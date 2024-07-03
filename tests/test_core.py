@@ -105,15 +105,6 @@ def test_rm(azure):
         azure.rm(a)
         assert not azure.exists(a, invalidate_cache=False)
 
-
-@my_vcr.use_cassette
-def test_pickle(azure):
-    import pickle
-    azure2 = pickle.loads(pickle.dumps(azure))
-
-    assert azure2.token.signed_session().headers == azure.token.signed_session().headers
-
-
 @my_vcr.use_cassette
 def test_seek(azure):
     with azure_teardown(azure):

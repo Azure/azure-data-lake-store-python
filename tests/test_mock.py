@@ -21,8 +21,6 @@ from requests import ConnectionError, ConnectTimeout, ReadTimeout, Timeout, HTTP
 
 from tests import settings
 from azure.datalake.store.exceptions import DatalakeRESTException
-from azure.datalake.store.lib import auth
-from azure.datalake.store.lib import DataLakeCredential
 from tests.testing import azure, azure_teardown, posix, working_dir
 from tests.settings import TENANT_ID, CLIENT_ID
 test_dir = working_dir()

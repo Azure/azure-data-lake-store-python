@@ -62,30 +62,30 @@ my_vcr = vcr.VCR(
     func_path_generator=_build_func_path_generator,
     path_transformer=vcr.VCR.ensure_suffix('.yaml'),
     filter_headers=['authorization'],
+    filter_query_parameters=['filesessionid', 'leaseid']
     )
 
 
 def working_dir():
     if not hasattr(working_dir, "path"):
-        unique_dir = 'azure_python_sdk_test_dir' + str(uuid.uuid4())
+        unique_dir = 'azure_python_sdk_test_dir'
         working_dir.path = AzureDLPath(unique_dir)
     return working_dir.path
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def azure():
     from azure.datalake.store import AzureDLFileSystem
-    fs = AzureDLFileSystem(token=settings.TOKEN, store_name=settings.STORE_NAME)
-
+    fs = AzureDLFileSystem(token_credential=settings.TOKEN_CREDEDENTIAL, store_name=settings.STORE_NAME)
     # Clear filesystem cache to ensure we capture all requests from a test
     fs.invalidate_cache()
 
     yield fs
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def second_azure():
     from azure.datalake.store import AzureDLFileSystem
-    fs = AzureDLFileSystem(token=settings.TOKEN, store_name=settings.STORE_NAME)
+    fs = AzureDLFileSystem(token_credential=settings.TOKEN_CREDEDENTIAL, store_name=settings.STORE_NAME)
 
     # Clear filesystem cache to ensure we capture all requests from a test
     fs.invalidate_cache()
