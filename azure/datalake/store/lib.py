@@ -132,7 +132,6 @@ class DatalakeRESTInterface:
         # the service itself decides on the API version to use (it's default).
         self.api_version = api_version or None
         self.url = 'https://%s.%s/' % (store_name, url_suffix)
-        self.head = None
 
         self.webhdfs = 'webhdfs/v1/'
         self.extended_operations = 'webhdfsext/'
