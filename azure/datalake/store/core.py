@@ -43,7 +43,7 @@ class AzureDLFileSystem(object):
     Parameters
     ----------
     store_name: str ("")
-        Store name to connect to.
+        Store name to connect to. If not supplied, we use environment variable azure_data_lake_store_name
     token_credential: credentials object
         When setting up a new connection, this contains the authorization
         credentials. Use Azure Identity to get this or define an implementation of azure.core.credentials.TokenCredential
@@ -61,10 +61,9 @@ class AzureDLFileSystem(object):
     """
     _singleton = [None]
 
-    def __init__(self, token_credential=None, per_call_timeout_seconds=60, **kwargs):
+    def __init__(self, token_credential=None, **kwargs):
         self.token_credential = token_credential
         self.kwargs = kwargs
-        self.per_call_timeout_seconds = per_call_timeout_seconds
         self.connect()
         self.dirs = {}
         self._emptyDirs = []
@@ -83,7 +82,7 @@ class AzureDLFileSystem(object):
         """
         Establish connection object.
         """
-        self.azure = DatalakeRESTInterface(token_credential=self.token_credential, req_timeout_s=self.per_call_timeout_seconds, **self.kwargs)
+        self.azure = DatalakeRESTInterface(token_credential=self.token_credential, **self.kwargs)
         self.token_credential = self.azure.token_credential
 
     def __setstate__(self, state):

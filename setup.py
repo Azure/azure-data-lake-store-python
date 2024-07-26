@@ -41,11 +41,9 @@ setup(name='azure-datalake-store',
                                       ]),
       install_requires=[
           'cffi',
-          'requests>=2.20.0',
-          'azure-identity',
+          'requests>=2.20.0'
       ],
-      extras_require={
-      },
+      extras_require={ 'auth': ['azure-identity']},
       long_description=readme + '\n\n' + history,
       zip_safe=False,
 )

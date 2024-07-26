@@ -119,8 +119,7 @@ class DatalakeRESTInterface:
         'REMOVEDEFAULTACL': ('put', set(), set())
     }
 
-    def __init__(self, store_name=default_store, token_credential=None,
-                 url_suffix=default_adls_suffix, api_version='2018-09-01', req_timeout_s=60, scopes=None):
+    def __init__(self, store_name=default_store, token_credential=None, scopes=None, url_suffix=default_adls_suffix, **kwargs):
         # in the case where an empty string is passed for the url suffix, it must be replaced with the default.
         url_suffix = url_suffix or default_adls_suffix
         self.local = threading.local()
@@ -130,7 +129,9 @@ class DatalakeRESTInterface:
 
         # There is a case where the user can opt to exclude an API version, in which case
         # the service itself decides on the API version to use (it's default).
-        self.api_version = api_version or None
+        self.api_version = kwargs.pop('api_version', '2018-09-01')
+        self.req_timeout_s = kwargs.pop('req_timeout_s', 60)
+
         self.url = 'https://%s.%s/' % (store_name, url_suffix)
 
         self.webhdfs = 'webhdfs/v1/'
@@ -140,7 +141,6 @@ class DatalakeRESTInterface:
             platform.platform(),
             __name__,
             __version__)
-        self.req_timeout_s = req_timeout_s
 
     def get_refreshed_bearer_token(self):
         # Check if the token is about to expire in 300 seconds and refresh it if necessary
