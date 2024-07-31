@@ -29,11 +29,8 @@ from .utils import ensure_writable, read_block
 from .enums import ExpiryOptionType
 from .retry import ExponentialRetryPolicy, NoRetryPolicy
 from .multiprocessor import multi_processor_change_acl
+import pathlib
 
-if sys.version_info >= (3, 4):
-    import pathlib
-else:
-    import pathlib2 as pathlib
 
 logger = logging.getLogger(__name__)
 valid_expire_types = [x.value for x in ExpiryOptionType]
@@ -46,29 +43,27 @@ class AzureDLFileSystem(object):
     Parameters
     ----------
     store_name: str ("")
-        Store name to connect to.
-    token: credentials object
+        Store name to connect to. If not supplied, we use environment variable azure_data_lake_store_name
+    token_credential: credentials object
         When setting up a new connection, this contains the authorization
-        credentials (see `lib.auth()`).
+        credentials. Use Azure Identity to get this or define an implementation of azure.core.credentials.TokenCredential
+    scopes: str(None)
+        which is a list of scopes to use for the token.
     url_suffix: str (None)
         Domain to send REST requests to. The end-point URL is constructed
         using this and the store_name. If None, use default.
     api_version: str (2018-09-01)
-        The API version to target with requests. Changing this value will
-        change the behavior of the requests, and can cause unexpected behavior or
-        breaking changes. Changes to this value should be undergone with caution.
+        The API version to target with requests. Changing this value will change the behavior of the requests, and can cause unexpected behavior or breaking changes. Changes to this value should be undergone with caution.
     per_call_timeout_seconds: float(60)
         This is the timeout for each requests library call.
     kwargs: optional key/values
-        See ``lib.auth()``; full list: tenant_id, username, password, client_id,
-        client_secret, resource
+        Other arguments forwarded to the DatalakeRESTInterface constructor.
     """
     _singleton = [None]
 
-    def __init__(self, token=None, per_call_timeout_seconds=60, **kwargs):
-        self.token = token
+    def __init__(self, token_credential=None, **kwargs):
+        self.token_credential = token_credential
         self.kwargs = kwargs
-        self.per_call_timeout_seconds = per_call_timeout_seconds
         self.connect()
         self.dirs = {}
         self._emptyDirs = []
@@ -87,8 +82,8 @@ class AzureDLFileSystem(object):
         """
         Establish connection object.
         """
-        self.azure = DatalakeRESTInterface(token=self.token, req_timeout_s=self.per_call_timeout_seconds, **self.kwargs)
-        self.token = self.azure.token
+        self.azure = DatalakeRESTInterface(token_credential=self.token_credential, **self.kwargs)
+        self.token_credential = self.azure.token_credential
 
     def __setstate__(self, state):
         self.__dict__.update(state)
