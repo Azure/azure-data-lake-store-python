@@ -4,7 +4,7 @@ Release History
 ===============
 
 1.0.0-alpha0 (2024-07-12)
-+++++++++++++++++++
++++++++++++++++++++++++++
 * Use generic azure token credential for auth instead of custom lib.auth
 * Remove older Python support
 

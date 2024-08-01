@@ -45,5 +45,6 @@ setup(name='azure-datalake-store',
       ],
       extras_require={ 'auth': ['azure-identity']},
       long_description=readme + '\n\n' + history,
+      long_description_content_type="text/x-rst",
       zip_safe=False,
 )
