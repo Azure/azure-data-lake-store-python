@@ -25,7 +25,6 @@ import urllib.parse as urllib
 from .retry import ExponentialRetryPolicy
 
 # 3rd party imports
-import msal
 import requests
 import requests.exceptions
 
