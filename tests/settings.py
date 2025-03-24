@@ -16,6 +16,7 @@ RESOURCE_GROUP_NAME = fake_settings.RESOURCE_GROUP_NAME
 RECORD_MODE = os.environ.get('RECORD_MODE', 'all').lower()
 AZURE_ACL_TEST_APPID = os.environ.get('AZURE_ACL_TEST_APPID')
 CLIENT_ID = os.environ['azure_service_principal']
+ROOT_DIR = os.environ['ROOT_DIR']
 
 if RECORD_MODE == 'none':
     STORE_NAME = fake_settings.STORE_NAME

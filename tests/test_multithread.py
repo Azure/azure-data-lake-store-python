@@ -168,7 +168,7 @@ def test_download_path(azure):
         down = ADLDownloader(
             azure,
             lpath="/lpath/test/testfolder",
-            rpath='/' + test_dir.name,
+            rpath='/'/test_dir,
             run=False)
         for lfile, rfile in down._file_pairs:
             if 'data' in lfile:

@@ -19,6 +19,7 @@ import vcr
 
 from azure.datalake.store.core import AzureDLPath
 from tests import fake_settings, settings
+from tests.settings import ROOT_DIR
 
 
 def _build_func_path_generator(function):
@@ -68,7 +69,7 @@ my_vcr = vcr.VCR(
 
 def working_dir():
     if not hasattr(working_dir, "path"):
-        unique_dir = 'azure_python_sdk_test_dir'
+        unique_dir = ROOT_DIR
         working_dir.path = AzureDLPath(unique_dir)
     return working_dir.path
 
