@@ -285,8 +285,11 @@ class ADLTransferClient(object):
         else:
             tmpdir = None
 
-        # TODO: might need xrange support for py2
-        offsets = range(0, length, self._chunksize)
+        if self._chunksize is None:
+            offsets = [0]  # Treat the entire file as a single chunk
+        else:    
+            # TODO: might need xrange support for py2
+            offsets = range(0, length, self._chunksize)
 
         # in the case of empty files, ensure that the initial offset of 0 is properly added.
         if not offsets:
@@ -304,7 +307,7 @@ class ADLTransferClient(object):
             cstates[(name, offset)] = 'pending'
             self._chunks[(name, offset)] = {
                 "parent": (src, dst),
-                "expected": min(length - offset, self._chunksize),
+                "expected": min(length - offset, self._chunksize or length),
                 "actual": 0,
                 "exception": None}
             logger.debug("Submitted %s, byte offset %d", name, offset)
