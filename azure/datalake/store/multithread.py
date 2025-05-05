@@ -376,7 +376,7 @@ class ADLUploader(object):
         not supported.
     nthreads: int [None]
         Number of threads to use. If None, uses the number of cores.
-    chunksize: int [2**28]
+    chunksize: int [None]
         Number of bytes for a chunk. Large files are split into chunks. Files
         smaller than this number will always be transferred in a single thread.
     buffersize: int [2**22]
@@ -408,7 +408,7 @@ class ADLUploader(object):
     --------
     azure.datalake.store.transfer.ADLTransferClient
     """
-    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=2**28,
+    def __init__(self, adlfs, rpath, lpath, nthreads=None, chunksize=None,
                  buffersize=2**22, blocksize=2**22, client=None, run=True,
                  overwrite=False, verbose=False, progress_callback=None, timeout=0):
 
@@ -418,11 +418,11 @@ class ADLUploader(object):
             self.client = ADLTransferClient(
                 adlfs,
                 transfer=put_chunk,
-                merge=merge_chunks,
                 nthreads=nthreads,
-                chunksize=chunksize,
+                chunksize=None,
                 buffersize=buffersize,
                 blocksize=blocksize,
+                chunked=False,
                 delimiter=None, # TODO: see utils.cs for what is required to support delimiters.
                 parent=self,
                 verbose=verbose,
@@ -585,35 +585,10 @@ def put_chunk(adlfs, src, dst, offset, size, buffersize, blocksize, delimiter=No
                             return nbytes, None
                         data = read_block(fin, o, miniblock, delimiter)
                         nbytes += fout.write(data)
-                
+    
     except Exception as e:
         exception = repr(e)
         logger.error('Upload failed %s; %s', src, exception)
         return nbytes, exception
     logger.debug('Uploaded from %s, byte offset %s', src, offset)
     return nbytes, None
-
-
-def merge_chunks(adlfs, outfile, files, shutdown_event=None, overwrite=False):
-    try:
-        # note that it is assumed that only temp files from this run are in the segment folder created.
-        # so this call is optimized to instantly delete the temp folder on concat.
-        # if somehow the target file was created between the beginning of upload
-        # and concat, we will remove it if the user specified overwrite.
-        # here we must get the most up to date information from the service,
-        # instead of relying on the local cache to ensure that we know if
-        # the merge target already exists.
-        if adlfs.exists(outfile, invalidate_cache=True):
-            if overwrite:
-                adlfs.remove(outfile, True)
-            else:
-                raise FileExistsError(outfile)
-
-        adlfs.concat(outfile, files, delete_source=True)
-    except Exception as e:
-        exception = repr(e)
-        logger.error('Merged failed %s; %s', outfile, exception)
-        return exception
-    logger.debug('Merged %s', outfile)
-    adlfs.invalidate_cache(outfile)
-    return None
