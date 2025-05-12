@@ -1044,7 +1044,7 @@ def test_write_blocks(azure):
             assert f.tell() == 9
         assert azure.du(a)[a] == 9
 
-@pytest.mark.skipif(not symlinktestsdisabled, reason="Zero byte append succeeds in Xstore, so this test won't rest expected exception.")
+@pytest.mark.skipif(not symlinktestsdisabled, reason="Zero byte append succeeds in Xstore, so this test won't raise expected exception.")
 @my_vcr.use_cassette
 def test_skip_existing_block(azure):
     with azure.open(a, mode='wb') as f:
