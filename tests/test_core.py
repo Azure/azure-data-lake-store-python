@@ -17,6 +17,7 @@ from tests.testing import azure, second_azure, azure_teardown, my_vcr, posix, tm
 from tests.settings import AZURE_ACL_TEST_APPID
 
 test_dir = working_dir()
+symlinktestsdisabled = "symlink" not in str(test_dir).lower()
 
 a = posix(test_dir / 'a')
 b = posix(test_dir / 'b')
@@ -135,7 +136,7 @@ def test_seek(azure):
             for i in range(4):
                 assert f.seek(i) == i
 
-
+@pytest.mark.skipif(not symlinktestsdisabled, reason="Concat is not supported over symlinks.")
 @my_vcr.use_cassette
 def test_concat(azure):
     aplus = a + "+file1"
@@ -1043,7 +1044,7 @@ def test_write_blocks(azure):
             assert f.tell() == 9
         assert azure.du(a)[a] == 9
 
-
+@pytest.mark.skipif(not symlinktestsdisabled, reason="Zero byte append succeeds in Xstore, so this test won't raise expected exception.")
 @my_vcr.use_cassette
 def test_skip_existing_block(azure):
     with azure.open(a, mode='wb') as f:
