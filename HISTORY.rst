@@ -2,6 +2,9 @@
 
 Release History
 ===============
+1.0.1 (2025-05-16)
++++++++++++++++++++
+* Remove concat operation from multi-part upload. Upload of large fies will now be done in single chunk.
 
 1.0.0-alpha0 (2024-07-12)
 +++++++++++++++++++++++++

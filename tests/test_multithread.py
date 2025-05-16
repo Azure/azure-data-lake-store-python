@@ -300,7 +300,7 @@ def test_upload_one(local_files, azure):
         # multiple chunks, one thread
         size = 10000
         up = ADLUploader(azure, test_dir / 'bigfile', bigfile, nthreads=1,
-                         chunksize=size//5, client=client, run=False,
+                         client=client, run=False,
                          overwrite=True)
         up.run()
 
