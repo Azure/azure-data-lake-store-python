@@ -51,7 +51,7 @@ The `AzureDLFileSystem` object is the main API for library usage of this
 package. It provides typical file-system operations on the remote azure
 store
 
-```
+```python
 token = lib.auth(tenant_id, username, password)
 adl = core.AzureDLFileSystem(store_name, token)
 # alternatively, adl = core.AzureDLFileSystem()
@@ -72,7 +72,7 @@ the python file interface, ensuring compatibility with libraries that work on
 python files. The recommended way to use this is with a context manager
 (otherwise, be sure to call `close()` on the file object).
 
-```
+```python
 with adl.open('newfile', 'wb') as f:
     f.write(b'index,a,b\n')
     f.tell()   # now at position 9
@@ -91,7 +91,7 @@ the main API will take in numerous path types: string, Path/PurePath, and
 AzureDLPath. On Windows in particular, you can pass in paths separated by either
 forward slashes or backslashes.
 
-```
+```python
 import pathlib  # only >= Python 3.4
 from pathlib2 import pathlib  # only <= Python 3.3
 
@@ -118,7 +118,7 @@ Classes `ADLUploader` and `ADLDownloader` will chunk large files and send
 many files to/from azure using multiple threads. A whole directory tree can
 be transferred, files matching a specific glob-pattern or any particular file.
 
-```
+```python
 # download the whole directory structure using 5 threads, 16MB chunks
 ADLDownloader(adl, '', 'my_temp_dir', 5, 2**24)
 ```
