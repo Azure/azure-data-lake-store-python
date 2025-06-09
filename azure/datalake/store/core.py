@@ -35,6 +35,23 @@ import pathlib
 logger = logging.getLogger(__name__)
 valid_expire_types = [x.value for x in ExpiryOptionType]
 
+def fsagnosticglob(fs, path, pathtype, prefix=""):
+    if "//" in path:
+        path = path.split("//")[-1]
+    paths = [prefix]
+    for part in path.strip("/").split("/"):
+        newpaths = []
+        for _prefix in paths:
+            checkpath = os.path.join(_prefix,part)
+            if "*" in part:
+                potentialpaths = fs.ls(_prefix)
+                for p in potentialpaths:
+                    if pathtype(p).match(checkpath):
+                        newpaths.append(p)
+            else:
+                newpaths.append(checkpath)
+        paths = newpaths
+    return paths
 
 class AzureDLFileSystem(object):
     """
@@ -304,14 +321,11 @@ class AzureDLFileSystem(object):
         -------
         List of files
         """
-
-        path = AzureDLPath(path).trim()
-        path_as_posix = path.as_posix()
-        prefix = path.globless_prefix
-        allfiles = self.walk(prefix, details, invalidate_cache)
-        if prefix == path:
-            return allfiles
-        return [f for f in allfiles if AzureDLPath(f['name'] if details else f).match(path_as_posix)]
+        return fsagnosticglob(
+            self,
+            path,
+            AzureDLPath,
+        )
 
     def du(self, path, total=False, deep=False, invalidate_cache=True):
         """
