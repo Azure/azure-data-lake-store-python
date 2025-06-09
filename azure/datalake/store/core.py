@@ -988,7 +988,8 @@ class AzureDLFile(object):
         # always invalidate the cache when checking for existence of a file
         # that may be created or written to (for the first time).
         try:
-            file_data = self.azure.info(path, invalidate_cache=True, expected_error_code=404)
+            invalidate = mode != 'rb'
+            file_data = self.azure.info(path, invalidate_cache=invalidate, expected_error_code=404)
             exists = True
         except FileNotFoundError:
             exists = False

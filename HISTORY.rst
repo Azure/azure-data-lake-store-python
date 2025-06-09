@@ -21,6 +21,10 @@ Release History
 * Changed logging verbosity when closing a stream
 * Filter out default acl for files when using recursive acl operations
 
+0.0.52 (2020-11-29)
++++++++++++++++++++
+* Don't invalidate cache when opening files with mode rb, speed up small reads 2x.
+
 0.0.51 (2020-10-15)
 +++++++++++++++++++
 * Add more logging for zero byte reads to investigate root cause.
